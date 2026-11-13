@@ -121,21 +121,37 @@ class DetailOverlay extends Panel {
     }
 }
 
-/** 诊断行：某个开关现在是否选中（✔ / ✘ 两个标签按状态显示） */
-class StateRow extends Panel {
-    constructor(label, toggleName, y) {
-        super({ size: [110, 10], anchor: 'top_left', offset: [3, y] })
-        this.add(new Label({ text: label, color: BODY, anchor: 'left_middle' }))
-        // 游戏字体可能没有 ✔ / ✘：用「是 / 否」
-        this.add(new Label({ text: '§2是', anchor: 'right_middle', visible: toggleState(toggleName) }))
-        this.add(new Label({ text: '§c否', anchor: 'right_middle', visible: toggleState(toggleName).not() }))
+/**
+ * 诊断格：读一个开关是否选中（「是」/「否」两个标签按状态显示）。
+ * 读不到（查找范围之外）时表达式取空值 = 否——所以配合「一定选中」的探针开关就能测出查找范围。
+ */
+class Cell extends Panel {
+    constructor(caption, toggleName, x, options = {}) {
+        super({ size: [44, 10], anchor: 'top_left', offset: [x, 0] })
+        this.add(new Label({ text: `§8${caption}`, anchor: 'left_middle' }))
+        this.add(new Label({ text: '§2是', anchor: 'right_middle', visible: toggleState(toggleName, options) }))
+        this.add(new Label({ text: '§c否', anchor: 'right_middle', visible: toggleState(toggleName, options).not() }))
     }
 }
+
+/** 诊断带上的一行：从「这一行所在的树位置」读 4 个探针（或给定的开关） */
+class ProbeRow extends Panel {
+    constructor(title, x, y, targets, options = {}) {
+        super({ size: [300, 10], anchor: 'top_left', offset: [x, y] })
+        this.add(new Label({ text: `§f${title}`, anchor: 'left_middle' }))
+        targets.forEach(([cap, name], i) => this.add(new Cell(cap, name, 96 + i * 50, options)))
+    }
+}
+
+/** 探针：非单选、默认选中、零尺寸——一定是「选中」 */
+const probe = (name) => new Toggle({ name, group: name, radio: false, defaultState: true, size: [0, 0] })
+const PROBES = [['根', 'probe_root'], ['分页层', 'probe_pages'], ['页内', 'probe_page'], ['页内深处', 'probe_deep']]
 
 // ───────────── 整本书 ─────────────
 
 export function buildBook() {
-    const root = new Panel({ size: [290, 180] })
+    // 书本 180 高 + 下方诊断带：整体 250 高居中，矮屏幕（手机）也能看全诊断带
+    const root = new Panel({ size: [290, 250] })
     root.add(new Image({ texture: T.book, size: [272, 180], anchor: 'top_left' }))
     const pages = new Pages({ group: 'gbp', start: 'home', size: [272, 180], anchor: 'top_left' })
     const detail = new Pages({ group: 'gbd', start: 'none', size: [272, 180], anchor: 'top_left', layer: 40 })
@@ -166,22 +182,31 @@ export function buildBook() {
     diamond.add(new Side('R').add(new Title('说明'), new Body('右下箭头去诊断页，左下箭头回钻石剑页。')))
     diamond.add(new Arrow(pages, 'sword', 'left'), new Arrow(pages, 'about', 'right'))
 
-    // 诊断
+    // 诊断：探针矩阵（显示在书本下方的诊断带；书本左上角为原点，诊断带从 y=184 开始）
     const about = pages.page('about')
-    const diag = new Side('L').add(new Title('诊断：开关状态'))
-    let y = 22
-    for (const key of ['home', 'sword', 'diamond', 'about']) { diag.add(new StateRow(`锚点 ${key}`, `gbp__${key}`, y)); y += 11 }
     const bookmark = new Bookmark(pages, 'home')
-    diag.add(new StateRow('书签（同 home）', bookmark.name, y)); y += 11
-    diag.add(new StateRow('目录行→钻石剑', 'gbp_sword_l1', y)); y += 11
-    diag.add(new StateRow('箭头→钻石剑', 'gbp_sword_l3', y)); y += 11
-    diag.add(new StateRow('目录行→诊断（刚点的）', 'gbp_about_l1', y))
-    about.add(diag)
-    about.add(new Side('R').add(new Title('检查清单'), new Body('1 翻页时表单不关、视角不动\n2 多个入口都能到达同一页\n3 弹层关掉后回到原来那页\n4 提示框有运行期数据\n5 弹层打开时点下面的箭头会不会穿透\n6 截图本页发回：看同序号的开关会不会一起选中')))
+    const deepSide = new Side('L').add(new Title('诊断'), new Body('书本下方的诊断带：每行从不同的树位置读 4 个「一定选中」的探针开关。「否」= 读不到。\n\n最后一行：从分页层读同序号的开关。'))
+    about.add(deepSide)
+    about.add(new Side('R').add(new Title('检查清单'), new Body('1 翻页时表单不关、视角不动\n2 多个入口都能到达同一页\n3 弹层关掉后回到原来那页\n4 提示框有运行期数据\n5 弹层打开时点下面的箭头会不会穿透\n6 截图本页（含书本下方的诊断带）')))
     about.add(new Arrow(pages, 'diamond', 'left'))
+    // 探针（一定选中）放在 4 个位置
+    root.add(probe('probe_root'))
+    pages.add(probe('probe_pages'))
+    about.add(probe('probe_page'))
+    deepSide.add(probe('probe_deep'))
+    // 读取者：同样 4 个位置（页内深处的 Side 在 (14,10)，偏移要减掉）+ 一个带 resolve_sibling_scope 的对照
+    const Y = 184
+    root.add(new ProbeRow('读取位置：根', 0, Y, PROBES))
+    pages.add(new ProbeRow('读取位置：分页层', 0, Y + 11, PROBES))
+    about.add(new ProbeRow('读取位置：页内', 0, Y + 22, PROBES))
+    deepSide.add(new ProbeRow('读取位置：页内深处', -14, Y + 33 - 10, PROBES))
+    deepSide.add(new ProbeRow('页内深处＋sibling', -14, Y + 44 - 10, PROBES, { siblingScope: true }))
+    // 同序号是否同步：从分页层（页面显示条件读得到的位置）读诊断页的锚点、刚点的目录行、别的页的锚点
+    pages.add(new ProbeRow('分页层读同序号', 0, Y + 55, [['锚点诊断', 'gbp__about'], ['目录行诊断', 'gbp_about_l1'], ['箭头诊断', 'gbp_about_l2'], ['锚点目录', 'gbp__home']]))
 
     // 书签（任何页都在）
     root.add(bookmark)
+    void bookmark
 
     // 详情弹层
     detail.page('none')

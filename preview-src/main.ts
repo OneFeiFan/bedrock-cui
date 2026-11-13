@@ -17,7 +17,7 @@ const textures: Record<string, PreviewTexture> = Object.fromEntries(Object.entri
 
 const book = buildBook()
 const preview = mountPreview(document.getElementById('app')!, {
-    root: book, viewport: [300, 190], scale: 3, textures,
+    root: book, viewport: [300, 260], scale: 3, textures,
     formText: signal(FORM.body), formButtons: signal(FORM.buttons), title: signal(FORM.title),
     onFormButton: (i) => console.log('表单按钮', i, '（真机里这会关掉表单，服务端收到选择）'),
 })

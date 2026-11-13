@@ -67,7 +67,7 @@ class Compiler {
             }
             // 跨区域读开关状态：不写 resolve_sibling_scope（原版主界面标签页的写法；只有兄弟控件才写 true）
             for (const ctl of c.controls) {
-                bindings.push({ binding_type: 'view', source_control_name: ctl.control, source_property_name: ctl.property, target_property_name: ctl.local })
+                bindings.push({ binding_type: 'view', source_control_name: ctl.control, ...(ctl.siblingScope ? { resolve_sibling_scope: true } : {}), source_property_name: ctl.property, target_property_name: ctl.local })
             }
             bindings.push({ binding_type: 'view', source_property_name: c.text, target_property_name: spec.target })
             if (spec.prop) out[spec.prop] = spec.target

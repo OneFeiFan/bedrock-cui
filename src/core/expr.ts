@@ -11,7 +11,7 @@
 export type Source =
     | { kind: 'global' }
     | { kind: 'collection', collection: string }
-    | { kind: 'control', control: string }
+    | { kind: 'control', control: string, siblingScope?: boolean }
 
 export type Op = '+' | '-' | '*' | '/' | '%' | '=' | '>' | '<' | '>=' | '<=' | 'and' | 'or'
 
@@ -69,8 +69,13 @@ export const form = {
     buttonText: ref('#form_button_text', { kind: 'collection', collection: 'form_buttons' }),
 }
 
-/** 某个开关控件的状态 */
-export const toggleState = (control: string) => ref('#toggle_state', { kind: 'control', control })
+/**
+ * 某个开关控件的状态（按控件名查找）。
+ * ⚠️ 真机：按名字查找有范围限制——从页面深处读不到别处的开关（2026-11 测试包诊断页全是「否」），
+ * 范围规则见 docs/DESIGN.md；siblingScope = 绑定加 resolve_sibling_scope: true。
+ */
+export const toggleState = (control: string, options: { siblingScope?: boolean } = {}) =>
+    ref('#toggle_state', { kind: 'control', control, ...(options.siblingScope ? { siblingScope: true } : {}) })
 
 // ───────────────────────────── 编译 ─────────────────────────────
 
@@ -82,7 +87,7 @@ export interface CompiledExpr {
     /** 需要声明的集合绑定 */
     collections: { collection: string, name: string }[]
     /** 需要先从别的控件读进来的属性：读到局部属性 local 里 */
-    controls: { control: string, property: string, local: string }[]
+    controls: { control: string, property: string, local: string, siblingScope?: boolean }[]
     /** 字面量被提升成的变量（避免引号转义问题）：{ $v0: 'ITM:3;|' } */
     variables: Record<string, Value>
 }
@@ -113,10 +118,10 @@ export function compileExpr(e: ExprLike, varPrefix = 'v'): CompiledExpr {
                     if (!out.collections.some((c) => c.collection === s.collection && c.name === n.name)) out.collections.push({ collection: s.collection, name: n.name })
                     return n.name
                 }
-                const found = out.controls.find((c) => c.control === s.control && c.property === n.name)
+                const found = out.controls.find((c) => c.control === s.control && c.property === n.name && !!c.siblingScope === !!s.siblingScope)
                 if (found) return found.local
-                const local = `#cui_${s.control}_${n.name.replace(/^#/, '')}`
-                out.controls.push({ control: s.control, property: n.name, local })
+                const local = `#cui_${s.control}_${n.name.replace(/^#/, '')}${s.siblingScope ? '_sib' : ''}`
+                out.controls.push({ control: s.control, property: n.name, local, ...(s.siblingScope ? { siblingScope: true } : {}) })
                 return local
             }
             case 'not': return `(not ${visit(n.a)})`
