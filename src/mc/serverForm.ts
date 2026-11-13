@@ -25,6 +25,12 @@ export interface ServerFormOptions extends LintOptions {
     content?: Element
     /** 多个界面放在同一个命名空间里，按标题区分（标题互相不能是子串） */
     panels?: ServerFormPanel[]
+    /**
+     * 屏幕进出场动画（缺省 false = 去掉）：服务端翻页每次重开表单都会滑入（真机 1.4.0）。
+     * 去掉的写法与 sapdon 相同（真机验证）：重定义 third_party_server_screen，动画换成不位移的等待。
+     * ⚠️ 作用于所有服务端表单（包括别的附加包的）。
+     */
+    screenAnimation?: boolean
 }
 
 export interface ServerFormFiles {
@@ -56,6 +62,16 @@ export function serverForm(options: ServerFormOptions): ServerFormFiles {
                 value: [{ [`cui_form_factory_${options.namespace}`]: { type: 'panel', factory: { name: 'server_form_factory', control_ids: { long_form: `@${options.namespace}.root` } } } }],
             }],
         },
+        ...(options.screenAnimation ? {} : {
+            screen_exit_animation_pop_wait: { anim_type: 'offset', easing: 'linear', duration: 0.1, from: [0, 0], to: [0, 0], play_event: 'screen.exit_pop', end_event: 'screen.exit_end' },
+            'third_party_server_screen@common.base_screen': {
+                type: 'screen',
+                button_mappings: [{ from_button_id: 'button.menu_cancel', to_button_id: 'button.menu_exit', mapping_type: 'global' }],
+                $screen_content: 'server_form.main_screen_content',
+                $screen_animations: ['@server_form.screen_exit_animation_pop_wait'],
+                $background_animations: ['@server_form.screen_exit_animation_pop_wait'],
+            },
+        }),
         long_form: {
             modifications: [{
                 array_name: 'bindings', operation: 'insert_back',

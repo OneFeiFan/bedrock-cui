@@ -16,11 +16,15 @@ import { lint, lintLayout, type LintIssue, type LintOptions } from './lint.js'
 type Json = Record<string, unknown>
 
 /**
- * 静态文字的保护：以 # 开头会被当成绑定属性（#text…）、以 $ 开头会被当成变量，游戏里整段不显示
- * （真机：字宽标尺 1.2.0 的「#$%&+=?/」整行空白）⇒ 开头补一个不占宽度的 §r。
+ * 静态文字的保护（真机 1.4.0「特殊字符」页）：
+ *   · 以 # 开头会被当成绑定属性，整行不显示 ⇒ 开头补一个不占宽度的 §r（$ 开头没问题）
+ *   · % 会被当成格式占位符：「100%」显示成「100」、「%s」显示成「s」，只有「%%」显示成一个 % ⇒ 每个 % 写成 %%
+ * 运行期文字（表单正文、按钮文字）由脚本发送，要在脚本里自己把 % 写成 %%。
  */
-export function escapeText(text: unknown): unknown {
-    return typeof text === 'string' && /^[#$]/.test(text) ? `§r${text}` : text
+export function escapeText(text: unknown, localize = false): unknown {
+    if (typeof text !== 'string' || localize) return text
+    const t = text.replace(/%/g, '%%')
+    return t.startsWith('#') ? `§r${t}` : t
 }
 
 /** 标记：外层集合项的上下文被开关遮住了 */
@@ -108,7 +112,7 @@ class Compiler {
                 break
             case 'label':
                 out.type = 'label'
-                if (!isExpr(p.text)) out.text = escapeText(p.text)
+                if (!isExpr(p.text)) out.text = escapeText(p.text, p.localize)
                 if (p.color) out.color = p.color
                 if (p.shadow !== undefined) out.shadow = p.shadow
                 if (p.fontScale !== undefined) out.font_scale_factor = p.fontScale

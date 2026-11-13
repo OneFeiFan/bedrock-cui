@@ -303,12 +303,16 @@ export function layout(roots: RNode[], env: LayoutEnv): Box[] {
     return roots.map((r) => e.place(r, vp, {}, 0, undefined)).filter((b): b is Box => !!b)
 }
 
-/** 按绘制顺序（z，再文档顺序）展平 */
+/**
+ * 按绘制顺序展平：z 小的先画；**同一 z 时文字先画、图片后画**（取最坏情况——真机 1.4.0：同层的图片会盖住文字，
+ * 与文档顺序、父子关系无关），再按文档顺序。这样预览里也能看出「文字被底板盖住」。
+ */
 export function drawOrder(boxes: Box[]): Box[] {
     const out: Box[] = []
     const visit = (b: Box) => { out.push(b); b.children.forEach(visit) }
     boxes.forEach(visit)
-    return out.sort((a, b) => a.z - b.z || a.order - b.order)
+    const rank = (b: Box) => (b.node.type === 'label' ? 0 : b.node.type === 'image' ? 1 : 0)
+    return out.sort((a, b) => a.z - b.z || rank(a) - rank(b) || a.order - b.order)
 }
 
 /** 找一个路径的控件（测试用） */

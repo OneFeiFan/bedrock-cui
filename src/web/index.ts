@@ -54,6 +54,8 @@ export interface Preview {
     boxes(): Box[]
     issues(): LintIssue[]
     compiled(namespace?: string): Record<string, unknown>
+    /** 清空开关状态（模拟服务端重新打开表单：开关回到初始状态） */
+    resetToggles(): void
     dispose(): void
 }
 
@@ -264,6 +266,7 @@ export function mountPreview(el: HTMLElement, options: PreviewOptions): Preview 
         boxes: () => current,
         issues: () => compileNamespace('preview', { root: rootEl() }, { textures: (p) => textures[p] }).issues,
         compiled: (ns = 'preview') => compileNamespace(ns, { root: rootEl() }, { textures: (p) => textures[p] }).json,
+        resetToggles: () => { groups.value = {}; flags.value = {} },
         dispose: () => { render.stop(); screen.remove() },
     }
 }

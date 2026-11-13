@@ -8,15 +8,17 @@ import path from 'node:path'
 import { execSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { serverForm } from 'cui'
-import { buildBook, buildFormPager, FORM, FORM_D, T, TEXTURE_INFO } from './toggle-book.mjs'
+import { buildBook, ARROWS, FORM, T, TEXTURE_INFO } from './toggle-book.mjs'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 const outRoot = path.resolve(process.argv[2] ?? path.join(here, '..', 'out'))
-const VERSION = [1, 4, 0]
+const VERSION = [1, 5, 0]
 const UUID = { bp: '6a3f0e2c-91d4-4b7a-8c55-0e1f7a2b9c31', bpScript: 'c2e8b7d1-4f6a-4c9e-a1b2-3d4e5f607182', rp: '1f9c3a7e-2b4d-4e6f-8a90-b1c2d3e4f5a6', rpRes: '7d8e9f0a-1b2c-4d3e-9f4a-5b6c7d8e9f01' }
 const NAME = 'cui_toggle_test'
 
-const { files, issues } = serverForm({ namespace: NAME, panels: [{ panelId: FORM.title, content: buildBook() }, { panelId: FORM_D.title, content: buildFormPager() }], textures: (p) => TEXTURE_INFO[p] })
+// 去掉屏幕进出场动画（缺省）：混合翻页每次重开表单不再滑入
+const { files, issues } = serverForm({ namespace: NAME, panelId: FORM.title, content: buildBook(), textures: (p) => TEXTURE_INFO[p] })
+const ROUTES = Object.fromEntries(ARROWS.map((a) => [a.index, a.target]))
 if (issues.some((i) => i.level === 'error')) { console.error(issues); process.exit(1) }
 
 const bp = path.join(outRoot, `${NAME}_BP`), rp = path.join(outRoot, `${NAME}_RP`)
@@ -49,7 +51,8 @@ import { ActionFormData } from '@minecraft/server-ui'
 
 // 与界面约定：标题、正文前缀 CUI;|、按钮 0–3 = 格子 s0|…s3|（运行期数据跟在 | 后面）、按钮 4 = close|
 const TITLE = ${JSON.stringify(FORM.title)}
-const TITLE_D = ${JSON.stringify(FORM_D.title)}
+// 翻页箭头：表单按钮序号 → 目标页（构建期从界面生成）
+const ROUTES = ${JSON.stringify(ROUTES)}
 const SLOT_ITEMS = ['minecraft:diamond_sword', 'minecraft:diamond', 'minecraft:diamond', 'minecraft:stick']
 
 /** 背包里有几个 */
@@ -79,33 +82,27 @@ function inventoryText(player) {
     return '§6' + player.name + '§r 的背包（' + counts.size + ' 种物品）：\\n' + (list || '§8背包是空的') + '\\n§2这段文字由脚本在运行期生成，长度不固定，由引擎负责折行。'
 }
 
-function open(player) {
-    const form = new ActionFormData().title(TITLE).body('CUI;|' + info(player, 'minecraft:diamond_sword') + '\\n§8（这段来自表单正文）')
+// 书打开期间锁视角：混合翻页每次翻页都会关表单、再打开（表单之间的空档不让视角偏转）
+const camera = (player, on) => { try { player.inputPermissions.setPermissionCategory(InputPermissionCategory.Camera, on) } catch {} }
+system.run(() => { for (const p of world.getAllPlayers()) camera(p, true) })
+
+/** 打开测试书；page = 服务端页码（标题带 P:<页>;，界面按它显示那一页；不给 = 目录） */
+function open(player, page) {
+    camera(player, false)
+    const form = new ActionFormData().title(TITLE + (page ? '|P:' + page + ';' : '')).body('CUI;|' + info(player, 'minecraft:diamond_sword') + '\\n§8（这段来自表单正文）')
     SLOT_ITEMS.forEach((id, i) => form.button('s' + i + '|' + info(player, id)))
     form.button('close|')
     form.button('txt|' + inventoryText(player))
-    form.button('expD|')
+    const last = Math.max(...Object.keys(ROUTES).map(Number))
+    for (let i = 6; i <= last; i++) form.button(ROUTES[i] ? 'go' + i + '|' : '')
     form.show(player).then((r) => {
-        if (r.canceled) player.sendMessage('§7[CUI] 表单关闭（Esc）：' + (r.cancelationReason ?? ''))
-        else if (r.selection === 6) openD(player, 0)
-        else player.sendMessage('§a[CUI] 服务端收到表单按钮 ' + r.selection + (r.selection === 4 ? '（右上角 ×）' : ''))
+        if (r.canceled) { camera(player, true); player.sendMessage('§7[CUI] 表单关闭（Esc）：' + (r.cancelationReason ?? '')); return }
+        const target = ROUTES[r.selection]
+        if (target) return open(player, target)
+        camera(player, true)
+        player.sendMessage('§a[CUI] 服务端收到表单按钮 ' + r.selection + (r.selection === 4 ? '（右上角 ×）' : ''))
     })
 }
-
-// ── 实验 D：服务端翻页。每次翻页 = 关掉表单、服务端再打开下一页；期间锁视角（表单之间的空档不让视角偏转）
-const camera = (player, on) => { try { player.inputPermissions.setPermissionCategory(InputPermissionCategory.Camera, on) } catch {} }
-function openD(player, k) {
-    camera(player, false)
-    const form = new ActionFormData().title(TITLE_D).body('D|D' + (k + 1))
-    form.button(k > 0 ? 'dprev|' : '').button(k < 4 ? 'dnext|' : '').button('dback|')
-    form.show(player).then((r) => {
-        if (r.canceled) { camera(player, true); return }
-        if (r.selection === 0) openD(player, k - 1)
-        else if (r.selection === 1) openD(player, k + 1)
-        else { camera(player, true); open(player) }
-    })
-}
-system.run(() => { for (const p of world.getAllPlayers()) camera(p, true) })
 
 world.afterEvents.itemUse.subscribe((e) => {
     if (e.itemStack.typeId === 'minecraft:book' && e.source.typeId === 'minecraft:player') open(e.source)

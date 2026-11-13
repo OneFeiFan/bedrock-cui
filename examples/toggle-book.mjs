@@ -28,7 +28,7 @@ export const FORM = {
     body: 'CUI;|§7耐久 1561\n§7可附魔：锋利 V、耐久 III\n§8（这段来自表单正文）',
     // 预览用的样例；真机脚本在运行期按玩家背包实时计算（examples/build-toggle-test.mjs）
     buttons: ['s0|§7耐久 1561\n§a背包里有 1 个', 's1|§a背包里有 3 个', 's2|§a背包里有 3 个', 's3|§8背包里没有', 'close|',
-        'txt|§6Steve§r 的背包（4 种物品）：\n§8diamond_sword §0×1§8、§8diamond §0×3§8、§8stick §0×12§8、§8oak_planks §0×64\n§2这段文字由脚本在运行期生成，长度不固定，由引擎负责折行。', 'expD|'],
+        'txt|§6Steve§r 的背包（4 种物品）：\n§8diamond_sword §0×1§8、§8diamond §0×3§8、§8stick §0×12§8、§8oak_planks §0×64\n§2这段文字由脚本在运行期生成，长度不固定，由引擎负责折行。'],
 }
 
 // ───────────── 组件（都是类） ─────────────
@@ -63,24 +63,20 @@ class RowLink extends Toggle {
     }
 }
 
-/** 目录里的表单按钮行（点了关掉表单、交给服务端）：实验 D 的入口 */
-class FormRow extends FormButton {
-    constructor(index, tag, { icon, text, y }) {
-        super({ index, tag, size: [110, 18], anchor: 'top_left', offset: [0, y] })
-        const content = () => [new Image({ texture: icon, size: [16, 16], anchor: 'left_middle', offset: [3, 0], layer: 2 }), new Label({ text, color: BODY, anchor: 'left_middle', offset: [23, 0], layer: 2 })]
-        this.default.add(...content())
-        this.hover.add(new Image({ texture: T.rowHover, keepRatio: false, size: ['100%', '100%'] }), ...content())
-    }
-}
-
-/** 翻页箭头：跳到某页的开关 */
-class Arrow extends Toggle {
-    constructor(pages, key, dir) {
-        super({ ...pages.toggleOptions(key), size: [28, 18], anchor: 'top_left', offset: [dir === 'left' ? 10 : 234, 156] })
-        pages.attach(key, this)
+/**
+ * 翻页箭头 = 表单按钮（混合翻页）：点了关掉表单，服务端按 ARROWS 表重新打开到目标页（标题带 P:<页>;）。
+ * 真机 1.4.0：服务端重开的表单按当前光标位置判定悬停，鼠标不动也能连续翻页；开关翻页做不到。
+ */
+export let ARROWS = []
+const ARROW_BASE = 10
+class ServerArrow extends FormButton {
+    constructor(target, dir) {
+        const index = ARROW_BASE + ARROWS.length
+        const tag = `go${index}|`
+        super({ index, tag, size: [28, 18], anchor: 'top_left', offset: [dir === 'left' ? 10 : 234, 156] })
+        ARROWS.push({ index, tag, target })
         const art = (hover) => new Image({ texture: dir === 'left' ? (hover ? T.arrowLH : T.arrowL) : (hover ? T.arrowRH : T.arrowR), size: [20, 12] })
-        this.unchecked.add(art(false)); this.checked.add(art(false))
-        this.uncheckedHover.add(art(true)); this.checkedHover.add(art(true))
+        this.default.add(art(false)); this.hover.add(art(true)); this.pressed.add(art(true))
     }
 }
 
@@ -147,7 +143,9 @@ class DetailOverlay extends Panel {
 export function buildBook() {
     const root = new Panel({ size: [290, 180] })
     root.add(new Image({ texture: T.book, size: [272, 180], anchor: 'top_left' }))
-    const pages = new Pages({ group: 'gbp', start: 'home', size: [272, 180], anchor: 'top_left' })
+    ARROWS = []
+    // 混合翻页：翻页箭头走服务端（标题带 P:<页>;），目录 / 书签用开关
+    const pages = new Pages({ group: 'gbp', start: 'home', size: [272, 180], anchor: 'top_left', server: {} })
     const detail = new Pages({ group: 'gbd', start: 'none', size: [272, 180], anchor: 'top_left', layer: 40 })
     root.add(pages, detail)
 
@@ -164,10 +162,8 @@ export function buildBook() {
         new RowLink(pages, 'sword', { icon: T.sword, text: '钻石剑', y: 20 }),
         new RowLink(pages, 'diamond', { icon: T.diamond, text: '钻石', y: 38 }),
         new RowLink(pages, 'about', { icon: T.book_item, text: '检查清单', y: 56 }),
-        new RowLink(pages, 'tnav', { icon: T.sword, text: '翻页手感 A / B', y: 74 }),
-        new FormRow(6, 'expD|', { icon: T.writable, text: '翻页实验 D（服务端）', y: 92 }),
-        new RowLink(pages, 'tlayer', { icon: T.paper, text: '叠放顺序', y: 110 })))
-    home.add(new Arrow(pages, 'sword', 'right'))
+        new RowLink(pages, 'tlayer', { icon: T.paper, text: '叠放顺序', y: 74 })))
+    home.add(new ServerArrow('sword', 'right'))
 
     // 钻石剑
     const sword = pages.page('sword')
@@ -177,20 +173,20 @@ export function buildBook() {
         new ItemSlot(detail, 'sword', { index: 1, icon: T.diamond, name: '钻石', x: 35, y: 24 }),
         new ItemSlot(detail, 'sword', { index: 2, icon: T.diamond, name: '钻石', x: 35, y: 44 }),
         new ItemSlot(detail, 'sword', { index: 3, icon: T.stick, name: '木棍', x: 35, y: 64 })))
-    sword.add(new Arrow(pages, 'home', 'left'), new Arrow(pages, 'diamond', 'right'))
+    sword.add(new ServerArrow('home', 'left'), new ServerArrow('diamond', 'right'))
 
     // 钻石
     const diamond = pages.page('diamond')
     diamond.add(new Side('L').add(new Title('钻石'), new Body('这一页从目录、上一页箭头都能到达：同一页有多个入口（同序号的开关）。')))
     diamond.add(new Side('R').add(new Title('说明'), new Body('右下箭头去诊断页，左下箭头回钻石剑页。')))
-    diamond.add(new Arrow(pages, 'sword', 'left'), new Arrow(pages, 'about', 'right'))
+    diamond.add(new ServerArrow('sword', 'left'), new ServerArrow('about', 'right'))
 
     // 检查页
     const about = pages.page('about')
     const bookmark = new Bookmark(pages, 'home')
     about.add(new Side('L').add(new Title('1.0.1 的结论'), new Body('按名字读开关是全局的；同序号的开关不会一起选中（只有被点的那个选中）；弹层会被点穿。')))
     about.add(new Side('R').add(new Title('1.0.2 请检查'), new Body('1 钻石剑页悬停格子：提示框有「背包里有 N 个」\n2 打开弹层后点底下的箭头：点不穿，也不关弹层（透明、无声）\n3 只有「关闭」按钮才关弹层')))
-    about.add(new Arrow(pages, 'diamond', 'left'))
+    about.add(new ServerArrow('diamond', 'left'))
 
     buildTextPages(pages)
 
@@ -259,45 +255,6 @@ class Swatches extends Panel {
     }
 }
 
-/** 小箭头（翻页手感测试用） */
-class MiniArrow extends Toggle {
-    constructor(pages, key, dir, extra = {}) {
-        super({ ...pages.toggleOptions(key), size: [28, 18], anchor: 'top_left', offset: [dir === 'left' ? 2 : 80, 100], ...extra })
-        pages.attach(key, this)
-        const art = (hover) => new Image({ texture: dir === 'left' ? (hover ? T.arrowLH : T.arrowL) : (hover ? T.arrowRH : T.arrowR), size: [20, 12] })
-        this.unchecked.add(art(false)); this.checked.add(art(false))
-        this.uncheckedHover.add(art(true)); this.checkedHover.add(art(true))
-    }
-}
-
-/**
- * 翻页手感：点了箭头翻页后，鼠标不动再点，按钮没反应（真机）——游戏只在鼠标移动时重新判定光标下的控件。
- *   A：每页自己的箭头（显示 / 隐藏切换，现状）
- *   B：三页的箭头始终都在、叠在同一位置，只有当前页的那个启用（禁用的什么都不画）
- */
-function buildNavTest(sideA, sideB) {
-    const mini = (group, letter) => {
-        const p = new Pages({ group, start: `${letter}0`, size: ['100%', 120], anchor: 'top_left', offset: [0, 20] })
-        for (let k = 0; k < 3; k++) p.page(`${letter}${k}`).add(new Label({ text: `§l${letter.toUpperCase()}${k + 1}`, color: TITLE, fontScale: 3, anchor: 'top_middle', offset: [0, 40] }))
-        return p
-    }
-    const a = mini('nava', 'a')
-    for (let k = 0; k < 3; k++) {
-        if (k > 0) a.page(`a${k}`).add(new MiniArrow(a, `a${k - 1}`, 'left'))
-        if (k < 2) a.page(`a${k}`).add(new MiniArrow(a, `a${k + 1}`, 'right'))
-    }
-    sideA.add(new Title('A：显示切换'), new Body('§8鼠标停在右箭头上不动，连点', 20), a)
-    const b = mini('navb', 'b')
-    const arrows = []
-    for (let k = 0; k < 3; k++) {
-        if (k > 0) arrows.push([k, b.add(new MiniArrow(b, `b${k - 1}`, 'left', { lockedVisible: false })).children.at(-1)])
-        if (k < 2) arrows.push([k, b.add(new MiniArrow(b, `b${k + 1}`, 'right', { lockedVisible: false })).children.at(-1)])
-    }
-    // 箭头都建完再设启用条件（showing() 要包含所有入口）
-    for (const [k, arrow] of arrows) arrow.set({ enabled: b.showing(`b${k}`) })
-    sideB.add(new Title('B：启用切换'), new Body('§8同上：看哪一边不动鼠标也能连续翻页', 20), b)
-}
-
 /** 特殊字符：左边原样输出（绕过编译器的保护），右边经编译器处理（# / $ 开头补 §r） */
 const SPECIAL = ['#abc', '$abc', 'a#b$c', '100%', 'a%b%c', '%s %d %%', '&+=?/', '@abc']
 function buildSpecialPage(page) {
@@ -313,16 +270,17 @@ function buildSpecialPage(page) {
 
 /** 叠放顺序诊断：深色底板 + 白字的 5 种写法，看哪几种文字被盖住（真机 1.3.0 色块里的文字不见了） */
 function buildLayerTest(sideL, sideR) {
-    const row = (i, build) => { const p = new Panel({ size: ['100%', 20], anchor: 'top_left', offset: [0, 22 + i * 24] }); build(p); return p }
+    const row = (i, build) => { const p = new Panel({ size: ['100%', 18], anchor: 'top_left', offset: [0, 22 + i * 20] }); build(p); return p }
     const bg = () => new Image({ texture: T.purple, size: ['100%', '100%'] })
     const txt = (s, extra = {}) => new Label({ text: s, color: WHITE, anchor: 'left_middle', offset: [6, 0], ...extra })
     sideL.add(new Title('叠放顺序'),
-        row(0, (p) => p.add(bg(), txt('V1 图在前 字在后'))),
-        row(1, (p) => p.add(bg(), txt('V2 同上 + 阴影', { shadow: true }))),
-        row(2, (p) => p.add(txt('V3 字在前 图在后'), bg())),
-        row(3, (p) => p.add(bg(), txt('V4 字写 layer 1', { layer: 1 }))),
-        row(4, (p) => p.add(bg().add(txt('V5 字是图的子元素')))))
-    sideR.add(new Title('请截图'), new Body('看左边哪几行的白字被深色底板盖住了。\n\n结果会写进框架：编译时保证文字画在底板上面。'))
+        row(0, (p) => p.add(bg(), txt('V0 字显式 layer 0', { layer: 0 }))),
+        row(1, (p) => p.add(bg(), txt('V1 图在前 字在后'))),
+        row(2, (p) => p.add(bg(), txt('V2 同上 + 阴影', { shadow: true }))),
+        row(3, (p) => p.add(txt('V3 字在前 图在后'), bg())),
+        row(4, (p) => p.add(bg(), txt('V4 字写 layer 1', { layer: 1 }))),
+        row(5, (p) => p.add(bg().add(txt('V5 字是图的子元素')))))
+    sideR.add(new Title('1.5.0 预期'), new Body('1.4.0 真机：只有 V4 的字可见。\n\n现在框架给文字缺省 layer 1：V1–V5 都应可见；V0 故意写 layer 0，应被盖住。'))
 }
 
 /** 文本测试的各页：折行对比、富文本、字宽标尺、长文本分页、运行期长文本、翻页手感 */
@@ -363,12 +321,6 @@ function buildTextPages(pages) {
     clipped.add(new CollectionItem({ collection: 'form_buttons', index: 5, size: [110, 10], anchor: 'top_left' })
         .add(new Label({ text: form.buttonText.minus('txt|'), color: BODY, size: [110, 'default'], anchor: 'top_left' })))
     run.add(new Side('R').add(new Title('运行期：裁剪到 50 高'), clipped, new Body('§8上面的框只有 50 像素高，超出的部分被裁掉。', 80)))
-    // 翻页手感
-    chain.push('tnav')
-    const nav = pages.page('tnav')
-    const sideA = new Side('L'), sideB = new Side('R')
-    buildNavTest(sideA, sideB)
-    nav.add(sideA, sideB)
     // 特殊字符、叠放顺序
     chain.push('tspecial')
     buildSpecialPage(pages.page('tspecial'))
@@ -380,36 +332,9 @@ function buildTextPages(pages) {
     // 文本页之间的箭头
     chain.forEach((key, i) => {
         const page = pages.page(key)
-        page.add(new Arrow(pages, i === 0 ? 'home' : chain[i - 1], 'left'))
-        if (i < chain.length - 1) page.add(new Arrow(pages, chain[i + 1], 'right'))
+        page.add(new ServerArrow(i === 0 ? 'home' : chain[i - 1], 'left'))
+        if (i < chain.length - 1) page.add(new ServerArrow(chain[i + 1], 'right'))
     })
-}
-
-// ───────────── 实验 D：服务端翻页（独立的表单） ─────────────
-
-/** 实验 D 的表单约定：标题；正文 D|<页码文字>；按钮 0 上一页、1 下一页、2 回测试书 */
-export const FORM_D = { title: 'cui_ui:form_pager' }
-
-/**
- * 实验 D：每次翻页都由服务端关掉表单、再打开下一页（旧版指导书的做法）。
- * 要回答：重新打开的表单会不会按当前光标位置判定悬停——即鼠标不动能不能连续翻页。
- */
-export function buildFormPager() {
-    const root = new Panel({ size: [290, 180] })
-    root.add(new Image({ texture: T.book, size: [272, 180], anchor: 'top_left' }))
-    root.add(new Side('L').add(new Title('D：服务端翻页'), new Label({ text: form.text.minus('D|'), color: TITLE, fontScale: 3, anchor: 'top_middle', offset: [0, 45] }), new Body('§8鼠标停在右下箭头上不动，连点', 110)))
-    root.add(new Side('R').add(new Title('和 A / B 对比'), new Body('这里每次翻页都是服务端关掉表单、再打开下一页（旧版指导书的做法）。看鼠标不动能不能连续翻页。\n\n右上书签：回到测试书。')))
-    const arrow = (index, tag, dir) => {
-        const b = new FormButton({ index, tag, size: [28, 18], anchor: 'top_left', offset: [dir === 'left' ? 10 : 234, 156] })
-        const art = (hover) => new Image({ texture: dir === 'left' ? (hover ? T.arrowLH : T.arrowL) : (hover ? T.arrowRH : T.arrowR), size: [20, 12] })
-        b.default.add(art(false)); b.hover.add(art(true)); b.pressed.add(art(true))
-        return b
-    }
-    const back = new FormButton({ index: 2, tag: 'dback|', size: [22, 18], anchor: 'top_left', offset: [266, 14] })
-    const tab = (hover) => [new Image({ texture: hover ? T.tabHover : T.tab, size: [20, 16] }), new Image({ texture: T.book_item, size: [10, 10], offset: [-2, 0], layer: 2 })]
-    back.default.add(...tab(false)); back.hover.add(...tab(true)); back.pressed.add(...tab(true))
-    root.add(arrow(0, 'dprev|', 'left'), arrow(1, 'dnext|', 'right'), back)
-    return root
 }
 
 /** 贴图尺寸（给 lint 与预览用；九宫格写 nineslice） */

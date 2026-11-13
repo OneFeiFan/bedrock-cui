@@ -5,7 +5,7 @@
 import { signal } from 'cui'
 import { mountDevtools, mountPreview, type PreviewTexture } from 'cui/web'
 // @ts-ignore 示例是纯 JS
-import { buildBook, FORM, T, TEXTURE_INFO } from '../examples/toggle-book.mjs'
+import { buildBook, ARROWS, FORM, T, TEXTURE_INFO } from '../examples/toggle-book.mjs'
 
 const FILE: Record<string, string> = {
     [T.book]: 'book', [T.line]: 'line', [T.rowHover]: 'row_hover', [T.arrowL]: 'arrow_left', [T.arrowLH]: 'arrow_left_hover',
@@ -17,10 +17,19 @@ const FILE: Record<string, string> = {
 const textures: Record<string, PreviewTexture> = Object.fromEntries(Object.entries(FILE).map(([p, f]) => [p, { url: `./textures/${f}.png`, ...TEXTURE_INFO[p] }]))
 
 const book = buildBook()
+// 表单按钮：0–5 与真机脚本相同，6–9 空，10 起是翻页箭头（服务端翻页）
+const buttons = [...FORM.buttons, '', '', '', '']
+for (const a of ARROWS as { index: number, tag: string }[]) buttons[a.index] = a.tag
+const routes = Object.fromEntries((ARROWS as { index: number, target: string }[]).map((a) => [a.index, a.target]))
+const title = signal(FORM.title)
 const preview = mountPreview(document.getElementById('app')!, {
     root: book, viewport: [300, 190], scale: 3, textures,
-    formText: signal(FORM.body), formButtons: signal(FORM.buttons), title: signal(FORM.title),
-    onFormButton: (i) => console.log('表单按钮', i, '（真机里这会关掉表单，服务端收到选择）'),
+    formText: signal(FORM.body), formButtons: signal(buttons), title,
+    // 模拟服务端：翻页箭头 → 重新打开表单（标题带 P:<页>;、开关回到初始状态）
+    onFormButton: (i) => {
+        if (routes[i]) { title.value = `${FORM.title}|P:${routes[i]};`; preview.resetToggles() }
+        else console.log('表单按钮', i, '（真机里这会关掉表单，服务端收到选择）')
+    },
     // 像素字体（scripts/fetch-fonts.mjs 准备）：照游戏画文字
     fonts: { unifont: './font/unifont.hex.gz', ascii: './font/ascii.png' },
 })

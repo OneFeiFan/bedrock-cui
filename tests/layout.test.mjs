@@ -160,11 +160,16 @@ test('内边距（安全区）与越界检查：padding 编译成内层面板；
     assert.deepEqual(issues.map((i) => `${i.rule}@${i.path.split('/').pop()}：${i.message.replace(/^.*（|）$/g, '')}`), ['out-of-bounds@ruler：右 11 像素'])
 })
 
-test('静态文字以 # / $ 开头会被游戏当成绑定 / 变量（真机整行空白）：编译时补 §r', async () => {
+test('静态文字转义（真机 1.4.0）：# 开头补 §r；% 写成 %%；$ 开头没问题；语言键不转义；文字缺省 layer 1', async () => {
     const { compileNamespace, escapeText } = await import('../dist/index.js')
-    assert.equal(escapeText('#$%&'), '§r#$%&')
-    assert.equal(escapeText('$abc'), '§r$abc')
+    assert.equal(escapeText('#$%&'), '§r#$%%&')
+    assert.equal(escapeText('$abc'), '$abc')
+    assert.equal(escapeText('100%'), '100%%')
     assert.equal(escapeText('a#b'), 'a#b')
+    assert.equal(escapeText('menu.%s', true), 'menu.%s', '语言键不转义')
     const { json } = compileNamespace('t', { root: new Panel({ children: [new Label({ name: 'x', text: '#hash' })] }) })
     assert.equal(json.root.controls[0].x.text, '§r#hash')
+    assert.equal(json.root.controls[0].x.layer, 1, '文字缺省 layer 1（同层的图片会盖住文字）')
+    const explicit = compileNamespace('t', { root: new Panel({ children: [new Label({ name: 'y', text: 'a', layer: 0 })] }) }).json
+    assert.equal(explicit.root.controls[0].y.layer, 0, '显式写了的不动')
 })

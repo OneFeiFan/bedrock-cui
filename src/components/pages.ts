@@ -11,7 +11,7 @@
  * 同序号的开关一起选中，结果都对。每页还有一个零尺寸的锚点开关，承载初始选中（toggle_group_default_selected）。
  * 再开一个 Pages（不同 group）就是相互独立的另一组状态（例如物品详情弹层：关掉后回到原来那页）。
  */
-import { toggleState, type Expr } from '../core/expr.js'
+import { form, toggleState, type Expr } from '../core/expr.js'
 import { Panel, Toggle, type LayoutOptions } from '../core/element.js'
 
 export interface PagesOptions extends LayoutOptions {
@@ -19,6 +19,13 @@ export interface PagesOptions extends LayoutOptions {
     group: string
     /** 初始页（缺省第一页） */
     start?: string
+    /**
+     * 服务端页码（混合翻页）：表单重新打开时，按 source 里的 `<prefix><页名>;` 显示那一页。
+     * 一个隐藏的「服务端锚点」开关初始选中：此时按服务端页码显示（没有页码 = 初始页）；
+     * 用户点了任何翻页开关，锚点就不再选中，改由开关接管。
+     * 用法：翻页箭头用 FormButton（服务端重开表单 = 鼠标不动也能连续翻，真机 1.4.0），目录 / 书签用开关（即时）。
+     */
+    server?: { source?: Expr, prefix?: string }
 }
 
 interface Entry { index: number, panel: Panel, links: Toggle[] }
@@ -27,12 +34,24 @@ export class Pages extends Panel {
     readonly group: string
     private readonly entries = new Map<string, Entry>()
     private readonly start?: string
+    private readonly server?: { source: Expr, prefix: string, anchor: Toggle }
 
     constructor(options: PagesOptions) {
-        const { group, start, ...rest } = options
+        const { group, start, server, ...rest } = options
         super({ size: ['100%', '100%'], ...rest })
         this.group = group
         this.start = start
+        if (server) {
+            // 服务端锚点：序号固定 -1（不与页面冲突），初始选中
+            const anchor = new Toggle({ name: `${group}__server`, group, index: -1, size: [0, 0] })
+            this.add(anchor)
+            this.server = { source: server.source ?? form.title, prefix: server.prefix ?? 'P:', anchor }
+        }
+    }
+
+    /** 服务端打开到某页时，source 里要带的标记（例如 'P:sword;'，脚本拼进表单标题） */
+    serverTag(key: string): string {
+        return `${this.server?.prefix ?? 'P:'}${key};`
     }
 
     /** 取 / 建一页 */
@@ -97,10 +116,21 @@ export class Pages extends Panel {
     pageKeys(): string[] { return [...this.entries.keys()] }
 
     protected override beforeFinalize(): void {
-        const start = this.start !== undefined ? this.entries.get(this.start)?.index ?? 0 : 0
+        const startKey = this.start ?? [...this.entries.keys()][0]
+        const start = this.server ? -1 : this.entries.get(startKey)?.index ?? 0
+        if (this.server) this.server.anchor.props.defaultSelected = -1
         for (const [key, e] of this.entries) {
             for (const t of e.links) t.props.defaultSelected = start
-            e.panel.props.visible = this.showing(key)
+            let visible = this.showing(key)
+            if (this.server) {
+                // 服务端锚点选中（刚打开表单）时：按 source 里的页码；没有页码时显示初始页
+                const { source, prefix, anchor } = this.server
+                const atServer = toggleState(anchor.name!)
+                let byServer = source.contains(this.serverTag(key))
+                if (key === startKey) byServer = byServer.or(source.contains(prefix).not())
+                visible = visible.or(atServer.and(byServer))
+            }
+            e.panel.props.visible = visible
         }
     }
 }

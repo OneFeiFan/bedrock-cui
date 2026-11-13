@@ -268,6 +268,9 @@ function snapshot(list: Element[], parentPath: string): RNode[] {
         if (name === undefined) { name = `${prefix}${used.get(prefix) ?? 0}`; used.set(prefix, (used.get(prefix) ?? 0) + 1) }
         const path = parentPath ? `${parentPath}/${name}` : name
         const { padding, ...props } = el.props
+        // 真机（1.4.0 叠放顺序）：文字与图片同层时，游戏不保证文字在上（图前字后、字前图后、字是图的子元素都被盖住），
+        // 只有文字层级更高才显示 ⇒ 文字缺省 layer 1（图片仍是 0）；显式写了 layer 的不动
+        if (el.type === 'label' && props.layer === undefined) props.layer = 1
         let children = snapshot(el.children, padding !== undefined ? `${path}/content` : path)
         if (padding !== undefined) {
             // 内边距 → 内层内容面板：尺寸 = 100% − 左右 / 上下，偏移 = [左, 上]

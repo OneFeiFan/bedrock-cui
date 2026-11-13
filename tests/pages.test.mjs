@@ -117,3 +117,34 @@ test('serverForm 多个界面：同一命名空间按标题区分；标题互为
     assert.equal(root[root.bindings[1].source_property_name.match(/\$\w+/)[0]], 'cui_ui:', '根面板按前缀显示')
     assert.throws(() => serverForm({ namespace: 'x', panels: [{ panelId: 'cui_ui:a', content: new Panel() }, { panelId: 'cui_ui:ab', content: new Panel() }] }), /子串/)
 })
+
+test('混合翻页：Pages 服务端页码——刚打开时按标题里的页码显示（没有页码 = 初始页）；点了开关就由开关接管', async () => {
+    const { Pages, Label, Panel, finalize, layout, findBox, compileNamespace, serverForm } = await import('../dist/index.js')
+    const make = () => {
+        const p = new Pages({ group: 'bk', start: 'home', server: {}, size: [200, 100], anchor: 'top_left' })
+        p.page('home').add(new Label({ name: 'home_t', text: '目录' }))
+        p.page('sword').add(new Label({ name: 'sword_t', text: '剑' }))
+        p.page('home').add(p.link('sword', { name: 'row_sword', size: [10, 10] }))
+        return p
+    }
+    assert.equal(make().serverTag('sword'), 'P:sword;')
+    // checked：哪个开关被点了（undefined = 刚打开表单，服务端锚点选中）
+    const run = (title, clicked) => layout(finalize(make()), {
+        viewport: [200, 100],
+        toggleChecked: (n) => (clicked ? n.name === clicked : n.props.index === -1),
+        data: (name, src) => (src.kind === 'control' ? (clicked ? src.control === clicked : src.control === 'bk__server') : name === '#title_text' ? title : ''),
+    })
+    assert.ok(findBox(run('cui_ui:book', undefined), 'home_t'), '没有页码 → 初始页')
+    assert.equal(findBox(run('cui_ui:book', undefined), 'sword_t'), undefined)
+    assert.ok(findBox(run('cui_ui:book|P:sword;', undefined), 'sword_t'), '标题带 P:sword; → 剑那一页')
+    assert.equal(findBox(run('cui_ui:book|P:sword;', undefined), 'home_t'), undefined)
+    assert.ok(findBox(run('cui_ui:book|P:sword;', 'bk__home'), 'home_t'), '点了开关（例如书签回目录）→ 开关接管，忽略标题里的页码')
+    const { json } = compileNamespace('t', { root: make() })
+    const anchor = json.root.controls.find((c) => c['bk__server@common.toggle'])['bk__server@common.toggle']
+    assert.deepEqual([anchor.$toggle_group_forced_index, anchor.$toggle_group_default_selected], [-1, -1], '服务端锚点初始选中')
+    // 去掉屏幕进出场动画（缺省）
+    const { files } = serverForm({ namespace: 'x', panelId: 'cui_ui:x', content: new Panel() })
+    const screen = files['ui/server_form.json']['third_party_server_screen@common.base_screen']
+    assert.deepEqual(screen.$screen_animations, ['@server_form.screen_exit_animation_pop_wait'])
+    assert.equal(serverForm({ namespace: 'x', panelId: 'cui_ui:x', content: new Panel(), screenAnimation: true }).files['ui/server_form.json']['third_party_server_screen@common.base_screen'], undefined)
+})
