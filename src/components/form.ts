@@ -1,20 +1,21 @@
 /**
- * 服务端表单组件（ActionFormData 驱动的自定义界面）——都是 GuideBook 真机验证过的模式：
- *   FormGate   正文（#form_text）包含 tag 时显示（页面切换）
- *   FormButton 绑定到第 index 个表单按钮；按钮文字以 tag 开头时显示（前缀门控，tag 后面可带运行期数据，
- *              子树里用 form.buttonText.minus(tag) 读出来）
+ * 服务端表单组件（ActionFormData 驱动的自定义界面），都是 GuideBook 真机验证过的模式：
+ *   FormGate   正文（#form_text）包含 tag 时显示
+ *   FormButton 绑定到第 index 个表单按钮；按钮文字包含 tag 时显示（tag 后面可带运行期数据，用 buttonPayload(tag) 读）
  */
 import { form } from '../core/expr.js'
-import { h, type Child, type LayoutProps, type Size } from '../core/node.js'
+import { Button, CollectionItem, Panel, type LayoutOptions } from '../core/element.js'
 
-export interface FormGateProps extends LayoutProps { tag: string }
+export interface FormGateOptions extends LayoutOptions { tag: string }
 
-export function FormGate(props: FormGateProps): Child {
-    const { tag, children, ...rest } = props
-    return h('panel', { size: ['100%', '100%'], ...rest, visible: form.text.contains(tag) }, children)
+export class FormGate extends Panel {
+    constructor(options: FormGateOptions) {
+        const { tag, ...rest } = options
+        super({ size: ['100%', '100%'], ...rest, visible: form.text.contains(tag) })
+    }
 }
 
-export interface FormButtonProps extends LayoutProps {
+export interface FormButtonOptions extends Omit<LayoutOptions, 'size' | 'visible'> {
     /** 第几个表单按钮（ActionFormData.button 的顺序，从 0 起） */
     index: number
     /**
@@ -24,17 +25,37 @@ export interface FormButtonProps extends LayoutProps {
     tag: string
     /** 像素尺寸（编译成正方形网格需要边长） */
     size: [number, number]
-    default?: Child
-    hover?: Child
-    pressed?: Child
     /** 仅预览：点击回调 */
     onPress?: () => void
 }
 
-export function FormButton(props: FormButtonProps): Child {
-    const { index, tag, size, default: dflt, hover, pressed, children, onPress, name, anchor, anchorFrom, anchorTo, offset, layer, gridPos } = props
-    return h('collection_item', { name, collection: 'form_buttons', index, size, anchor, anchorFrom, anchorTo, offset, layer, gridPos },
-        h('button', { name: 'button', size: size as [Size, Size], anchor: 'center', visible: form.buttonText.contains(tag), default: dflt, hover, pressed, onPress }, children))
+/** 表单按钮：子元素加在按钮里；状态面板 default / hover / pressed 直接用 */
+export class FormButton extends CollectionItem {
+    readonly button: Button
+    readonly tag: string
+
+    constructor(options: FormButtonOptions) {
+        const { index, tag, size, onPress, children, name, anchor, anchorFrom, anchorTo, offset, layer, gridPos } = options
+        super({ name, collection: 'form_buttons', index, size, anchor, anchorFrom, anchorTo, offset, layer, gridPos })
+        this.tag = tag
+        this.button = new Button({ name: 'button', size, anchor: 'center', visible: form.buttonText.contains(tag), onPress })
+        super.add(this.button)
+        if (children) this.add(...children)
+    }
+
+    get default() { return this.button.default }
+    get hover() { return this.button.hover }
+    get pressed() { return this.button.pressed }
+
+    /** 子元素加到按钮里（始终显示） */
+    override add(...items: Parameters<CollectionItem['add']>): this {
+        if (!this.button) return super.add(...items)
+        this.button.add(...items)
+        return this
+    }
+
+    /** 按钮文字去掉 tag 之后的运行期数据 */
+    payload() { return form.buttonText.minus(this.tag) }
 }
 
 /** FormButton 里：按钮文字去掉 tag 之后的运行期数据 */

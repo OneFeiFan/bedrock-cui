@@ -6,7 +6,8 @@
  *     · 交互：鼠标悬停 / 按下按「最上层的按钮」判定，驱动按钮的三种状态；点击调用 onPress / onFormButton
  *     · 贴图：像素风缩放；九宫格用 border-image；keep_ratio 按引擎算出的实际绘制矩形画
  */
-import { resolve, type Child, type RNode } from '../core/node.js'
+import { finalize, Panel, type Element } from '../core/element.js'
+import { walk, type RNode } from '../core/node.js'
 import { effect, signal, type Signal } from '../core/reactivity.js'
 import { drawOrder, layout, type Box, type Rect, type TextureInfo } from '../layout/engine.js'
 import { compileNamespace } from '../mc/compile.js'
@@ -19,7 +20,8 @@ export interface PreviewTexture extends TextureInfo {
 }
 
 export interface PreviewOptions {
-    root: Child | (() => Child)
+    /** 根元素（或每次重新构建的函数） */
+    root: Element | (() => Element)
     viewport?: [number, number]
     scale?: number
     textures?: Record<string, PreviewTexture>
@@ -73,7 +75,22 @@ export function mountPreview(el: HTMLElement, options: PreviewOptions): Preview 
     const hover = signal<string | undefined>(undefined)
     const pressed = signal<string | undefined>(undefined)
     const textures = options.textures ?? {}
-    const tree = (): RNode[] => resolve(typeof options.root === 'function' ? (options.root as () => Child)() : options.root)
+    const rootEl = (): Element => (typeof options.root === 'function' ? (options.root as () => Element)() : options.root)
+    let nodes: RNode[] = []
+    let toggleByName = new Map<string, RNode>()
+    /** 开关组的选中序号（单选组）与非单选开关的状态 */
+    const groups = signal<Record<string, number>>({})
+    const flags = signal<Record<string, boolean>>({})
+    const tree = (): RNode[] => {
+        nodes = finalize(rootEl())
+        toggleByName = new Map()
+        walk(nodes, (n) => { if (n.type === 'toggle') toggleByName.set(n.name, n) })
+        return nodes
+    }
+    const checked = (n: RNode): boolean => {
+        if (n.props.radio === false) return flags.value[n.name] ?? Boolean(n.props.defaultState)
+        return (groups.value[n.props.group] ?? n.props.defaultSelected ?? 0) === n.props.index
+    }
     let current: Box[] = []
 
     const screen = document.createElement('div')
@@ -84,7 +101,11 @@ export function mountPreview(el: HTMLElement, options: PreviewOptions): Preview 
     })
     el.appendChild(screen)
 
-    const data = (name: string, _src: unknown, scope: { collection?: { index: number } }) => {
+    const data = (name: string, src: { kind: string, control?: string }, scope: { collection?: { index: number } }) => {
+        if (src.kind === 'control') {
+            const t = toggleByName.get(src.control ?? '')
+            return name === '#toggle_state' && t ? checked(t) : ''
+        }
         if (name === '#form_text') return formText.value
         if (name === '#title_text') return title.value
         if (name === '#form_button_text') return formButtons.value[scope.collection?.index ?? -1] ?? ''
@@ -135,28 +156,29 @@ export function mountPreview(el: HTMLElement, options: PreviewOptions): Preview 
         } else if (!outlines.value) {
             return undefined
         }
-        if (outlines.value) d.style.outline = `1px solid ${n.type === 'button' ? '#ff0' : n.type === 'collection_item' ? '#0ff' : 'rgba(255,80,80,0.7)'}`
+        if (outlines.value) d.style.outline = `1px solid ${n.type === 'button' ? '#ff0' : n.type === 'toggle' ? '#f0f' : n.type === 'collection_item' ? '#0ff' : 'rgba(255,80,80,0.7)'}`
         return d
     }
 
     const render = effect(() => {
         // 读信号 → 建立依赖
-        void formText.value; void formButtons.value; void title.value; void outlines.value
+        void formText.value; void formButtons.value; void title.value; void outlines.value; void groups.value; void flags.value
         const st = { hover: hover.value, pressed: pressed.value }
         current = layout(tree(), {
-            viewport, data, translate: options.translate,
+            viewport, data: data as never, translate: options.translate,
             textures: (p) => textures[p],
             buttonState: (path) => (st.pressed === path ? 'pressed' : st.hover === path ? 'hover' : 'default'),
+            toggleChecked: checked,
         })
         screen.replaceChildren()
         for (const b of drawOrder(current)) { const d = draw(b); if (d) screen.appendChild(d) }
     })
 
-    /** 最上层、可见、包含该点的按钮 */
+    /** 最上层、可见、包含该点的按钮 / 开关 */
     const hit = (x: number, y: number): Box | undefined => {
         let found: Box | undefined
         for (const b of drawOrder(current)) {
-            if (b.node.type !== 'button') continue
+            if (b.node.type !== 'button' && b.node.type !== 'toggle') continue
             const r = b.rect
             const c = b.clip
             if (x < r.x || y < r.y || x >= r.x + r.w || y >= r.y + r.h) continue
@@ -171,7 +193,11 @@ export function mountPreview(el: HTMLElement, options: PreviewOptions): Preview 
     screen.addEventListener('mousedown', (e) => { pressed.value = hit(...pos(e))?.node.path })
     screen.addEventListener('mouseup', (e) => {
         const b = hit(...pos(e))
-        if (b && b.node.path === pressed.value) {
+        if (b && b.node.path === pressed.value && b.node.type === 'toggle') {
+            const t = b.node
+            if (t.props.radio === false) flags.value = { ...flags.value, [t.name]: !checked(t) }
+            else groups.value = { ...groups.value, [t.props.group]: t.props.index }
+        } else if (b && b.node.path === pressed.value) {
             b.node.props.onPress?.()
             const idx = b.scope.collection?.index
             if (idx !== undefined) options.onFormButton?.(idx, formButtons.value[idx] ?? '')
@@ -182,8 +208,8 @@ export function mountPreview(el: HTMLElement, options: PreviewOptions): Preview 
     return {
         formText, formButtons, title, outlines,
         boxes: () => current,
-        issues: () => compileNamespace('preview', { root: { type: 'panel', props: { size: ['100%', '100%'], children: typeof options.root === 'function' ? (options.root as () => Child)() : options.root } } }, { textures: (p) => textures[p] }).issues,
-        compiled: (ns = 'preview') => compileNamespace(ns, { root: { type: 'panel', props: { size: ['100%', '100%'], children: typeof options.root === 'function' ? (options.root as () => Child)() : options.root } } }, { textures: (p) => textures[p] }).json,
+        issues: () => compileNamespace('preview', { root: rootEl() }, { textures: (p) => textures[p] }).issues,
+        compiled: (ns = 'preview') => compileNamespace(ns, { root: rootEl() }, { textures: (p) => textures[p] }).json,
         dispose: () => { render.stop(); screen.remove() },
     }
 }

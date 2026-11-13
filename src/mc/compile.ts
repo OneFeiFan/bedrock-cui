@@ -9,7 +9,8 @@
  * - 集合项（FormButton）编译成 sapdon 真机验证过的写法：正方形 grid + grid_position + 内层负偏移 + 集合绑定。
  */
 import { compileExpr, isExpr, type Expr } from '../core/expr.js'
-import { resolve, type Child, type RNode } from '../core/node.js'
+import { finalize, type Element } from '../core/element.js'
+import type { RNode } from '../core/node.js'
 import { lint, type LintIssue, type LintOptions } from './lint.js'
 
 type Json = Record<string, unknown>
@@ -64,8 +65,9 @@ class Compiler {
                     bindings.push({ binding_type: 'collection', binding_collection_name: col.collection, binding_name: col.name })
                 }
             }
+            // 跨区域读开关状态：不写 resolve_sibling_scope（原版主界面标签页的写法；只有兄弟控件才写 true）
             for (const ctl of c.controls) {
-                bindings.push({ binding_type: 'view', source_control_name: ctl.control, resolve_sibling_scope: true, source_property_name: ctl.property, target_property_name: ctl.local })
+                bindings.push({ binding_type: 'view', source_control_name: ctl.control, source_property_name: ctl.property, target_property_name: ctl.local })
             }
             bindings.push({ binding_type: 'view', source_property_name: c.text, target_property_name: spec.target })
             if (spec.prop) out[spec.prop] = spec.target
@@ -101,8 +103,29 @@ class Compiler {
             case 'button': {
                 key = `${n.name}@${p.template ?? 'common.button'}`
                 vars.$pressed_button_name = p.pressedName ?? 'button.form_button_click'
-                const state = (name: string, list: RNode[]) => ({ [name]: { type: 'panel', size: ['100%', '100%'], controls: list.map((c) => this.entry(c, inCollection)) } })
-                out.controls = [state('default', n.slots!.default), state('hover', n.slots!.hover), state('pressed', n.slots!.pressed)]
+                const s = n.slots!
+                // 悬停 / 按下态没写内容时沿用默认态：游戏里悬停只画 hover 控件，空的话内容会消失
+                out.controls = [this.state('default', s.default, inCollection), this.state('hover', s.hover.length ? s.hover : s.default, inCollection), this.state('pressed', s.pressed.length ? s.pressed : s.hover.length ? s.hover : s.default, inCollection)]
+                break
+            }
+            case 'toggle': {
+                // 继承原版 common.toggle（自带点击映射与音效）；单选组 = toggle_name + radio_toggle_group + toggle_group_forced_index
+                key = `${n.name}@common.toggle`
+                vars.$toggle_name = p.group
+                vars.$radio_toggle_group = p.radio ?? true
+                vars.$toggle_group_forced_index = p.index
+                vars.$toggle_group_default_selected = p.defaultSelected ?? 0
+                vars.$toggle_default_state = p.defaultState ?? false
+                // 纯界面开关：不从全局绑定读初始状态（原版 light_template_toggle 同样设为 none）
+                vars.$toggle_binding_type = 'none'
+                const s = n.slots!
+                const hoverOf = (base: 'unchecked' | 'checked') => (s[`${base}_hover`].length ? s[`${base}_hover`] : s[base])
+                out.controls = [
+                    this.state('unchecked', s.unchecked, inCollection), this.state('checked', s.checked, inCollection),
+                    this.state('unchecked_hover', hoverOf('unchecked'), inCollection), this.state('checked_hover', hoverOf('checked'), inCollection),
+                    this.state('unchecked_locked', s.unchecked, inCollection), this.state('checked_locked', s.checked, inCollection),
+                    this.state('unchecked_locked_hover', s.unchecked, inCollection), this.state('checked_locked_hover', s.checked, inCollection),
+                ]
                 break
             }
             case 'collection_item':
@@ -121,6 +144,11 @@ class Compiler {
 
     entry(n: RNode, inCollection: string | undefined): Json {
         return this.control(n, inCollection)
+    }
+
+    /** 状态面板 */
+    state(name: string, list: RNode[], inCollection?: string): Json {
+        return { [name]: { type: 'panel', size: ['100%', '100%'], controls: list.map((c) => this.entry(c, inCollection)) } }
     }
 
     /**
@@ -162,16 +190,16 @@ export interface CompileResult {
 /**
  * 编译一个命名空间：`roots` 的每个键是一个顶层元素（可被 `@命名空间.键` 引用）。
  */
-export function compileNamespace(namespace: string, roots: Record<string, Child>, options: LintOptions = {}): CompileResult {
+export function compileNamespace(namespace: string, roots: Record<string, Element>, options: LintOptions = {}): CompileResult {
     const c = new Compiler()
     const json: Json = { namespace }
     const all: RNode[] = []
-    for (const [name, child] of Object.entries(roots)) {
-        const nodes = resolve(child, name)
-        if (nodes.length !== 1) throw new Error(`顶层元素 ${name} 必须正好是一个控件（现在是 ${nodes.length} 个）`)
-        const n = { ...nodes[0], name, path: name }
-        const entry = c.control(n, undefined)
-        Object.assign(json, entry)
+    for (const [name, el] of Object.entries(roots)) {
+        const saved = el.name
+        el.name = name
+        const [n] = finalize(el)
+        el.name = saved
+        Object.assign(json, c.control(n, undefined))
         all.push(n)
     }
     return { json, issues: [...lint(all, options), ...c.issues] }

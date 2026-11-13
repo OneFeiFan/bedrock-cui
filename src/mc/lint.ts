@@ -34,9 +34,15 @@ export function lint(roots: RNode[], options: LintOptions = {}): LintIssue[] {
     }
     checkSiblings(roots)
 
+    // 开关的名字要全局唯一：别的控件按名字（source_control_name）读它的状态
+    const toggles = new Map<string, RNode>()
     walk(roots, (n) => {
         checkSiblings(n.children)
-        if (n.slots) for (const s of [n.slots.default, n.slots.hover, n.slots.pressed]) checkSiblings(s)
+        if (n.slots) for (const s of Object.values(n.slots)) checkSiblings(s)
+        if (n.type === 'toggle') {
+            if (toggles.has(n.name)) push('toggle-name-unique', 'error', n, `开关名 ${n.name} 与 ${toggles.get(n.name)!.path} 重复：别的控件按名字读开关状态，必须全局唯一`)
+            toggles.set(n.name, n)
+        }
 
         // keep_ratio 缺省 true：非正方形区域里拉伸贴图会被缩成居中的正方形 / 一个点（known-pitfalls §4.20）
         if (n.type === 'image' && n.props.keepRatio === undefined && n.props.nineslice === undefined) {
@@ -47,7 +53,10 @@ export function lint(roots: RNode[], options: LintOptions = {}): LintIssue[] {
                 const numeric = sw.kind === 'expr' && sh.kind === 'expr' && sw.terms.every((t) => t.unit === 'px') && sh.terms.every((t) => t.unit === 'px')
                 const aspect = numeric ? (sw as any).terms.reduce((a: number, t: any) => a + t.value, 0) / Math.max(1e-9, (sh as any).terms.reduce((a: number, t: any) => a + t.value, 0)) : undefined
                 const texAspect = tex?.size ? tex.size[0] / tex.size[1] : undefined
-                const mismatch = aspect !== undefined && texAspect !== undefined ? Math.abs(aspect / texAspect - 1) > 0.01 : !numeric || texAspect === undefined
+                // 只在「知道贴图尺寸、比例确实对不上」时报；百分比尺寸的区域比例取决于父控件，贴图是 1×1 才确定会出问题
+                const mismatch = texAspect === undefined ? false
+                    : aspect !== undefined ? Math.abs(aspect / texAspect - 1) > 0.01
+                    : tex!.size![0] === tex!.size![1] && tex!.size![0] <= 2
                 if (mismatch) {
                     push('keep-ratio', 'warning', n, `贴图 ${String(n.props.texture)} 在 ${JSON.stringify(n.props.size)} 里会按原比例缩小居中（JSON UI 的 keep_ratio 缺省为 true）。要拉伸请写 keepRatio={false}，要保持比例请写 keepRatio`)
                 }

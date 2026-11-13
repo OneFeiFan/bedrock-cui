@@ -32,8 +32,10 @@ export interface LayoutEnv {
     textures?: (path: string) => TextureInfo | undefined
     /** 读数据来源（预览里接信号；单测里给固定值） */
     data?: (name: string, source: Source, scope: Scope) => Value
-    /** 按钮当前状态（预览里由鼠标决定） */
+    /** 按钮 / 开关当前的鼠标状态（预览里由鼠标决定） */
     buttonState?: (path: string) => 'default' | 'hover' | 'pressed'
+    /** 开关是否选中（预览里由开关组状态决定） */
+    toggleChecked?: (n: RNode) => boolean
     translate?: (key: string) => string
 }
 
@@ -43,8 +45,8 @@ export interface Box {
     z: number
     order: number
     clip?: Rect
-    /** 按钮状态子树里的控件 */
-    state?: 'default' | 'hover' | 'pressed'
+    /** 按钮 / 开关状态子树里的控件（状态名） */
+    state?: string
     scope: Scope
     // image
     texture?: string
@@ -94,11 +96,22 @@ class Engine {
         return n.props.localize && this.env.translate ? this.env.translate(t) : t
     }
 
-    /** 子控件（含按钮当前状态的子树） */
+    /** 当前显示的状态名（按钮：default / hover / pressed；开关：unchecked / checked / *_hover，悬停态没内容时用普通态） */
+    slotName(n: RNode): string | undefined {
+        if (!n.slots) return undefined
+        const mouse = this.env.buttonState?.(n.path) ?? 'default'
+        if (n.type === 'button') return mouse === 'default' || n.slots[mouse]?.length ? mouse : 'default'
+        if (n.type === 'toggle') {
+            const base = this.env.toggleChecked?.(n) ? 'checked' : 'unchecked'
+            return mouse !== 'default' && n.slots[`${base}_hover`]?.length ? `${base}_hover` : base
+        }
+        return undefined
+    }
+
+    /** 子控件（含按钮 / 开关当前状态的子树） */
     kids(n: RNode): RNode[] {
-        if (n.type !== 'button' || !n.slots) return n.children
-        const st = this.env.buttonState?.(n.path) ?? 'default'
-        return [...(n.slots[st] ?? []), ...n.children]
+        const st = this.slotName(n)
+        return st ? [...(n.slots![st] ?? []), ...n.children] : n.children
     }
 
     /** 自身尺寸（需要时会量子控件） */
@@ -193,7 +206,7 @@ class Engine {
         }
         // 子控件
         const kids = this.kids(n)
-        const stateOf = (c: RNode) => (n.type === 'button' && n.slots && !n.children.includes(c) ? (this.env.buttonState?.(n.path) ?? 'default') : undefined)
+        const stateOf = (c: RNode) => (n.slots && !n.children.includes(c) ? this.slotName(n) : undefined)
         if (n.type === 'stack') {
             const vertical = (n.props.orientation ?? 'vertical') === 'vertical'
             const visibleKids = kids.filter((c) => this.visible(c, s))
