@@ -135,8 +135,9 @@ export function drawText(canvas: HTMLCanvasElement, fonts: PixelFonts, o: DrawTe
             const rgb = r.style.color ? hexToRgb(BEDROCK_COLORS[r.style.color]) : o.color.map((v) => Math.round(v * 255)) as [number, number, number]
             for (const ch of r.text) {
                 const adv = charWidth(ch, o.unifont) + (r.style.bold ? boldExtra(ch, o.unifont) : 0)
+                // §k：Minecraft 字体换成同宽的随机字形；Unifont 文字里真机只显示成点（1.5.3）
                 const shown = r.style.obfuscated && ch !== ' '
-                    ? [...OBF_POOL].filter((c) => charWidth(c, o.unifont) === charWidth(ch, o.unifont))[Math.floor(Math.random() * 10)] ?? ch
+                    ? (o.unifont ? '.' : [...OBF_POOL].filter((c) => charWidth(c, false) === charWidth(ch, false))[Math.floor(Math.random() * 10)] ?? ch)
                     : ch
                 const passes: [number, number, string][] = []
                 if (o.shadow) passes.push([1, 1, `rgb(${rgb.map((v) => v >> 2).join(',')})`])

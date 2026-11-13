@@ -21,7 +21,7 @@ export interface PagesOptions extends LayoutOptions {
     start?: string
     /**
      * 服务端页码（混合翻页）：表单重新打开时，按 source 里的 `<prefix><页名>;` 显示那一页。
-     * 一个隐藏的「服务端锚点」开关（序号 = 页数）初始选中：此时按服务端页码显示（没有页码 = 初始页）；
+     * 一个隐藏的「服务端锚点」开关（序号 = 页数）初始选中：此时按服务端页码显示（没有页码 = 初始页；脚本最好总是带页码）；
      * 用户点了任何翻页开关，锚点就不再选中，改由开关接管。
      * 用法：翻页箭头用 FormButton（服务端重开表单 = 鼠标不动也能连续翻，真机 1.4.0），目录 / 书签用开关（即时）。
      */
@@ -130,7 +130,9 @@ export class Pages extends Panel {
                 // 「标题里是不是这一页」放进一个只读标题的开关（stateFrom），页面显示条件只读开关状态
                 const { source, prefix, anchor, flags } = this.server
                 let byServer = source.contains(this.serverTag(key))
-                if (key === startKey) byServer = byServer.or(source.contains(prefix).not())
+                // 初始页：标题里没有页码也算。写成 (标题 − 前缀) = 标题，不写 not (not …)——
+                // 真机 1.5.3：带双重否定的起始页条件在 P:home; 时没有生效（翻回目录一片空白）；脚本也应总是带页码
+                if (key === startKey) byServer = byServer.or(source.minus(prefix).eq(source))
                 let flag = flags.get(key)
                 if (!flag) {
                     flag = new Toggle({ name: `${this.group}__srv_${key}`, group: `${this.group}__srv_${key}`, radio: false, index: 0, size: [0, 0] })

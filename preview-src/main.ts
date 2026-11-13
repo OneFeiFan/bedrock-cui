@@ -24,10 +24,11 @@ const arrows = ARROWS as Arrow[]
 const buttonsFor = (here: string, dir: string) => {
     const b = [...FORM.buttons, '', '', '', '']
     for (const a of arrows) b[a.index] = `go${a.index}|` + (a.from === here && a.dir === dir ? 'F' : '')
+    b[9] = 'stay|'
     return b
 }
 const routes = Object.fromEntries(arrows.map((a) => [a.index, a]))
-const title = signal(FORM.title)
+const title = signal(`${FORM.title}|P:home;`)
 const formButtons = signal(buttonsFor('home', 'right'))
 const preview = mountPreview(document.getElementById('app')!, {
     root: book, viewport: [300, 220], scale: 3, textures,

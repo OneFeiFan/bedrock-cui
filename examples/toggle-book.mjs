@@ -225,6 +225,10 @@ export function buildBook(options = {}) {
 
     buildTextPages(pages)
 
+    // 「原地不动」：透明的表单按钮（序号 9），聚焦优先级 50——介于聚焦版箭头（100）与普通箭头（10）之间。
+    // 当前方向没有箭头时（例如最后一页再点「下一页」），鼠标没动的点击交给它：服务端原样重开当前页（真机 1.5.3：否则落到反方向的箭头，来回循环）
+    root.add(new FormButton({ name: 'stay', index: 9, tag: 'stay|', size: [1, 1], anchor: 'top_left', focusPrecedence: 50 }))
+
     // 书签（任何页都在）
     root.add(bookmark)
     root.add(new DebugStrip(options.variant ?? '预览', bookmark.name))
@@ -330,7 +334,12 @@ function buildTextPages(pages) {
     const rich = pages.page('trich')
     rich.add(new Side('L').add(new Title('颜色代码 0–f'), new Swatches('0123456789abcdef'.split(''), 22, 90)))
     rich.add(new Side('R').add(new Title('基岩版独有 + 格式'), new Swatches('ghijmnpqstuv'.split(''), 22, 70),
-        new Paragraph({ text: '§l粗体 Bold§r  §o斜体 Italic§r\n§k乱码abc§r ← 乱码\n§c红§l红粗§9蓝粗§r普通（换颜色不清粗体）', width: 110, color: BODY, anchor: 'top_left', offset: [0, 96] })))
+        new Paragraph({ text: '§l粗体 Bold§r  §o斜体 Italic§r\n§c红§l红粗§9蓝粗§r普通', width: 110, color: BODY, anchor: 'top_left', offset: [0, 94] }),
+        // 乱码：纯 ASCII（Minecraft 字体）vs 含汉字（Unifont：真机 1.5.3 只显示成点）
+        new Label({ text: '§kabcdefgh', color: BODY, anchor: 'top_left', offset: [0, 116] }),
+        new Label({ text: '§8← 纯英文乱码', anchor: 'top_left', offset: [52, 116] }),
+        new Label({ text: '§k乱码abc', color: BODY, anchor: 'top_left', offset: [0, 128] }),
+        new Label({ text: '§8← 含汉字', anchor: 'top_left', offset: [52, 128] })))
     // 字宽标尺
     const ruler = pages.page('truler')
     ruler.add(new Side('L').add(new Title('字宽标尺'), ...RULER_ROWS_L.map((t, i) => new RulerRow(t, 20 + i * 15))))

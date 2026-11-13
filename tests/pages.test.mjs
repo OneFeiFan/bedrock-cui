@@ -179,3 +179,20 @@ test('FormButton 默认聚焦优先级：default_focus_precedence', async () => 
     const btn = json.b.controls[0].grid.controls[0].grid_item_012.controls[0].cell.controls[0]['button@common.button']
     assert.equal(btn.default_focus_precedence, 100)
 })
+
+test('服务端页码开关：起始页条件不写双重否定（真机 1.5.3 翻回目录空白）', async () => {
+    const { Pages, Label, compileNamespace } = await import('../dist/index.js')
+    const p = new Pages({ group: 'bk', start: 'home', server: {}, size: [200, 100] })
+    p.page('home').add(new Label({ text: '目录' })); p.page('sword').add(new Label({ text: '剑' }))
+    const { json } = compileNamespace('t', { root: p })
+    const flag = json.root.controls.find((c) => c['bk__srv_home@common.toggle'])['bk__srv_home@common.toggle']
+    const expr = flag.bindings.at(-1).source_property_name
+    assert.ok(!/not \(not/.test(expr), expr)
+    assert.equal(expr, '((not ((#title_text - $s0_0) = #title_text)) or ((#title_text - $s0_1) = #title_text))')
+})
+
+test('静态检查 obfuscated-unifont：§k 出现在含汉字的文字里（真机只显示成点）', async () => {
+    const { Panel, Label, compileNamespace } = await import('../dist/index.js')
+    const root = new Panel({ children: [new Label({ name: 'a', text: '§k乱码abc' }), new Label({ name: 'b', text: '§kabcdef' })] })
+    assert.deepEqual(compileNamespace('t', { root }).issues.map((i) => `${i.rule}@${i.path.split('/').pop()}`), ['obfuscated-unifont@a'])
+})

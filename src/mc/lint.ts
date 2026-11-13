@@ -4,7 +4,7 @@
 import { isExpr } from '../core/expr.js'
 import { walk, type RNode } from '../core/node.js'
 import { parseSize } from '../layout/units.js'
-import { measureText } from '../font/metrics.js'
+import { measureText, usesUnifont } from '../font/metrics.js'
 import { layout, type Box, type TextureInfo } from '../layout/engine.js'
 
 export interface LintIssue {
@@ -97,6 +97,10 @@ export function lint(roots: RNode[], options: LintOptions = {}): LintIssue[] {
                     push('keep-ratio', 'warning', n, `贴图 ${String(n.props.texture)} 在 ${JSON.stringify(n.props.size)} 里会按原比例缩小居中（JSON UI 的 keep_ratio 缺省为 true）。要拉伸请写 keepRatio={false}，要保持比例请写 keepRatio`)
                 }
             }
+        }
+        // §k 乱码：含汉字（整段用 Unifont 画）时真机只显示成一串点（1.5.3）
+        if (n.type === 'label' && typeof n.props.text === 'string' && /§k/i.test(n.props.text) && usesUnifont(n.props.text)) {
+            push('obfuscated-unifont', 'warning', n, '§k 乱码出现在含汉字的文字里：整段用 Unifont 画，真机只显示成一串点；乱码请放在纯 ASCII 的文字框里')
         }
         // 文字溢出：宽高都固定的文字框放不下（静态文字才能在构建期判断）
         if (n.type === 'label' && typeof n.props.text === 'string' && typeof n.props.size?.[0] === 'number' && typeof n.props.size?.[1] === 'number') {

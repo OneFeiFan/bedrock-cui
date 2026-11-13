@@ -12,7 +12,7 @@ import { buildBook, ARROWS, FORM, T, TEXTURE_INFO } from './toggle-book.mjs'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 const outRoot = path.resolve(process.argv[2] ?? path.join(here, '..', 'out'))
-const VERSION = [1, 5, 3]
+const VERSION = [1, 5, 4]
 const UUID = { bp: '6a3f0e2c-91d4-4b7a-8c55-0e1f7a2b9c31', bpScript: 'c2e8b7d1-4f6a-4c9e-a1b2-3d4e5f607182', rp: '1f9c3a7e-2b4d-4e6f-8a90-b1c2d3e4f5a6', rpRes: '7d8e9f0a-1b2c-4d3e-9f4a-5b6c7d8e9f01' }
 const NAME = 'cui_toggle_test'
 
@@ -88,27 +88,29 @@ const camera = (player, on) => { try { player.inputPermissions.setPermissionCate
 system.run(() => { for (const p of world.getAllPlayers()) camera(p, true) })
 
 /**
- * 打开测试书；page = 服务端页码（标题带 P:<页>;，界面按它显示那一页；不给 = 目录）；
+ * 打开测试书；page = 服务端页码（标题总是带 P:<页>;，界面按它显示那一页）；
  * dir = 默认聚焦哪个方向的箭头（给新页面上该方向箭头的按钮文字加 F → 聚焦版显示、优先级最高）
  */
-function open(player, page, dir = 'right') {
+function open(player, page = 'home', dir = 'right') {
     camera(player, false)
-    const form = new ActionFormData().title(TITLE + (page ? '|P:' + page + ';' : '')).body('CUI;|' + info(player, 'minecraft:diamond_sword') + '\\n§8（这段来自表单正文）')
+    const form = new ActionFormData().title(TITLE + '|P:' + page + ';').body('CUI;|' + info(player, 'minecraft:diamond_sword') + '\\n§8（这段来自表单正文）')
     SLOT_ITEMS.forEach((id, i) => form.button('s' + i + '|' + info(player, id)))
     form.button('close|')
     form.button('txt|' + inventoryText(player))
     const last = Math.max(...Object.keys(ROUTES).map(Number))
-    const here = page ?? 'home'
+    const here = page
     for (let i = 6; i <= last; i++) {
         const a = ROUTES[i]
-        form.button(a ? 'go' + i + '|' + (a.from === here && a.dir === dir ? 'F' : '') : '')
+        // 9 = 「原地不动」：当前方向没有箭头时接住鼠标没动的点击
+        form.button(i === 9 ? 'stay|' : a ? 'go' + i + '|' + (a.from === here && a.dir === dir ? 'F' : '') : '')
     }
     form.show(player).then((r) => {
         if (r.canceled) { camera(player, true); player.sendMessage('§7[CUI] 表单关闭（Esc）：' + (r.cancelationReason ?? '')); return }
         const a = ROUTES[r.selection]
         // 诊断：每次点击都回报收到的按钮序号与当时所在的页
-        player.sendMessage('§7[CUI] 在「' + here + '」收到按钮 ' + r.selection + (a ? ' → 翻到「' + a.target + '」' : r.selection === 4 ? '（右上角 ×）' : '（不是翻页按钮）'))
+        player.sendMessage('§7[CUI] 在「' + here + '」收到按钮 ' + r.selection + (a ? ' → 翻到「' + a.target + '」' : r.selection === 9 ? '（原地不动）' : r.selection === 4 ? '（右上角 ×）' : '（不是翻页按钮）'))
         if (a) return open(player, a.target, a.dir)
+        if (r.selection === 9) return open(player, here, dir)
         camera(player, true)
         player.sendMessage('§a[CUI] 服务端收到表单按钮 ' + r.selection + (r.selection === 4 ? '（右上角 ×）' : ''))
     })
