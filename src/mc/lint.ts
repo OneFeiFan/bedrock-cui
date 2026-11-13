@@ -75,6 +75,7 @@ export function lint(roots: RNode[], options: LintOptions = {}): LintIssue[] {
         checkSiblings(n.children)
         if (n.slots) for (const s of Object.values(n.slots)) checkSiblings(s)
         if (n.type === 'toggle') {
+            if (!Number.isInteger(n.props.index) || n.props.index < 0) push('toggle-index', 'error', n, `开关序号必须是非负整数（现在是 ${n.props.index}）：toggle_group_forced_index 的 -1 表示「不强制、按顺序自动分配」，会和别的开关撞号`)
             if (toggles.has(n.name)) push('toggle-name-unique', 'error', n, `开关名 ${n.name} 与 ${toggles.get(n.name)!.path} 重复：别的控件按名字读开关状态，必须全局唯一`)
             toggles.set(n.name, n)
         }

@@ -160,10 +160,10 @@ test('内边距（安全区）与越界检查：padding 编译成内层面板；
     assert.deepEqual(issues.map((i) => `${i.rule}@${i.path.split('/').pop()}：${i.message.replace(/^.*（|）$/g, '')}`), ['out-of-bounds@ruler：右 11 像素'])
 })
 
-test('静态文字转义（真机 1.4.0）：# 开头补 §r；% 写成 %%；$ 开头没问题；语言键不转义；文字缺省 layer 1', async () => {
+test('静态文字转义（真机 1.4.0 / 1.5.0）：# 与 $ 开头补 §r；% 写成 %%；语言键不转义；文字缺省 layer 1', async () => {
     const { compileNamespace, escapeText } = await import('../dist/index.js')
     assert.equal(escapeText('#$%&'), '§r#$%%&')
-    assert.equal(escapeText('$abc'), '$abc')
+    assert.equal(escapeText('$abc'), '§r$abc', '$ 开头会被当成变量（日志报 Expected variable not found）')
     assert.equal(escapeText('100%'), '100%%')
     assert.equal(escapeText('a#b'), 'a#b')
     assert.equal(escapeText('menu.%s', true), 'menu.%s', '语言键不转义')

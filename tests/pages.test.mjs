@@ -131,7 +131,7 @@ test('混合翻页：Pages 服务端页码——刚打开时按标题里的页�
     // checked：哪个开关被点了（undefined = 刚打开表单，服务端锚点选中）
     const run = (title, clicked) => layout(finalize(make()), {
         viewport: [200, 100],
-        toggleChecked: (n) => (clicked ? n.name === clicked : n.props.index === -1),
+        toggleChecked: (n) => (clicked ? n.name === clicked : n.name === 'bk__server'),
         data: (name, src) => (src.kind === 'control' ? (clicked ? src.control === clicked : src.control === 'bk__server') : name === '#title_text' ? title : ''),
     })
     assert.ok(findBox(run('cui_ui:book', undefined), 'home_t'), '没有页码 → 初始页')
@@ -141,10 +141,18 @@ test('混合翻页：Pages 服务端页码——刚打开时按标题里的页�
     assert.ok(findBox(run('cui_ui:book|P:sword;', 'bk__home'), 'home_t'), '点了开关（例如书签回目录）→ 开关接管，忽略标题里的页码')
     const { json } = compileNamespace('t', { root: make() })
     const anchor = json.root.controls.find((c) => c['bk__server@common.toggle'])['bk__server@common.toggle']
-    assert.deepEqual([anchor.$toggle_group_forced_index, anchor.$toggle_group_default_selected], [-1, -1], '服务端锚点初始选中')
+    assert.deepEqual([anchor.$toggle_group_forced_index, anchor.$toggle_group_default_selected], [2, 2], '服务端锚点：序号 = 页数（不能用 -1），初始选中')
+    const row = json.root.controls.find((c) => c.bk_home).bk_home.controls.find((c) => c['row_sword@common.toggle'])['row_sword@common.toggle']
+    assert.equal(row.$toggle_group_default_selected, 2, '同组所有开关的初始选中都是服务端锚点')
     // 去掉屏幕进出场动画（缺省）
     const { files } = serverForm({ namespace: 'x', panelId: 'cui_ui:x', content: new Panel() })
     const screen = files['ui/server_form.json']['third_party_server_screen@common.base_screen']
     assert.deepEqual(screen.$screen_animations, ['@server_form.screen_exit_animation_pop_wait'])
     assert.equal(serverForm({ namespace: 'x', panelId: 'cui_ui:x', content: new Panel(), screenAnimation: true }).files['ui/server_form.json']['third_party_server_screen@common.base_screen'], undefined)
+})
+
+test('静态检查：开关序号必须是非负整数（-1 = 不强制、自动分配，会撞号）', async () => {
+    const { Toggle, Panel, compileNamespace } = await import('../dist/index.js')
+    const root = new Panel({ children: [new Toggle({ name: 'a', group: 'g', index: -1 }), new Toggle({ name: 'b', group: 'g', index: 1.5 })] })
+    assert.deepEqual(compileNamespace('t', { root }).issues.map((i) => i.rule), ['toggle-index', 'toggle-index'])
 })

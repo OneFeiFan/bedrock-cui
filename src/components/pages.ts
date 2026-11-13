@@ -21,7 +21,7 @@ export interface PagesOptions extends LayoutOptions {
     start?: string
     /**
      * 服务端页码（混合翻页）：表单重新打开时，按 source 里的 `<prefix><页名>;` 显示那一页。
-     * 一个隐藏的「服务端锚点」开关初始选中：此时按服务端页码显示（没有页码 = 初始页）；
+     * 一个隐藏的「服务端锚点」开关（序号 = 页数）初始选中：此时按服务端页码显示（没有页码 = 初始页）；
      * 用户点了任何翻页开关，锚点就不再选中，改由开关接管。
      * 用法：翻页箭头用 FormButton（服务端重开表单 = 鼠标不动也能连续翻，真机 1.4.0），目录 / 书签用开关（即时）。
      */
@@ -42,8 +42,9 @@ export class Pages extends Panel {
         this.group = group
         this.start = start
         if (server) {
-            // 服务端锚点：序号固定 -1（不与页面冲突），初始选中
-            const anchor = new Toggle({ name: `${group}__server`, group, index: -1, size: [0, 0] })
+            // 服务端锚点：初始选中。序号在 finalize 时取「页数」（不与任何页冲突）——
+            // ⚠️ 不能用 -1：toggle_group_forced_index 缺省就是 -1，意思是「不强制、按顺序自动分配」（真机 1.5.0：单选组乱掉、进不了子页面）
+            const anchor = new Toggle({ name: `${group}__server`, group, index: 0, size: [0, 0] })
             this.add(anchor)
             this.server = { source: server.source ?? form.title, prefix: server.prefix ?? 'P:', anchor }
         }
@@ -117,8 +118,9 @@ export class Pages extends Panel {
 
     protected override beforeFinalize(): void {
         const startKey = this.start ?? [...this.entries.keys()][0]
-        const start = this.server ? -1 : this.entries.get(startKey)?.index ?? 0
-        if (this.server) this.server.anchor.props.defaultSelected = -1
+        const serverIndex = this.entries.size
+        const start = this.server ? serverIndex : this.entries.get(startKey)?.index ?? 0
+        if (this.server) { this.server.anchor.props.index = serverIndex; this.server.anchor.props.defaultSelected = serverIndex }
         for (const [key, e] of this.entries) {
             for (const t of e.links) t.props.defaultSelected = start
             let visible = this.showing(key)
