@@ -9,14 +9,22 @@ import { Panel, type Element } from '../core/element.js'
 import { compileNamespace, type CompileResult } from './compile.js'
 import type { LintOptions } from './lint.js'
 
+export interface ServerFormPanel {
+    /** 表单标题（脚本里 ActionFormData.title 用它）；必须以 prefix 开头 */
+    panelId: string
+    content: Element
+}
+
 export interface ServerFormOptions extends LintOptions {
     /** UI 命名空间（文件名 ui/<namespace>.json） */
     namespace: string
-    /** 表单标题（脚本里 ActionFormData.title 用它）；必须以 prefix 开头 */
-    panelId: string
     /** 隐藏原版长表单用的标题前缀，缺省 'cui_ui:' */
     prefix?: string
-    content: Element
+    /** 单个界面：标题 + 内容 */
+    panelId?: string
+    content?: Element
+    /** 多个界面放在同一个命名空间里，按标题区分（标题互相不能是子串） */
+    panels?: ServerFormPanel[]
 }
 
 export interface ServerFormFiles {
@@ -27,8 +35,16 @@ export interface ServerFormFiles {
 
 export function serverForm(options: ServerFormOptions): ServerFormFiles {
     const prefix = options.prefix ?? 'cui_ui:'
-    if (!options.panelId.startsWith(prefix)) throw new Error(`panelId 必须以 ${prefix} 开头：${options.panelId}`)
-    const root = new Panel({ size: ['100%', '100%'], visible: form.title.contains(options.panelId), children: [options.content] })
+    const panels = options.panels ?? (options.panelId && options.content ? [{ panelId: options.panelId, content: options.content }] : [])
+    if (!panels.length) throw new Error('serverForm：要给 panelId + content，或 panels')
+    for (const p of panels) {
+        if (!p.panelId.startsWith(prefix)) throw new Error(`panelId 必须以 ${prefix} 开头：${p.panelId}`)
+        const clash = panels.find((q) => q !== p && q.panelId.includes(p.panelId))
+        if (clash) throw new Error(`标题 ${p.panelId} 是 ${clash.panelId} 的子串：门控按「包含」判断，会同时显示`)
+    }
+    const root = panels.length === 1
+        ? new Panel({ size: ['100%', '100%'], visible: form.title.contains(panels[0].panelId), children: [panels[0].content] })
+        : new Panel({ size: ['100%', '100%'], visible: form.title.contains(prefix), children: panels.map((p) => new Panel({ size: ['100%', '100%'], visible: form.title.contains(p.panelId), children: [p.content] })) })
     const { json, issues } = compileNamespace(options.namespace, { root }, options)
     const hook = {
         namespace: 'server_form',

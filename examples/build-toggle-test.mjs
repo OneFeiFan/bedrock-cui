@@ -8,15 +8,15 @@ import path from 'node:path'
 import { execSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { serverForm } from 'cui'
-import { buildBook, FORM, T, TEXTURE_INFO } from './toggle-book.mjs'
+import { buildBook, buildFormPager, FORM, FORM_D, T, TEXTURE_INFO } from './toggle-book.mjs'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 const outRoot = path.resolve(process.argv[2] ?? path.join(here, '..', 'out'))
-const VERSION = [1, 3, 0]
+const VERSION = [1, 4, 0]
 const UUID = { bp: '6a3f0e2c-91d4-4b7a-8c55-0e1f7a2b9c31', bpScript: 'c2e8b7d1-4f6a-4c9e-a1b2-3d4e5f607182', rp: '1f9c3a7e-2b4d-4e6f-8a90-b1c2d3e4f5a6', rpRes: '7d8e9f0a-1b2c-4d3e-9f4a-5b6c7d8e9f01' }
 const NAME = 'cui_toggle_test'
 
-const { files, issues } = serverForm({ namespace: NAME, panelId: FORM.title, content: buildBook(), textures: (p) => TEXTURE_INFO[p] })
+const { files, issues } = serverForm({ namespace: NAME, panels: [{ panelId: FORM.title, content: buildBook() }, { panelId: FORM_D.title, content: buildFormPager() }], textures: (p) => TEXTURE_INFO[p] })
 if (issues.some((i) => i.level === 'error')) { console.error(issues); process.exit(1) }
 
 const bp = path.join(outRoot, `${NAME}_BP`), rp = path.join(outRoot, `${NAME}_RP`)
@@ -44,11 +44,12 @@ write(path.join(bp, 'manifest.json'), {
     modules: [{ type: 'script', language: 'javascript', uuid: UUID.bpScript, version: VERSION, entry: 'scripts/main.js' }],
     dependencies: [{ module_name: '@minecraft/server', version: '2.0.0' }, { module_name: '@minecraft/server-ui', version: '2.0.0' }, { uuid: UUID.rp, version: VERSION }],
 })
-write(path.join(bp, 'scripts', 'main.js'), `import { ItemStack, system, world } from '@minecraft/server'
+write(path.join(bp, 'scripts', 'main.js'), `import { InputPermissionCategory, ItemStack, system, world } from '@minecraft/server'
 import { ActionFormData } from '@minecraft/server-ui'
 
 // 与界面约定：标题、正文前缀 CUI;|、按钮 0–3 = 格子 s0|…s3|（运行期数据跟在 | 后面）、按钮 4 = close|
 const TITLE = ${JSON.stringify(FORM.title)}
+const TITLE_D = ${JSON.stringify(FORM_D.title)}
 const SLOT_ITEMS = ['minecraft:diamond_sword', 'minecraft:diamond', 'minecraft:diamond', 'minecraft:stick']
 
 /** 背包里有几个 */
@@ -83,11 +84,28 @@ function open(player) {
     SLOT_ITEMS.forEach((id, i) => form.button('s' + i + '|' + info(player, id)))
     form.button('close|')
     form.button('txt|' + inventoryText(player))
+    form.button('expD|')
     form.show(player).then((r) => {
         if (r.canceled) player.sendMessage('§7[CUI] 表单关闭（Esc）：' + (r.cancelationReason ?? ''))
+        else if (r.selection === 6) openD(player, 0)
         else player.sendMessage('§a[CUI] 服务端收到表单按钮 ' + r.selection + (r.selection === 4 ? '（右上角 ×）' : ''))
     })
 }
+
+// ── 实验 D：服务端翻页。每次翻页 = 关掉表单、服务端再打开下一页；期间锁视角（表单之间的空档不让视角偏转）
+const camera = (player, on) => { try { player.inputPermissions.setPermissionCategory(InputPermissionCategory.Camera, on) } catch {} }
+function openD(player, k) {
+    camera(player, false)
+    const form = new ActionFormData().title(TITLE_D).body('D|D' + (k + 1))
+    form.button(k > 0 ? 'dprev|' : '').button(k < 4 ? 'dnext|' : '').button('dback|')
+    form.show(player).then((r) => {
+        if (r.canceled) { camera(player, true); return }
+        if (r.selection === 0) openD(player, k - 1)
+        else if (r.selection === 1) openD(player, k + 1)
+        else { camera(player, true); open(player) }
+    })
+}
+system.run(() => { for (const p of world.getAllPlayers()) camera(p, true) })
 
 world.afterEvents.itemUse.subscribe((e) => {
     if (e.itemStack.typeId === 'minecraft:book' && e.source.typeId === 'minecraft:player') open(e.source)

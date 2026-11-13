@@ -108,3 +108,12 @@ test('启用 / 禁用：enabled 表达式 → #enabled 绑定；禁用的开关�
     assert.equal(findBox(run(false), 'art'), undefined)
     assert.equal(findBox(run(false), 'arrow').enabled, false)
 })
+
+test('serverForm 多个界面：同一命名空间按标题区分；标题互为子串时报错', async () => {
+    const { serverForm, Panel, Label } = await import('../dist/index.js')
+    const { files } = serverForm({ namespace: 'two', panels: [{ panelId: 'cui_ui:book', content: new Panel({ children: [new Label({ text: '书' })] }) }, { panelId: 'cui_ui:pager', content: new Panel({ children: [new Label({ text: '翻页' })] }) }] })
+    const root = files['ui/two.json'].root
+    assert.equal(root.controls.length, 2, '两个界面面板')
+    assert.equal(root[root.bindings[1].source_property_name.match(/\$\w+/)[0]], 'cui_ui:', '根面板按前缀显示')
+    assert.throws(() => serverForm({ namespace: 'x', panels: [{ panelId: 'cui_ui:a', content: new Panel() }, { panelId: 'cui_ui:ab', content: new Panel() }] }), /子串/)
+})

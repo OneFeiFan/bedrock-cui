@@ -29,14 +29,14 @@ const { files, issues } = serverForm({ namespace: 'my_book', panelId: 'cui_ui:my
 - **字宽**：真机逐像素校准——纯 ASCII 用 Minecraft 字体，含汉字的整段用 Unifont（宽度表随源码，见 NOTICE）。
 - **长文本 / 富文本**：基岩版格式码（含 §g–§v 材料色）；`Paragraph` 预折行（避头尾、中英文留空、行首补样式码）；`paginate()` 分页（孤行控制）。
 - **排版引擎**（纯函数）：锚点、尺寸单位、stack、grid、layer、clip、keep_ratio、文字折行；预览与单测共用。
-- **编译器 + 静态检查**；`serverForm()` 生成挂到原版服务端表单所需的全部文件。
+- **编译器 + 静态检查**；`serverForm()` 生成挂到原版服务端表单所需的全部文件（`panels` 可放多个按标题区分的界面）。
 - **`cui/node`**：`textureInfoFrom([资源包目录])` 读贴图真实信息（PNG 宽高、`.json` 的九宫格与 base_size），给预览、排版与 lint 用。
 
 ## 命令
 
 ```bash
 npm install
-npm test                                  # tsc + node:test（32 条）
+npm test                                  # tsc + node:test（35 条）
 node scripts/fetch-fonts.mjs              # 预览用像素字体（Unifont + 本机 Java 版的 ascii.png）
 npx vite                                  # 浏览器预览：开关翻页测试书
 node examples/build-toggle-test.mjs out   # 真机测试包 out/cui_toggle_test.mcaddon
