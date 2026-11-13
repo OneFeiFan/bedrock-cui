@@ -9,7 +9,7 @@
  *   4. 与表单数据混用：物品格子是开关，提示框里的运行期数据来自表单按钮文字；弹层里的数据来自表单正文
  *   5. 诊断：最后一页列出每个开关的选中状态（同序号的开关会不会一起选中）
  */
-import { CollectionItem, FormButton, Image, Label, Pages, Panel, Stack, Toggle, form, toggleState } from 'cui'
+import { CollectionItem, FormButton, Image, Label, Pages, Panel, Stack, Toggle, form } from 'cui'
 
 export const T = {
     book: 'textures/cui_test/book', line: 'textures/cui_test/line', rowHover: 'textures/cui_test/row_hover',
@@ -25,7 +25,8 @@ const TITLE = [0.24, 0.13, 0.03], BODY = [0.27, 0.19, 0.11], WHITE = [1, 1, 1], 
 export const FORM = {
     title: 'cui_ui:toggle_test',
     body: 'CUI;|§7耐久 1561\n§7可附魔：锋利 V、耐久 III\n§8（这段来自表单正文）',
-    buttons: ['s0|§7耐久 1561\n§7可附魔：锋利 V', 's1|', 's2|', 's3|', 'close|'],
+    // 预览用的样例；真机脚本在运行期按玩家背包实时计算（examples/build-toggle-test.mjs）
+    buttons: ['s0|§7耐久 1561\n§a背包里有 1 个', 's1|§a背包里有 3 个', 's2|§a背包里有 3 个', 's3|§8背包里没有', 'close|'],
 }
 
 // ───────────── 组件（都是类） ─────────────
@@ -81,27 +82,46 @@ class Bookmark extends Toggle {
     }
 }
 
-/** 物品格子：表单按钮 index 的数据载体（提示框显示运行期数据）＋ 点击打开详情弹层的开关 */
-class ItemSlot extends CollectionItem {
+/**
+ * 物品格子：点击 = 打开详情弹层的开关。悬停态里放一个集合项（表单按钮 index）读运行期数据显示在提示框。
+ * 真机：开关内部读不到「外层」集合项的数据（common.toggle 自带空集合名的 collection_details 绑定），
+ * 所以集合项放在开关的状态面板**里面**，由它自己的网格重新建立 form_buttons 上下文。
+ */
+class ItemSlot extends Panel {
     constructor(detail, detailKey, { index, icon, name, x, y, size = 20 }) {
-        super({ collection: 'form_buttons', index, size: [size, size], anchor: 'top_left', offset: [x, y] })
+        super({ size: [size, size], anchor: 'top_left', offset: [x, y] })
         const tag = `s${index}|`
         const t = new Toggle({ ...detail.toggleOptions(detailKey), size: [size, size] })
         detail.attach(detailKey, t)
         const icn = size >= 32 ? 32 : 16
         const base = () => [new Image({ texture: T.cell, size: ['100%', '100%'], nineslice: 1 }), new Image({ texture: icon, size: [icn, icn], layer: 2 })]
-        const payload = form.buttonText.minus(tag)
-        const tip = new Image({ texture: T.purple, nineslice: 4, size: ['100%c + 8px', '100%c + 8px'], anchorFrom: 'top_right', anchorTo: 'top_left', offset: [2, -2], layer: 30 })
-        tip.add(new Stack({ size: ['100%c', '100%c'], children: [
-            new Label({ text: name, color: WHITE, shadow: true, anchor: 'left_middle' }),
-            new Label({ text: payload, color: GRAY, shadow: true, anchor: 'left_middle', visible: payload.isEmpty().not() }),
-        ] }))
-        // 两个悬停态各要一个提示框：一个元素只能有一个父元素，第二份用 clone()
-        let tipUsed = false
-        const hoverArt = () => [...base(), new Image({ texture: T.highlight, keepRatio: false, alpha: 0.8, size: ['100% - 2px', '100% - 2px'], layer: 1 }), tipUsed ? tip.clone() : (tipUsed = true, tip)]
+        const tipHolder = () => {
+            const holder = new CollectionItem({ collection: 'form_buttons', index, size: [size, size], layer: 30 })
+            const payload = form.buttonText.minus(tag)
+            const tip = new Image({ texture: T.purple, nineslice: 4, size: ['100%c + 8px', '100%c + 8px'], anchorFrom: 'top_right', anchorTo: 'top_left', offset: [2, -2] })
+            tip.add(new Stack({ size: ['100%c', '100%c'], children: [
+                new Label({ text: name, color: WHITE, shadow: true, anchor: 'left_middle' }),
+                new Label({ text: payload, color: GRAY, shadow: true, anchor: 'left_middle', visible: payload.isEmpty().not() }),
+            ] }))
+            return holder.add(tip)
+        }
+        const hoverArt = () => [...base(), new Image({ texture: T.highlight, keepRatio: false, alpha: 0.8, size: ['100% - 2px', '100% - 2px'], layer: 1 }), tipHolder()]
         t.unchecked.add(...base()); t.checked.add(...base())
         t.uncheckedHover.add(...hoverArt()); t.checkedHover.add(...hoverArt())
         this.add(t)
+    }
+}
+
+/**
+ * 弹层底板：铺满整本书的开关（跳回 none 页）。真机：弹层下面的开关能被点穿，
+ * 底板比下面的箭头层级高，先接住点击——点空白处 = 关闭弹层。
+ */
+class Backdrop extends Toggle {
+    constructor(detail) {
+        super({ ...detail.toggleOptions('none'), size: [272, 180], anchor: 'top_left' })
+        detail.attach('none', this)
+        const dim = () => new Image({ texture: T.line, keepRatio: false, alpha: 0.35, size: ['100%', '100%'] })
+        this.unchecked.add(dim()); this.checked.add(dim())
     }
 }
 
@@ -121,37 +141,10 @@ class DetailOverlay extends Panel {
     }
 }
 
-/**
- * 诊断格：读一个开关是否选中（「是」/「否」两个标签按状态显示）。
- * 读不到（查找范围之外）时表达式取空值 = 否——所以配合「一定选中」的探针开关就能测出查找范围。
- */
-class Cell extends Panel {
-    constructor(caption, toggleName, x, options = {}) {
-        super({ size: [44, 10], anchor: 'top_left', offset: [x, 0] })
-        this.add(new Label({ text: `§8${caption}`, anchor: 'left_middle' }))
-        this.add(new Label({ text: '§2是', anchor: 'right_middle', visible: toggleState(toggleName, options) }))
-        this.add(new Label({ text: '§c否', anchor: 'right_middle', visible: toggleState(toggleName, options).not() }))
-    }
-}
-
-/** 诊断带上的一行：从「这一行所在的树位置」读 4 个探针（或给定的开关） */
-class ProbeRow extends Panel {
-    constructor(title, x, y, targets, options = {}) {
-        super({ size: [300, 10], anchor: 'top_left', offset: [x, y] })
-        this.add(new Label({ text: `§f${title}`, anchor: 'left_middle' }))
-        targets.forEach(([cap, name], i) => this.add(new Cell(cap, name, 96 + i * 50, options)))
-    }
-}
-
-/** 探针：非单选、默认选中、零尺寸——一定是「选中」 */
-const probe = (name) => new Toggle({ name, group: name, radio: false, defaultState: true, size: [0, 0] })
-const PROBES = [['根', 'probe_root'], ['分页层', 'probe_pages'], ['页内', 'probe_page'], ['页内深处', 'probe_deep']]
-
 // ───────────── 整本书 ─────────────
 
 export function buildBook() {
-    // 书本 180 高 + 下方诊断带：整体 250 高居中，矮屏幕（手机）也能看全诊断带
-    const root = new Panel({ size: [290, 250] })
+    const root = new Panel({ size: [290, 180] })
     root.add(new Image({ texture: T.book, size: [272, 180], anchor: 'top_left' }))
     const pages = new Pages({ group: 'gbp', start: 'home', size: [272, 180], anchor: 'top_left' })
     const detail = new Pages({ group: 'gbd', start: 'none', size: [272, 180], anchor: 'top_left', layer: 40 })
@@ -163,7 +156,7 @@ export function buildBook() {
     home.add(new Side('R').add(new Title('目录'),
         new RowLink(pages, 'sword', { icon: T.sword, text: '钻石剑', y: 20 }),
         new RowLink(pages, 'diamond', { icon: T.diamond, text: '钻石', y: 38 }),
-        new RowLink(pages, 'about', { icon: T.book_item, text: '诊断', y: 56 })))
+        new RowLink(pages, 'about', { icon: T.book_item, text: '检查清单', y: 56 })))
     home.add(new Arrow(pages, 'sword', 'right'))
 
     // 钻石剑
@@ -182,27 +175,12 @@ export function buildBook() {
     diamond.add(new Side('R').add(new Title('说明'), new Body('右下箭头去诊断页，左下箭头回钻石剑页。')))
     diamond.add(new Arrow(pages, 'sword', 'left'), new Arrow(pages, 'about', 'right'))
 
-    // 诊断：探针矩阵（显示在书本下方的诊断带；书本左上角为原点，诊断带从 y=184 开始）
+    // 检查页
     const about = pages.page('about')
     const bookmark = new Bookmark(pages, 'home')
-    const deepSide = new Side('L').add(new Title('诊断'), new Body('书本下方的诊断带：每行从不同的树位置读 4 个「一定选中」的探针开关。「否」= 读不到。\n\n最后一行：从分页层读同序号的开关。'))
-    about.add(deepSide)
-    about.add(new Side('R').add(new Title('检查清单'), new Body('1 翻页时表单不关、视角不动\n2 多个入口都能到达同一页\n3 弹层关掉后回到原来那页\n4 提示框有运行期数据\n5 弹层打开时点下面的箭头会不会穿透\n6 截图本页（含书本下方的诊断带）')))
+    about.add(new Side('L').add(new Title('1.0.1 的结论'), new Body('按名字读开关是全局的；同序号的开关不会一起选中（只有被点的那个选中）；弹层会被点穿。')))
+    about.add(new Side('R').add(new Title('1.0.2 请检查'), new Body('1 钻石剑页悬停格子：提示框有「背包里有 N 个」（背包里放几把钻石剑、钻石、木棍试试）\n2 打开弹层后点底下的箭头：应当点不穿，而是关闭弹层\n3 点弹层外的空白处也会关闭')))
     about.add(new Arrow(pages, 'diamond', 'left'))
-    // 探针（一定选中）放在 4 个位置
-    root.add(probe('probe_root'))
-    pages.add(probe('probe_pages'))
-    about.add(probe('probe_page'))
-    deepSide.add(probe('probe_deep'))
-    // 读取者：同样 4 个位置（页内深处的 Side 在 (14,10)，偏移要减掉）+ 一个带 resolve_sibling_scope 的对照
-    const Y = 184
-    root.add(new ProbeRow('读取位置：根', 0, Y, PROBES))
-    pages.add(new ProbeRow('读取位置：分页层', 0, Y + 11, PROBES))
-    about.add(new ProbeRow('读取位置：页内', 0, Y + 22, PROBES))
-    deepSide.add(new ProbeRow('读取位置：页内深处', -14, Y + 33 - 10, PROBES))
-    deepSide.add(new ProbeRow('页内深处＋sibling', -14, Y + 44 - 10, PROBES, { siblingScope: true }))
-    // 同序号是否同步：从分页层（页面显示条件读得到的位置）读诊断页的锚点、刚点的目录行、别的页的锚点
-    pages.add(new ProbeRow('分页层读同序号', 0, Y + 55, [['锚点诊断', 'gbp__about'], ['目录行诊断', 'gbp_about_l1'], ['箭头诊断', 'gbp_about_l2'], ['锚点目录', 'gbp__home']]))
 
     // 书签（任何页都在）
     root.add(bookmark)
@@ -210,7 +188,7 @@ export function buildBook() {
 
     // 详情弹层
     detail.page('none')
-    detail.page('sword').add(new DetailOverlay(detail))
+    detail.page('sword').add(new Backdrop(detail), new DetailOverlay(detail))
 
     // 关闭整本书：普通表单按钮（序号 4），点了表单关闭，服务端收到选择
     const close = new FormButton({ index: 4, tag: 'close|', size: [14, 14], anchor: 'top_left', offset: [248, 3], layer: 60 })

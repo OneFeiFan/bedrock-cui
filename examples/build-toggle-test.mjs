@@ -12,7 +12,7 @@ import { buildBook, FORM, T, TEXTURE_INFO } from './toggle-book.mjs'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 const outRoot = path.resolve(process.argv[2] ?? path.join(here, '..', 'out'))
-const VERSION = [1, 0, 1]
+const VERSION = [1, 0, 2]
 const UUID = { bp: '6a3f0e2c-91d4-4b7a-8c55-0e1f7a2b9c31', bpScript: 'c2e8b7d1-4f6a-4c9e-a1b2-3d4e5f607182', rp: '1f9c3a7e-2b4d-4e6f-8a90-b1c2d3e4f5a6', rpRes: '7d8e9f0a-1b2c-4d3e-9f4a-5b6c7d8e9f01' }
 const NAME = 'cui_toggle_test'
 
@@ -44,15 +44,34 @@ write(path.join(bp, 'manifest.json'), {
     modules: [{ type: 'script', language: 'javascript', uuid: UUID.bpScript, version: VERSION, entry: 'scripts/main.js' }],
     dependencies: [{ module_name: '@minecraft/server', version: '2.0.0' }, { module_name: '@minecraft/server-ui', version: '2.0.0' }, { uuid: UUID.rp, version: VERSION }],
 })
-write(path.join(bp, 'scripts', 'main.js'), `import { system, world } from '@minecraft/server'
+write(path.join(bp, 'scripts', 'main.js'), `import { ItemStack, system, world } from '@minecraft/server'
 import { ActionFormData } from '@minecraft/server-ui'
 
-// 与界面约定的表单数据（examples/toggle-book.mjs 的 FORM）
-const FORM = ${JSON.stringify(FORM)}
+// 与界面约定：标题、正文前缀 CUI;|、按钮 0–3 = 格子 s0|…s3|（运行期数据跟在 | 后面）、按钮 4 = close|
+const TITLE = ${JSON.stringify(FORM.title)}
+const SLOT_ITEMS = ['minecraft:diamond_sword', 'minecraft:diamond', 'minecraft:diamond', 'minecraft:stick']
+
+/** 背包里有几个 */
+function count(player, id) {
+    const inv = player.getComponent('minecraft:inventory')?.container
+    let n = 0
+    if (inv) for (let i = 0; i < inv.size; i++) { const it = inv.getItem(i); if (it?.typeId === id) n += it.amount }
+    return n
+}
+
+/** 运行期信息：耐久 + 背包数量 */
+function info(player, id) {
+    const lines = []
+    try { const d = new ItemStack(id).getComponent('minecraft:durability'); if (d?.maxDurability) lines.push('§7耐久 ' + d.maxDurability) } catch {}
+    const n = count(player, id)
+    lines.push(n ? '§a背包里有 ' + n + ' 个' : '§8背包里没有')
+    return lines.join('\\n')
+}
 
 function open(player) {
-    const form = new ActionFormData().title(FORM.title).body(FORM.body)
-    for (const b of FORM.buttons) form.button(b)
+    const form = new ActionFormData().title(TITLE).body('CUI;|' + info(player, 'minecraft:diamond_sword') + '\\n§8（这段来自表单正文）')
+    SLOT_ITEMS.forEach((id, i) => form.button('s' + i + '|' + info(player, id)))
+    form.button('close|')
     form.show(player).then((r) => {
         if (r.canceled) player.sendMessage('§7[CUI] 表单关闭（Esc）：' + (r.cancelationReason ?? ''))
         else player.sendMessage('§a[CUI] 服务端收到表单按钮 ' + r.selection + (r.selection === 4 ? '（右上角 ×）' : ''))

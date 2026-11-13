@@ -71,8 +71,8 @@ export const form = {
 
 /**
  * 某个开关控件的状态（按控件名查找）。
- * ⚠️ 真机：按名字查找有范围限制——从页面深处读不到别处的开关（2026-11 测试包诊断页全是「否」），
- * 范围规则见 docs/DESIGN.md；siblingScope = 绑定加 resolve_sibling_scope: true。
+ * 真机（测试包 1.0.1 探针矩阵）：缺省**全局查找**——从界面任何位置都读得到任何位置的开关；
+ * siblingScope = 绑定加 resolve_sibling_scope: true，查找范围**收窄**到兄弟控件（从深处读别处的开关会读不到）。
  */
 export const toggleState = (control: string, options: { siblingScope?: boolean } = {}) =>
     ref('#toggle_state', { kind: 'control', control, ...(options.siblingScope ? { siblingScope: true } : {}) })

@@ -15,6 +15,9 @@ import { lint, type LintIssue, type LintOptions } from './lint.js'
 
 type Json = Record<string, unknown>
 
+/** 标记：外层集合项的上下文被开关遮住了 */
+const THROUGH_TOGGLE = '\u0000toggle:'
+
 /** 可写成表达式的属性 → 绑定的目标属性名；text / texture 还要把属性本身写成 '#…' */
 const DYNAMIC: Record<string, { target: string, prop?: string }> = {
     visible: { target: '#visible' },
@@ -57,7 +60,8 @@ class Compiler {
             Object.assign(vars, c.variables)
             for (const g of c.globals) if (!declaredGlobals.has(g)) { declaredGlobals.add(g); bindings.push({ binding_name: g }) }
             for (const col of c.collections) {
-                if (!inCollection) this.issues.push({ rule: 'collection-ref-outside', level: 'error', path: n.path, message: `${col.name} 只能在 ${col.collection} 的集合项（FormButton）里使用` })
+                if (inCollection?.startsWith(THROUGH_TOGGLE)) this.issues.push({ rule: 'collection-through-toggle', level: 'error', path: n.path, message: `开关里读不到外层集合项的 ${col.name}（真机：common.toggle 自带空集合名的 collection_details 绑定）。把 CollectionItem 放进开关的状态面板里` })
+                else if (!inCollection) this.issues.push({ rule: 'collection-ref-outside', level: 'error', path: n.path, message: `${col.name} 只能在 ${col.collection} 的集合项（FormButton）里使用` })
                 const k2 = `${col.collection}|${col.name}`
                 if (!declaredCollections.has(k2)) {
                     if (!declaredCollections.size) bindings.push({ binding_type: 'collection_details', binding_collection_name: col.collection })
@@ -109,6 +113,8 @@ class Compiler {
                 break
             }
             case 'toggle': {
+                // 开关内部：外层集合项的上下文被 common.toggle 的绑定遮住（真机）；里面再放 CollectionItem 才能读
+                if (inCollection && !inCollection.startsWith(THROUGH_TOGGLE)) inCollection = THROUGH_TOGGLE + inCollection
                 // 继承原版 common.toggle（自带点击映射与音效）；单选组 = toggle_name + radio_toggle_group + toggle_group_forced_index
                 key = `${n.name}@common.toggle`
                 vars.$toggle_name = p.group

@@ -78,8 +78,11 @@ export function mountPreview(el: HTMLElement, options: PreviewOptions): Preview 
     const rootEl = (): Element => (typeof options.root === 'function' ? (options.root as () => Element)() : options.root)
     let nodes: RNode[] = []
     let toggleByName = new Map<string, RNode>()
-    /** 开关组的选中序号（单选组）与非单选开关的状态 */
-    const groups = signal<Record<string, number>>({})
+    /**
+     * 单选组里**被点的那个开关**的名字（真机：同序号的开关不会一起选中，只有被点的那个选中）；
+     * 还没点过时，序号 = 初始选中序号的开关算选中。非单选开关单独记状态。
+     */
+    const groups = signal<Record<string, string>>({})
     const flags = signal<Record<string, boolean>>({})
     const tree = (): RNode[] => {
         nodes = finalize(rootEl())
@@ -89,7 +92,8 @@ export function mountPreview(el: HTMLElement, options: PreviewOptions): Preview 
     }
     const checked = (n: RNode): boolean => {
         if (n.props.radio === false) return flags.value[n.name] ?? Boolean(n.props.defaultState)
-        return (groups.value[n.props.group] ?? n.props.defaultSelected ?? 0) === n.props.index
+        const picked = groups.value[n.props.group]
+        return picked !== undefined ? picked === n.name : (n.props.defaultSelected ?? 0) === n.props.index
     }
     let current: Box[] = []
 
@@ -196,7 +200,7 @@ export function mountPreview(el: HTMLElement, options: PreviewOptions): Preview 
         if (b && b.node.path === pressed.value && b.node.type === 'toggle') {
             const t = b.node
             if (t.props.radio === false) flags.value = { ...flags.value, [t.name]: !checked(t) }
-            else groups.value = { ...groups.value, [t.props.group]: t.props.index }
+            else groups.value = { ...groups.value, [t.props.group]: t.name }
         } else if (b && b.node.path === pressed.value) {
             b.node.props.onPress?.()
             const idx = b.scope.collection?.index

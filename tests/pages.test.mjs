@@ -79,3 +79,15 @@ test('serverForm：挂到原版服务端表单（工厂 + 标题门控 + 隐藏�
     assert.equal(root[root.bindings[1].source_property_name.match(/\$\w+/)[0]], 'cui_ui:test')
     assert.throws(() => serverForm({ namespace: 'x', panelId: 'nope', content: book() }), /cui_ui:/)
 })
+
+test('静态检查：开关里读外层集合项的数据（真机读不到）；集合项放进开关状态面板里则可以', async () => {
+    const { CollectionItem, Toggle, Label, Panel, compileNamespace, form } = await import('../dist/index.js')
+    const bad = new CollectionItem({ collection: 'form_buttons', index: 0, size: [20, 20] })
+    const t = new Toggle({ name: 'tg', group: 'g', index: 0, size: [20, 20] })
+    t.uncheckedHover.add(new Label({ name: 'info', text: form.buttonText.minus('s0|') }))
+    bad.add(t)
+    assert.deepEqual(compileNamespace('t', { root: new Panel({ children: [bad] }) }).issues.map((i) => i.rule), ['collection-through-toggle'])
+    const t2 = new Toggle({ name: 'tg2', group: 'g', index: 0, size: [20, 20] })
+    t2.uncheckedHover.add(new CollectionItem({ collection: 'form_buttons', index: 0, size: [20, 20] }).add(new Label({ text: form.buttonText.minus('s0|') })))
+    assert.deepEqual(compileNamespace('t', { root: new Panel({ children: [t2] }) }).issues, [])
+})
