@@ -9,7 +9,7 @@
  *   4. 与表单数据混用：物品格子是开关，提示框里的运行期数据来自表单按钮文字；弹层里的数据来自表单正文
  *   5. 诊断：最后一页列出每个开关的选中状态（同序号的开关会不会一起选中）
  */
-import { CollectionItem, FormButton, Image, Label, Pages, Panel, Stack, Toggle, form } from 'cui'
+import { CollectionItem, FormButton, Image, Label, Pages, Panel, Paragraph, Stack, Toggle, form, paginate, textWidth } from 'cui'
 
 export const T = {
     book: 'textures/cui_test/book', line: 'textures/cui_test/line', rowHover: 'textures/cui_test/row_hover',
@@ -18,6 +18,7 @@ export const T = {
     tab: 'textures/cui_test/tab', tabHover: 'textures/cui_test/tab_hover',
     cell: 'textures/ui/cell_image', highlight: 'textures/ui/highlight_slot', purple: 'textures/ui/purpleBorder',
     sword: 'textures/items/diamond_sword', diamond: 'textures/items/diamond', stick: 'textures/items/stick', book_item: 'textures/items/book_normal',
+    ruler: 'textures/cui_test/ruler', paper: 'textures/items/paper', name_tag: 'textures/items/name_tag', map: 'textures/items/map_empty', emerald: 'textures/items/emerald', writable: 'textures/items/book_writable',
 }
 const TITLE = [0.24, 0.13, 0.03], BODY = [0.27, 0.19, 0.11], WHITE = [1, 1, 1], GRAY = [0.67, 0.67, 0.67]
 
@@ -26,7 +27,8 @@ export const FORM = {
     title: 'cui_ui:toggle_test',
     body: 'CUI;|§7耐久 1561\n§7可附魔：锋利 V、耐久 III\n§8（这段来自表单正文）',
     // 预览用的样例；真机脚本在运行期按玩家背包实时计算（examples/build-toggle-test.mjs）
-    buttons: ['s0|§7耐久 1561\n§a背包里有 1 个', 's1|§a背包里有 3 个', 's2|§a背包里有 3 个', 's3|§8背包里没有', 'close|'],
+    buttons: ['s0|§7耐久 1561\n§a背包里有 1 个', 's1|§a背包里有 3 个', 's2|§a背包里有 3 个', 's3|§8背包里没有', 'close|',
+        'txt|§6Steve§r 的背包（4 种物品）：\n§8diamond_sword §0×1§8、§8diamond §0×3§8、§8stick §0×12§8、§8oak_planks §0×64\n§2这段文字由脚本在运行期生成，长度不固定，由引擎负责折行。'],
 }
 
 // ───────────── 组件（都是类） ─────────────
@@ -139,7 +141,12 @@ export function buildBook() {
 
     // 目录
     const home = pages.page('home')
-    home.add(new Side('L').add(new Title('开关翻页测试'), new Body('整本书在一个表单里：点目录、箭头、书签翻页都不关表单。\n\n钻石剑页的格子：悬停看提示框（数据来自表单按钮），点击打开详情弹层（第二组开关）。\n\n最后一页列出每个开关的选中状态。')))
+    home.add(new Side('L').add(new Title('文本测试'),
+        new RowLink(pages, 'twrap', { icon: T.paper, text: '折行对比', y: 20 }),
+        new RowLink(pages, 'trich', { icon: T.name_tag, text: '富文本', y: 38 }),
+        new RowLink(pages, 'truler', { icon: T.map, text: '字宽标尺', y: 56 }),
+        new RowLink(pages, 'tlong0', { icon: T.writable, text: '长文本分页', y: 74 }),
+        new RowLink(pages, 'trun', { icon: T.emerald, text: '运行期长文本', y: 92 })))
     home.add(new Side('R').add(new Title('目录'),
         new RowLink(pages, 'sword', { icon: T.sword, text: '钻石剑', y: 20 }),
         new RowLink(pages, 'diamond', { icon: T.diamond, text: '钻石', y: 38 }),
@@ -169,6 +176,8 @@ export function buildBook() {
     about.add(new Side('R').add(new Title('1.0.2 请检查'), new Body('1 钻石剑页悬停格子：提示框有「背包里有 N 个」\n2 打开弹层后点底下的箭头：点不穿，也不关弹层（透明、无声）\n3 只有「关闭」按钮才关弹层')))
     about.add(new Arrow(pages, 'diamond', 'left'))
 
+    buildTextPages(pages)
+
     // 书签（任何页都在）
     root.add(bookmark)
     void bookmark
@@ -186,6 +195,95 @@ export function buildBook() {
     return root
 }
 
+// ───────────── 文本测试 ─────────────
+
+/** 一段跨行的富文本：颜色 / 粗体跨过折行点、英文单词、引号、句读 */
+export const SAMPLE = '§2绿色开头的一段文字会跨过好几行，看看§c红色§2在引擎自动折行后会不会延续。英文 Minecraft Bedrock 不应被拆开，标点「引号」、句号。逗号，都要看位置。§l粗体也要延续到下一行吗？§r最后恢复普通。'
+
+/** 长文本（分页用）：几段带颜色的说明 */
+export const LONG = [
+    '§6第一章 · 关于这本书§r',
+    '这是一段用来测试长文本分页的文字。CUI 会先按字宽表把文字折成行（避头尾、中英文之间留空），再按每页能放下的行数切成若干页，每页一个段落。§9换页时颜色会在新页开头补上§r，所以跨页的§c红色句子在下一页§r也不会丢掉颜色。',
+    '',
+    '§6第二章 · 折行规则§r',
+    '英文单词（例如 Minecraft、Bedrock Edition、JSON UI）不会被拆开；句号、逗号这类标点不会出现在行首；左括号「与左引号」不会留在行尾。§l粗体字更宽，§r折行时会按粗体的宽度计算。',
+    '',
+    '§6第三章 · 运行期文字§r',
+    '表单正文与按钮文字由脚本在运行期发送，长度事先不知道：这种文字交给引擎折行（文字框宽度固定、高度 default）。真机上请对比「折行对比」页：左边是引擎折行，右边是 CUI 预折行。',
+    '',
+    '§6第四章 · 结尾§r',
+    '如果你读到了这里，说明分页、翻页箭头与页码都正常工作。§a谢谢测试！',
+].join('\n')
+
+/** 字宽标尺：每行一串字符 + 下面一把刻度尺（每 10 像素一根长刻度）；右边灰字是 CUI 的估计宽度 */
+const RULER_ROWS_L = ['iiiiiiiiii', 'llllllllll', 'tttttttttt', 'ffffffffff', 'aaaaaaaaaa', 'WWWWWWWWWW', '0123456789', '@@@@@@@@@@']
+const RULER_ROWS_R = ['中中中中中中中中中中', '，，，，，，，，，，', '。。。。。。。。。。', '§lWWWWWWWWWW', '§l中中中中中中中中中', 'a a a a a a', 'Esc 关闭；左键', '§oitalic 斜体']
+
+class RulerRow extends Panel {
+    constructor(text, y) {
+        const expected = textWidth(text)
+        super({ size: [116, 15], anchor: 'top_left', offset: [3, y] })
+        this.add(new Label({ text, color: BODY, anchor: 'top_left' }))
+        this.add(new Image({ texture: T.ruler, size: [121, 5], anchor: 'top_left', offset: [0, 9] }))
+        this.add(new Label({ text: `§8${expected}`, fontScale: 0.75, anchor: 'top_right', offset: [-2, 0] }))
+    }
+}
+
+/** 颜色样例：深色底（浅色字在米黄纸上看不清） */
+class Swatches extends Panel {
+    constructor(codes, y, height) {
+        super({ size: [110, height], anchor: 'top_left', offset: [3, y] })
+        this.add(new Image({ texture: T.purple, size: ['100%', '100%'] }))
+        codes.forEach((c, i) => this.add(new Label({ text: `§7${c} §${c}示例Ab`, anchor: 'top_left', offset: [6 + (i % 2) * 52, 5 + Math.floor(i / 2) * 10] })))
+    }
+}
+
+/** 文本测试的各页：折行对比、富文本、字宽标尺、长文本分页、运行期长文本 */
+function buildTextPages(pages) {
+    const chain = ['twrap', 'trich', 'truler']
+    // 折行对比
+    const wrap = pages.page('twrap')
+    wrap.add(new Side('L').add(new Title('引擎自动折行'), new Label({ text: SAMPLE, color: BODY, size: [110, 'default'], anchor: 'top_left', offset: [3, 22] })))
+    wrap.add(new Side('R').add(new Title('CUI 预折行'), new Paragraph({ text: SAMPLE, width: 110, color: BODY, anchor: 'top_left', offset: [3, 22] })))
+    // 富文本
+    const rich = pages.page('trich')
+    rich.add(new Side('L').add(new Title('颜色 §0–§f'), new Swatches('0123456789abcdef'.split(''), 22, 90)))
+    rich.add(new Side('R').add(new Title('基岩版独有 + 格式'), new Swatches('ghijmnpqstuv'.split(''), 22, 70),
+        new Paragraph({ text: '§l粗体 Bold§r  §o斜体 Italic§r\n§k乱码abc§r ← 乱码\n§c红§l红粗§9蓝粗§r普通（换颜色不清粗体）', width: 110, color: BODY, anchor: 'top_left', offset: [3, 96] })))
+    // 字宽标尺
+    const ruler = pages.page('truler')
+    ruler.add(new Side('L').add(new Title('字宽标尺'), ...RULER_ROWS_L.map((t, i) => new RulerRow(t, 20 + i * 17))))
+    ruler.add(new Side('R').add(new Title('字宽标尺（续）'), ...RULER_ROWS_R.map((t, i) => new RulerRow(t, 20 + i * 17))))
+    // 长文本分页：每页 = 半边书页（标题下 22 起，到翻页箭头上方，约 12 行）
+    const chunks = paginate(LONG, 110, { height: 120, firstHeight: 120 })
+    const spreads = Math.ceil(chunks.length / 2)
+    for (let s = 0; s < spreads; s++) {
+        const key = `tlong${s}`
+        chain.push(key)
+        const page = pages.page(key)
+        for (const [side, k] of [['L', 2 * s], ['R', 2 * s + 1]]) {
+            if (k >= chunks.length) continue
+            page.add(new Side(side).add(new Title(`长文本 ${k + 1} / ${chunks.length}`), new Label({ text: chunks[k], color: BODY, size: [110, 'default'], anchor: 'top_left', offset: [3, 22] })))
+        }
+    }
+    // 运行期长文本：按钮 5 的文字（脚本按玩家背包生成）
+    chain.push('trun')
+    const run = pages.page('trun')
+    const runtimeText = (size) => new CollectionItem({ collection: 'form_buttons', index: 5, size: [110, 10], anchor: 'top_left', offset: [3, 22] })
+        .add(new Label({ text: form.buttonText.minus('txt|'), color: BODY, size, anchor: 'top_left' }))
+    run.add(new Side('L').add(new Title('运行期：高度 default'), runtimeText([110, 'default'])))
+    const clipped = new Panel({ size: [110, 50], anchor: 'top_left', offset: [3, 22], clip: true })
+    clipped.add(new CollectionItem({ collection: 'form_buttons', index: 5, size: [110, 10], anchor: 'top_left' })
+        .add(new Label({ text: form.buttonText.minus('txt|'), color: BODY, size: [110, 'default'], anchor: 'top_left' })))
+    run.add(new Side('R').add(new Title('运行期：裁剪到 50 高'), clipped, new Body('§8上面的框只有 50 像素高，超出的部分被裁掉。', 80)))
+    // 文本页之间的箭头
+    chain.forEach((key, i) => {
+        const page = pages.page(key)
+        page.add(new Arrow(pages, i === 0 ? 'home' : chain[i - 1], 'left'))
+        if (i < chain.length - 1) page.add(new Arrow(pages, chain[i + 1], 'right'))
+    })
+}
+
 /** 贴图尺寸（给 lint 与预览用；九宫格写 nineslice） */
 export const TEXTURE_INFO = {
     [T.book]: { size: [272, 180] }, [T.line]: { size: [1, 1] }, [T.rowHover]: { size: [1, 1] },
@@ -194,4 +292,5 @@ export const TEXTURE_INFO = {
     // 原版 .json：cell_image 是两倍精度（10×10 像素、base_size 5×5、nineslice 1）；highlight_slot 也是九宫格
     [T.cell]: { size: [10, 10], baseSize: [5, 5], nineslice: 1 }, [T.highlight]: { size: [1, 1], baseSize: [1, 1], nineslice: 1 }, [T.purple]: { size: [16, 16], baseSize: [16, 16], nineslice: 4 },
     [T.sword]: { size: [16, 16] }, [T.diamond]: { size: [16, 16] }, [T.stick]: { size: [16, 16] }, [T.book_item]: { size: [16, 16] },
+    [T.ruler]: { size: [121, 5] }, [T.paper]: { size: [16, 16] }, [T.name_tag]: { size: [16, 16] }, [T.map]: { size: [16, 16] }, [T.emerald]: { size: [16, 16] }, [T.writable]: { size: [16, 16] },
 }

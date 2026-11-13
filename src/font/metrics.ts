@@ -20,8 +20,29 @@ export function charWidth(ch: string): number {
 /** 去掉 § 格式码 */
 export const stripFormat = (s: string) => s.replace(/§./g, '')
 
-export function textWidth(s: string, scale = 1): number {
-    return [...stripFormat(s)].reduce((w, c) => w + charWidth(c), 0) * scale
+/** 粗体每个字多出的宽度（Java 版为 1；基岩版待字宽标尺校准） */
+export const BOLD_EXTRA = 1
+
+/**
+ * 宽度（像素）：§ 码不占宽度；粗体（§l 起、§r 止——基岩版换颜色不清粗体）每字加 BOLD_EXTRA。
+ * `bold` = 进入这段文字时是否已是粗体。
+ */
+export function textWidth(s: string, scale = 1, bold = false): number {
+    let w = 0
+    for (let i = 0; i < s.length; i++) {
+        if (s[i] === '§' && i + 1 < s.length) {
+            const c = s[i + 1].toLowerCase()
+            if (c === 'l') bold = true
+            else if (c === 'r') bold = false
+            i++
+            continue
+        }
+        const cp = s.codePointAt(i)!
+        const ch = String.fromCodePoint(cp)
+        if (cp > 0xffff) i++
+        w += charWidth(ch) + (bold ? BOLD_EXTRA : 0)
+    }
+    return w * scale
 }
 
 export interface TextMetrics {

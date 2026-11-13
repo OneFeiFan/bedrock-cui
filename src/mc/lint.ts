@@ -4,6 +4,7 @@
 import { isExpr } from '../core/expr.js'
 import { walk, type RNode } from '../core/node.js'
 import { parseSize } from '../layout/units.js'
+import { measureText } from '../font/metrics.js'
 import type { TextureInfo } from '../layout/engine.js'
 
 export interface LintIssue {
@@ -61,6 +62,11 @@ export function lint(roots: RNode[], options: LintOptions = {}): LintIssue[] {
                     push('keep-ratio', 'warning', n, `贴图 ${String(n.props.texture)} 在 ${JSON.stringify(n.props.size)} 里会按原比例缩小居中（JSON UI 的 keep_ratio 缺省为 true）。要拉伸请写 keepRatio={false}，要保持比例请写 keepRatio`)
                 }
             }
+        }
+        // 文字溢出：宽高都固定的文字框放不下（静态文字才能在构建期判断）
+        if (n.type === 'label' && typeof n.props.text === 'string' && typeof n.props.size?.[0] === 'number' && typeof n.props.size?.[1] === 'number') {
+            const m = measureText(n.props.text, n.props.fontScale ?? 1, n.props.size[0])
+            if (m.height > n.props.size[1]) push('text-overflow', 'warning', n, `文字折行后约 ${m.lines.length} 行（${m.height} 像素高），放不进 ${n.props.size[1]} 像素高的文字框；高度写 'default' 或用 paginate() 分页`)
         }
         // collection_index 不是合法属性（sapdon-ui.md §7.3：Unknown property）
         if (n.props.raw && 'collection_index' in n.props.raw) push('collection-index', 'error', n, 'collection_index 不是合法的 UI 属性（引擎报 Unknown property）；绑定集合项请用 FormButton / collection_item')

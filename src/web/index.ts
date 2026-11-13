@@ -12,7 +12,8 @@ import { effect, signal, type Signal } from '../core/reactivity.js'
 import { drawOrder, layout, type Box, type Rect, type TextureInfo } from '../layout/engine.js'
 import { compileNamespace } from '../mc/compile.js'
 import type { LintIssue } from '../mc/lint.js'
-import { GLYPH_HEIGHT, LINE_HEIGHT } from '../font/metrics.js'
+import { BOLD_EXTRA, GLYPH_HEIGHT, LINE_HEIGHT, charWidth } from '../font/metrics.js'
+import { BEDROCK_COLORS, PLAIN, parseRich, type TextStyle } from '../font/rich.js'
 
 export interface PreviewTexture extends TextureInfo {
     /** 图片地址 */
@@ -48,10 +49,7 @@ export interface Preview {
     dispose(): void
 }
 
-const COLORS: Record<string, string> = {
-    '0': '#000000', '1': '#0000AA', '2': '#00AA00', '3': '#00AAAA', '4': '#AA0000', '5': '#AA00AA', '6': '#FFAA00', '7': '#AAAAAA',
-    '8': '#555555', '9': '#5555FF', a: '#55FF55', b: '#55FFFF', c: '#FF5555', d: '#FF55FF', e: '#FFFF55', f: '#FFFFFF',
-}
+
 const rgb = (c?: number[]) => (c ? `rgb(${c.map((v) => Math.round(v * 255)).join(',')})` : '#ffffff')
 
 /**
@@ -64,15 +62,28 @@ function degenerate(b: Box, t: PreviewTexture): boolean {
     return s[0] + s[2] >= t.size[0] || s[1] + s[3] >= t.size[1]
 }
 
-/** 一行文字：§ 颜色码 → span */
-function lineHtml(line: string, base: string): string {
-    let color = base
-    let out = ''
-    for (const part of line.split(/(§.)/)) {
-        if (/^§.$/.test(part)) { const k = part[1].toLowerCase(); color = k === 'r' ? base : COLORS[k] ?? color; continue }
-        if (part) out += `<span style="color:${color}">${part.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</span>`
+const OBF = 'abcdefghjkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ0123456789#$%&*+=?'
+const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;')
+
+/**
+ * 一行富文本 → span（基岩版格式码：颜色、§l 粗体、§o 斜体、§k 乱码、§r 重置）；返回行末样式（延续到下一行）。
+ * **逐字定位**：每个字占的宽度严格按字宽表（与排版引擎一致），字形居中放在自己的格子里——
+ * 系统字体的字形宽度与游戏不同（等宽字体里 i 和 W 一样宽），不逐字定位的话预览里的折行位置会对不上。
+ */
+function lineHtml(line: string, base: string, start: TextStyle, px: number): { html: string, end: TextStyle } {
+    const { runs, end } = parseRich(line, start)
+    let html = ''
+    for (const r of runs) {
+        const st = r.style
+        const color = st.color ? BEDROCK_COLORS[st.color] : base
+        const style = `color:${color};${st.bold ? 'font-weight:bold;' : ''}${st.italic ? 'font-style:italic;' : ''}`
+        for (const ch of r.text) {
+            const shown = st.obfuscated && ch !== ' ' ? OBF[Math.floor(Math.random() * OBF.length)] : ch
+            const w = (charWidth(ch) + (st.bold ? BOLD_EXTRA : 0)) * px
+            html += `<span style="${style}display:inline-block;width:${w}px;text-align:center;overflow:visible">${ch === ' ' ? '&nbsp;' : esc(shown)}</span>`
+        }
     }
-    return out || '&#8203;'
+    return { html: html || '&#8203;', end }
 }
 
 export function mountPreview(el: HTMLElement, options: PreviewOptions): Preview {
@@ -168,7 +179,9 @@ export function mountPreview(el: HTMLElement, options: PreviewOptions): Preview 
                 fontSize: `${GLYPH_HEIGHT * fs}px`, lineHeight: `${LINE_HEIGHT * fs}px`, whiteSpace: 'pre', textAlign: n.props.align ?? 'left',
                 textShadow: n.props.shadow ? `${fs}px ${fs}px 0 rgba(0,0,0,0.75)` : 'none', overflow: 'visible',
             })
-            d.innerHTML = (b.lines ?? []).map((l) => `<div>${lineHtml(l, rgb(n.props.color))}</div>`).join('')
+            // 样式延续到下一行（与游戏里一段文字被折成多行时一致；预折行的每行开头也补了样式码）
+            let st: TextStyle = PLAIN
+            d.innerHTML = (b.lines ?? []).map((l) => { const r = lineHtml(l, rgb(n.props.color), st, fs); st = r.end; return `<div>${r.html}</div>` }).join('')
         } else if (!outlines.value) {
             return undefined
         }

@@ -12,7 +12,7 @@ import { buildBook, FORM, T, TEXTURE_INFO } from './toggle-book.mjs'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 const outRoot = path.resolve(process.argv[2] ?? path.join(here, '..', 'out'))
-const VERSION = [1, 0, 3]
+const VERSION = [1, 1, 0]
 const UUID = { bp: '6a3f0e2c-91d4-4b7a-8c55-0e1f7a2b9c31', bpScript: 'c2e8b7d1-4f6a-4c9e-a1b2-3d4e5f607182', rp: '1f9c3a7e-2b4d-4e6f-8a90-b1c2d3e4f5a6', rpRes: '7d8e9f0a-1b2c-4d3e-9f4a-5b6c7d8e9f01' }
 const NAME = 'cui_toggle_test'
 
@@ -31,7 +31,7 @@ write(path.join(rp, 'manifest.json'), {
 })
 for (const [rel, json] of Object.entries(files)) write(path.join(rp, rel), json)
 const src = path.join(here, '..', 'preview-src', 'public', 'textures')
-const FILE = { [T.book]: 'book', [T.line]: 'line', [T.rowHover]: 'row_hover', [T.arrowL]: 'arrow_left', [T.arrowLH]: 'arrow_left_hover', [T.arrowR]: 'arrow_right', [T.arrowRH]: 'arrow_right_hover', [T.tab]: 'tab', [T.tabHover]: 'tab_hover' }
+const FILE = { [T.book]: 'book', [T.line]: 'line', [T.rowHover]: 'row_hover', [T.arrowL]: 'arrow_left', [T.arrowLH]: 'arrow_left_hover', [T.arrowR]: 'arrow_right', [T.arrowRH]: 'arrow_right_hover', [T.tab]: 'tab', [T.tabHover]: 'tab_hover', [T.ruler]: 'ruler' }
 for (const [tex, file] of Object.entries(FILE)) {
     fs.mkdirSync(path.join(rp, path.dirname(tex)), { recursive: true })
     fs.copyFileSync(path.join(src, `${file}.png`), path.join(rp, `${tex}.png`))
@@ -68,10 +68,21 @@ function info(player, id) {
     return lines.join('\\n')
 }
 
+/** 运行期长文本（按钮 5）：玩家名 + 背包物品清单（带颜色，长度不固定） */
+function inventoryText(player) {
+    const inv = player.getComponent('minecraft:inventory')?.container
+    const counts = new Map()
+    if (inv) for (let i = 0; i < inv.size; i++) { const it = inv.getItem(i); if (it) counts.set(it.typeId, (counts.get(it.typeId) ?? 0) + it.amount) }
+    // 米黄纸上用深色：物品名深灰、数量黑、玩家名金、说明深绿
+    const list = [...counts].map(([id, n]) => '§8' + id.replace('minecraft:', '') + ' §0×' + n).join('§8、')
+    return '§6' + player.name + '§r 的背包（' + counts.size + ' 种物品）：\\n' + (list || '§8背包是空的') + '\\n§2这段文字由脚本在运行期生成，长度不固定，由引擎负责折行。'
+}
+
 function open(player) {
     const form = new ActionFormData().title(TITLE).body('CUI;|' + info(player, 'minecraft:diamond_sword') + '\\n§8（这段来自表单正文）')
     SLOT_ITEMS.forEach((id, i) => form.button('s' + i + '|' + info(player, id)))
     form.button('close|')
+    form.button('txt|' + inventoryText(player))
     form.show(player).then((r) => {
         if (r.canceled) player.sendMessage('§7[CUI] 表单关闭（Esc）：' + (r.cancelationReason ?? ''))
         else player.sendMessage('§a[CUI] 服务端收到表单按钮 ' + r.selection + (r.selection === 4 ? '（右上角 ×）' : ''))
