@@ -12,7 +12,7 @@ import { buildBook, ARROWS, FORM, T, TEXTURE_INFO } from './toggle-book.mjs'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 const outRoot = path.resolve(process.argv[2] ?? path.join(here, '..', 'out'))
-const VERSION = [1, 6, 0]
+const VERSION = [1, 7, 0]
 const UUID = { bp: '6a3f0e2c-91d4-4b7a-8c55-0e1f7a2b9c31', bpScript: 'c2e8b7d1-4f6a-4c9e-a1b2-3d4e5f607182', rp: '1f9c3a7e-2b4d-4e6f-8a90-b1c2d3e4f5a6', rpRes: '7d8e9f0a-1b2c-4d3e-9f4a-5b6c7d8e9f01' }
 const NAME = 'cui_toggle_test'
 
@@ -39,16 +39,19 @@ for (const [tex, file] of Object.entries(FILE)) {
     fs.mkdirSync(path.join(rp, path.dirname(tex)), { recursive: true })
     fs.copyFileSync(path.join(src, `${file}.png`), path.join(rp, `${tex}.png`))
 }
+// DDUI 实验：CustomForm.image(src, pack) 只能引用指定资源包里的图片 ⇒ 物品图标复制进本包
+fs.mkdirSync(path.join(rp, 'textures/cui_test/items'), { recursive: true })
+for (const f of ['diamond_sword', 'diamond', 'stick', 'book_normal']) fs.copyFileSync(path.join(src, `${f}.png`), path.join(rp, `textures/cui_test/items/${f}.png`))
 
 // 行为包：脚本打开表单
 write(path.join(bp, 'manifest.json'), {
     format_version: 2,
     header: { name: 'CUI 开关翻页测试 BP', description: 'CUI toggle paging test', uuid: UUID.bp, version: VERSION, min_engine_version: [1, 21, 0] },
     modules: [{ type: 'script', language: 'javascript', uuid: UUID.bpScript, version: VERSION, entry: 'scripts/main.js' }],
-    dependencies: [{ module_name: '@minecraft/server', version: '2.0.0' }, { module_name: '@minecraft/server-ui', version: '2.0.0' }, { uuid: UUID.rp, version: VERSION }],
+    dependencies: [{ module_name: '@minecraft/server', version: '2.0.0' }, { module_name: '@minecraft/server-ui', version: '2.2.0' }, { uuid: UUID.rp, version: VERSION }],
 })
 write(path.join(bp, 'scripts', 'main.js'), `import { InputPermissionCategory, ItemStack, system, world } from '@minecraft/server'
-import { ActionFormData } from '@minecraft/server-ui'
+import { ActionFormData, CustomForm, ObservableBoolean, ObservableString } from '@minecraft/server-ui'
 
 // 与界面约定：标题、正文前缀 CUI;|、按钮 0–3 = 格子 s0|…s3|（运行期数据跟在 | 后面）、按钮 4 = close|
 const TITLE = ${JSON.stringify(FORM.title)}
@@ -116,13 +119,67 @@ function open(player, page = 'home', dir = 'right') {
     })
 }
 
+// ── DDUI 翻页实验：CustomForm + Observable。按钮不关表单，点了只改可观察数据 ⇒「下一页」一直是同一个控件，
+//    鼠标不动也能连点（与原生界面同一个道理）。外观由 Ore UI 画，不能用 JSON UI 改。
+const RP_UUID = ${JSON.stringify(UUID.rp)}
+const DD_PAGES = [
+    { title: '第 1 页 · 钻石剑', img: 'textures/cui_test/items/diamond_sword.png', tip: '钻石剑：耐久 1561', body: '这是 DDUI（数据驱动界面）的翻页实验。上面的「下一页」按钮一直是同一个控件：点了以后脚本只改写标题、图片与正文，表单不关闭、不重开。\\n\\n请把鼠标停在「下一页」上不动，连续点击。' },
+    { title: '第 2 页 · 钻石', img: 'textures/cui_test/items/diamond.png', tip: '钻石', body: '图片可以带提示框（把鼠标停在图标上），也可以点击。\\n\\nDDUI 是新的 Ore UI 画的：布局是从上到下的一列，外观（颜色、底图、边距）要到 1.26.60 预览版才开始支持资源包定制。' },
+    { title: '第 3 页 · 木棍', img: 'textures/cui_test/items/stick.png', tip: '木棍', body: '最后一页：「下一页」变成禁用（不隐藏，位置不变）。\\n\\n对比 JSON UI 的书：外观完全自定义，但翻页箭头要走服务端（关表单再开）。' },
+]
+function openDDUI(player) {
+    let k = 0
+    const p0 = DD_PAGES[0]
+    const title = new ObservableString(p0.title), body = new ObservableString(p0.body), img = new ObservableString(p0.img), tip = new ObservableString(p0.tip)
+    const noPrev = new ObservableBoolean(true), noNext = new ObservableBoolean(false)
+    const go = (d) => {
+        k = Math.max(0, Math.min(DD_PAGES.length - 1, k + d))
+        const p = DD_PAGES[k]
+        title.setData(p.title); body.setData(p.body); img.setData(p.img); tip.setData(p.tip)
+        noPrev.setData(k === 0); noNext.setData(k === DD_PAGES.length - 1)
+    }
+    // 翻页按钮放最上面：正文长短不一，放下面会把按钮挤到不同位置；最后一页用「禁用」不用「隐藏」，位置不变
+    new CustomForm(player, 'CUI · DDUI 翻页实验')
+        .button('下一页 →', () => go(1), { disabled: noNext })
+        .button('← 上一页', () => go(-1), { disabled: noPrev })
+        .divider()
+        .header(title)
+        .image(img, RP_UUID, { tooltip: tip, width: 32 })
+        .label(body)
+        .closeButton()
+        .show()
+        .then((reason) => player.sendMessage('§7[CUI] DDUI 表单关闭：' + reason))
+        .catch((e) => player.sendMessage('§c[CUI] DDUI 出错：' + e))
+}
+
 world.afterEvents.itemUse.subscribe((e) => {
-    if (e.itemStack.typeId === 'minecraft:book' && e.source.typeId === 'minecraft:player') open(e.source)
+    if (e.source.typeId !== 'minecraft:player') return
+    if (e.itemStack.typeId === 'minecraft:book') open(e.source)
+    else if (e.itemStack.typeId === 'minecraft:writable_book') openDDUI(e.source)
 })
 system.afterEvents.scriptEventReceive.subscribe((e) => {
     if (e.id === 'cui:open' && e.sourceEntity?.typeId === 'minecraft:player') open(e.sourceEntity)
+    if (e.id === 'cui:ddui' && e.sourceEntity?.typeId === 'minecraft:player') openDDUI(e.sourceEntity)
 })
 `)
+
+// 生成的脚本：用 TypeScript 做语法与 API 检查（真机前先挡住错误；node --check 对未闭合的字符串也返回 0，不可靠）
+{
+    const tc = path.join(outRoot, '.typecheck')
+    const types = process.env.CUI_MC_TYPES
+    if (types && fs.existsSync(types)) {
+        fs.rmSync(tc, { recursive: true, force: true }); fs.mkdirSync(tc, { recursive: true })
+        fs.cpSync(types, path.join(tc, 'node_modules'), { recursive: true })
+        fs.copyFileSync(path.join(bp, 'scripts', 'main.js'), path.join(tc, 'main.js'))
+        fs.writeFileSync(path.join(tc, 'tsconfig.json'), JSON.stringify({ compilerOptions: { allowJs: true, checkJs: true, noEmit: true, target: 'ES2022', module: 'ESNext', moduleResolution: 'bundler', skipLibCheck: true }, files: ['main.js'] }))
+        try { execSync(`${JSON.stringify(path.join(here, '..', 'node_modules', '.bin', 'tsc'))} -p tsconfig.json`, { cwd: tc, stdio: 'pipe' }); console.log('脚本类型检查：通过') }
+        catch (e) { console.error('脚本类型检查失败：\n' + e.stdout); process.exit(1) }
+    } else {
+        // 没有类型包时至少做语法检查（ESM 方式解析）
+        try { execSync(`node --input-type=module --check < ${JSON.stringify(path.join(bp, 'scripts', 'main.js'))}`, { stdio: 'pipe', shell: '/bin/bash' }); console.log('脚本语法检查：通过（未做类型检查：设 CUI_MC_TYPES 指向含 @minecraft/server、@minecraft/server-ui 的 node_modules）') }
+        catch (e) { console.error('脚本语法检查失败：\n' + e.stderr); process.exit(1) }
+    }
+}
 
 const mcaddon = path.join(outRoot, `${NAME}.mcaddon`)
 fs.rmSync(mcaddon, { force: true })
