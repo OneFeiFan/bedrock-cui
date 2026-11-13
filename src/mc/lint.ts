@@ -68,6 +68,12 @@ export function lint(roots: RNode[], options: LintOptions = {}): LintIssue[] {
             const m = measureText(n.props.text, n.props.fontScale ?? 1, n.props.size[0])
             if (m.height > n.props.size[1]) push('text-overflow', 'warning', n, `文字折行后约 ${m.lines.length} 行（${m.height} 像素高），放不进 ${n.props.size[1]} 像素高的文字框；高度写 'default' 或用 paginate() 分页`)
         }
+        // stack 交叉方向写 %c：真机是子控件之和（提示框比文字宽很多），贴合最宽的子控件要用 %cm
+        if (n.type === 'stack') {
+            const vertical = (n.props.orientation ?? 'vertical') === 'vertical'
+            const cross = n.props.size?.[vertical ? 0 : 1]
+            if (typeof cross === 'string' && /%c(?!m)/.test(cross)) push('stack-cross-c', 'warning', n, `${vertical ? '纵向' : '横向'} stack 的${vertical ? '宽' : '高'}写了 ${cross}：交叉方向的 %c 是子控件之和（真机），要贴合最${vertical ? '宽' : '高'}的子控件请用 %cm`)
+        }
         // collection_index 不是合法属性（sapdon-ui.md §7.3：Unknown property）
         if (n.props.raw && 'collection_index' in n.props.raw) push('collection-index', 'error', n, 'collection_index 不是合法的 UI 属性（引擎报 Unknown property）；绑定集合项请用 FormButton / collection_item')
         // 尺寸表达式能否解析

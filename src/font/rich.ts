@@ -10,7 +10,7 @@
  * 每一行开头**补上当前样式码**——无论引擎会不会把颜色延续到下一行，显示都对。行宽留出 hang 像素给挂在行尾的标点，
  * 保证引擎不会再折一次。
  */
-import { BOLD_EXTRA, LINE_HEIGHT, charWidth } from './metrics.js'
+import { LINE_HEIGHT, boldExtra, charWidth, usesUnifont } from './metrics.js'
 
 /** 基岩版颜色（前 16 个与 Java 相同；§g 起为基岩版独有；§v 树脂色为资料值，未在真机核对） */
 export const BEDROCK_COLORS: Record<string, string> = {
@@ -65,10 +65,10 @@ export function styleCodes(style: TextStyle): string {
     return (style.color ? `§${style.color}` : '') + (style.bold ? '§l' : '') + (style.italic ? '§o' : '') + (style.obfuscated ? '§k' : '')
 }
 
-/** 富文本宽度（像素）：§ 码不占宽度，粗体每字加 BOLD_EXTRA */
-export function richWidth(text: string, scale = 1, start: TextStyle = PLAIN): number {
+/** 富文本宽度（像素）：§ 码不占宽度，粗体加 boldExtra；`unifont` 缺省按这段文字的内容决定 */
+export function richWidth(text: string, scale = 1, start: TextStyle = PLAIN, unifont = usesUnifont(text)): number {
     let w = 0
-    for (const r of parseRich(text, start).runs) for (const ch of r.text) w += charWidth(ch) + (r.style.bold ? BOLD_EXTRA : 0)
+    for (const r of parseRich(text, start).runs) for (const ch of r.text) w += charWidth(ch, unifont) + (r.style.bold ? boldExtra(ch, unifont) : 0)
     return w * scale
 }
 
@@ -102,6 +102,8 @@ export interface WrapOptions {
     autoSpace?: boolean
     /** 给挂在行尾的标点留的像素（缺省 8：保证引擎不会再折一次） */
     hang?: number
+    /** 字体（缺省按整段内容决定：含非 ASCII ⇒ Unifont） */
+    unifont?: boolean
 }
 
 /**
@@ -118,6 +120,9 @@ export function wrapDetailed(text: string, width: number, options: WrapOptions =
     const target = width - (options.hang ?? 8) * scale
     const kinsoku = options.kinsoku ?? true
     const src = (options.autoSpace ?? true) ? autoSpace(text) : text
+    // 字体由整段内容决定（含汉字 ⇒ 整段 Unifont，英文也按 Unifont 的字距）
+    const uni = options.unifont ?? usesUnifont(src)
+    const rw = (s: string, st: TextStyle) => richWidth(s, scale, st, uni)
     const out: string[] = []
     let style = PLAIN
     for (const para of src.split('\n')) {
@@ -135,7 +140,7 @@ export function wrapDetailed(text: string, width: number, options: WrapOptions =
         for (const tok of tokens) {
             if (tok.startsWith('§') && tok.length === 2) { pendingCodes += tok; style = applyCode(style, tok[1]); continue }
             const tokStyle = style
-            const tw = richWidth(tok, scale, tokStyle)
+            const tw = rw(tok, tokStyle)
             if (!empty && w + tw > target && !/^\s+$/.test(tok)) {
                 if (kinsoku && [...tok].length === 1 && NO_LINE_START.includes(tok)) {
                     line += pendingCodes + tok; pendingCodes = ''; flush(); continue
@@ -147,7 +152,7 @@ export function wrapDetailed(text: string, width: number, options: WrapOptions =
                 flush()
                 const lead = carry + pendingCodes + tok.replace(/^\s+/, '')
                 line += lead
-                w = richWidth(carry, scale, tokStyle) + tw
+                w = rw(carry, tokStyle) + tw
                 pendingCodes = ''
                 empty = false
                 continue
@@ -158,7 +163,7 @@ export function wrapDetailed(text: string, width: number, options: WrapOptions =
                 // 超长的词：逐字断开
                 line += pendingCodes; pendingCodes = ''
                 for (const ch of tok) {
-                    const cw = richWidth(ch, scale, tokStyle)
+                    const cw = rw(ch, tokStyle)
                     if (!empty && w + cw > target) flush()
                     line += ch; w += cw; empty = false
                 }

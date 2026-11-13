@@ -3,7 +3,8 @@
  *
  *   位置   = 父矩形上的 anchor_from 点 + offset − 自身的 anchor_to 点（缺省都是 center）
  *   尺寸   = 见 units.ts（default / % / %c / %cm / %x / %y / fill / 混合表达式）
- *   stack  = 沿排列方向依次摆放，交叉方向按锚点；visible=false 的子控件不占位置；fill 平分剩余空间
+ *   stack  = 沿排列方向依次摆放，交叉方向按锚点；visible=false 的子控件不占位置；fill 平分剩余空间；
+ *            %c 在两个方向上都是子控件之和（真机），贴合最宽的子控件用 %cm
  *   grid   = 格子 = 网格尺寸 / 行列数；子控件按 gridPos（缺省按序号行优先）落格，在格子里按锚点
  *   layer  = 相对父控件累加；同层按文档顺序
  *   clip   = clips_children：子孙裁剪到本控件矩形
@@ -56,6 +57,8 @@ export interface Box {
     clip?: Rect
     /** 按钮 / 开关状态子树里的控件（状态名） */
     state?: string
+    /** 能否交互（按钮 / 开关；禁用的不参与鼠标判定） */
+    enabled?: boolean
     scope: Scope
     // image
     texture?: string
@@ -114,10 +117,18 @@ class Engine {
         const mouse = this.env.buttonState?.(n.path) ?? 'default'
         if (n.type === 'button') return mouse === 'default' || n.slots[mouse]?.length ? mouse : 'default'
         if (n.type === 'toggle') {
+            if (!this.enabled(n)) return n.props.lockedVisible === false ? '__locked_empty' : (this.env.toggleChecked?.(n) ? 'checked' : 'unchecked')
             const base = this.env.toggleChecked?.(n) ? 'checked' : 'unchecked'
             return mouse !== 'default' && n.slots[`${base}_hover`]?.length ? `${base}_hover` : base
         }
         return undefined
+    }
+
+    /** 能否交互（按钮 / 开关） */
+    enabled(n: RNode): boolean {
+        const v = n.props.enabled
+        if (v === undefined) return true
+        return isExpr(v) ? asBool(evalExpr(v, this.evalEnv({}))) : Boolean(v)
     }
 
     /** 子控件（含按钮 / 开关当前状态的子树） */
@@ -175,9 +186,10 @@ class Engine {
         const sizes = kids.map((c) => this.size(c, w, h, s))
         const maxW = Math.max(0, ...sizes.map((z) => z[0])), maxH = Math.max(0, ...sizes.map((z) => z[1]))
         if (n.type === 'stack') {
-            const vertical = (n.props.orientation ?? 'vertical') === 'vertical'
-            const sum = sizes.reduce((a, z) => a + (vertical ? z[1] : z[0]), 0)
-            return vertical ? [maxW, sum, maxW, maxH] : [sum, maxH, maxW, maxH]
+            // 真机（2026-11，提示框过宽）：stack 的 %c 在**两个方向上都是子控件之和**——交叉方向也求和；
+            // 要贴合最宽 / 最高的子控件请用 %cm
+            const sumW = sizes.reduce((a, z) => a + z[0], 0), sumH = sizes.reduce((a, z) => a + z[1], 0)
+            return [sumW, sumH, maxW, maxH]
         }
         return [maxW, maxH, maxW, maxH]
     }
@@ -196,6 +208,7 @@ class Engine {
     finish(n: RNode, rect: Rect, scope: Scope, z: number, clip: Rect | undefined): Box {
         const myZ = z + (n.props.layer ?? 0)
         const box: Box = { node: n, rect, z: myZ, order: this.order++, clip, scope, children: [] }
+        if (n.type === 'button' || n.type === 'toggle') box.enabled = this.enabled(n)
         const childClip = n.props.clip ? intersect(clip, rect) : clip
         const s = this.childScope(n, scope)
         if (n.type === 'image') {

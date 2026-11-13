@@ -30,6 +30,8 @@ export interface LayoutOptions {
     alpha?: number
     /** clips_children */
     clip?: boolean
+    /** 能否交互（按钮 / 开关；可写表达式 → #enabled 绑定）。禁用的开关显示 locked 态 */
+    enabled?: Dyn<boolean>
     /** 在 grid 里的格位 [列, 行] */
     gridPos?: [number, number]
     /** JSON UI 变量（$name: value） */
@@ -85,6 +87,8 @@ export interface ToggleOptions extends LayoutOptions {
     defaultSelected?: number
     /** 非单选时的初始状态 */
     defaultState?: boolean
+    /** 禁用（locked）时是否照常显示（缺省 true：沿用普通态的样子；false：什么都不画） */
+    lockedVisible?: boolean
 }
 export interface CollectionItemOptions extends LayoutOptions { collection: string, index: number }
 export interface RawOptions extends LayoutOptions { json: Record<string, unknown> }

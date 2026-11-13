@@ -21,6 +21,8 @@ const preview = mountPreview(document.getElementById('app')!, {
     root: book, viewport: [300, 190], scale: 3, textures,
     formText: signal(FORM.body), formButtons: signal(FORM.buttons), title: signal(FORM.title),
     onFormButton: (i) => console.log('表单按钮', i, '（真机里这会关掉表单，服务端收到选择）'),
+    // 像素字体（scripts/fetch-fonts.mjs 准备）：照游戏画文字
+    fonts: { unifont: './font/unifont.hex.gz', ascii: './font/ascii.png' },
 })
 mountDevtools(document.getElementById('devtools')!, preview)
 ;(window as any).__cui = { preview }

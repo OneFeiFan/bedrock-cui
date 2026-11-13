@@ -12,8 +12,11 @@ import { effect, signal, type Signal } from '../core/reactivity.js'
 import { drawOrder, layout, type Box, type Rect, type TextureInfo } from '../layout/engine.js'
 import { compileNamespace } from '../mc/compile.js'
 import type { LintIssue } from '../mc/lint.js'
-import { BOLD_EXTRA, GLYPH_HEIGHT, LINE_HEIGHT, charWidth } from '../font/metrics.js'
+import { GLYPH_HEIGHT, LINE_HEIGHT, boldExtra, charWidth, usesUnifont } from '../font/metrics.js'
 import { BEDROCK_COLORS, PLAIN, parseRich, type TextStyle } from '../font/rich.js'
+import { drawText, loadPixelFonts, type PixelFonts } from './pixelFont.js'
+
+export { loadPixelFonts, drawText, type PixelFonts } from './pixelFont.js'
 
 export interface PreviewTexture extends TextureInfo {
     /** 图片地址 */
@@ -35,6 +38,11 @@ export interface PreviewOptions {
     translate?: (key: string) => string
     /** 叠加显示每个控件的边框 */
     outlines?: Signal<boolean>
+    /**
+     * 像素字体（照游戏画文字）：Unifont（.hex / .hex.gz）与 Minecraft 默认字体 ascii.png 的地址。
+     * 由 scripts/fetch-fonts.mjs 准备；不给或加载失败就退回系统字体。
+     */
+    fonts?: { unifont?: string, ascii?: string }
 }
 
 export interface Preview {
@@ -70,7 +78,7 @@ const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;')
  * **逐字定位**：每个字占的宽度严格按字宽表（与排版引擎一致），字形居中放在自己的格子里——
  * 系统字体的字形宽度与游戏不同（等宽字体里 i 和 W 一样宽），不逐字定位的话预览里的折行位置会对不上。
  */
-function lineHtml(line: string, base: string, start: TextStyle, px: number): { html: string, end: TextStyle } {
+function lineHtml(line: string, base: string, start: TextStyle, px: number, unifont: boolean): { html: string, end: TextStyle } {
     const { runs, end } = parseRich(line, start)
     let html = ''
     for (const r of runs) {
@@ -79,7 +87,7 @@ function lineHtml(line: string, base: string, start: TextStyle, px: number): { h
         const style = `color:${color};${st.bold ? 'font-weight:bold;' : ''}${st.italic ? 'font-style:italic;' : ''}`
         for (const ch of r.text) {
             const shown = st.obfuscated && ch !== ' ' ? OBF[Math.floor(Math.random() * OBF.length)] : ch
-            const w = (charWidth(ch) + (st.bold ? BOLD_EXTRA : 0)) * px
+            const w = (charWidth(ch, unifont) + (st.bold ? boldExtra(ch, unifont) : 0)) * px
             html += `<span style="${style}display:inline-block;width:${w}px;text-align:center;overflow:visible">${ch === ' ' ? '&nbsp;' : esc(shown)}</span>`
         }
     }
@@ -96,6 +104,8 @@ export function mountPreview(el: HTMLElement, options: PreviewOptions): Preview 
     const hover = signal<string | undefined>(undefined)
     const pressed = signal<string | undefined>(undefined)
     const textures = options.textures ?? {}
+    const pixel = signal<PixelFonts | undefined>(undefined)
+    if (options.fonts) void loadPixelFonts(options.fonts).then((f) => { if (f.unifont || f.ascii) pixel.value = f })
     const rootEl = (): Element => (typeof options.root === 'function' ? (options.root as () => Element)() : options.root)
     let nodes: RNode[] = []
     let toggleByName = new Map<string, RNode>()
@@ -173,6 +183,19 @@ export function mountPreview(el: HTMLElement, options: PreviewOptions): Preview 
                 const ins = dir === 'left' ? `0 0 0 ${k * 100}%` : dir === 'right' ? `0 ${k * 100}% 0 0` : dir === 'up' ? `${k * 100}% 0 0 0` : dir === 'down' ? `0 0 ${k * 100}% 0` : `${k * 50}%`
                 d.style.clipPath = `inset(${ins})`
             }
+        } else if (n.type === 'label' && pixel.value) {
+            // 像素字体：照游戏画（画布按文字实际宽度，可能比控件宽——与游戏一样不裁剪）
+            const canvas = document.createElement('canvas')
+            const lines = b.lines ?? []
+            const ok = drawText(canvas, pixel.value, {
+                lines, color: (n.props.color ?? [1, 1, 1]) as [number, number, number], shadow: !!n.props.shadow,
+                unifont: usesUnifont(lines.join('\n')), align: n.props.align ?? 'left', width: b.rect.w, scale, fontScale: n.props.fontScale ?? 1,
+            })
+            if (ok) {
+                Object.assign(canvas.style, { width: `${canvas.width}px`, height: `${canvas.height}px`, imageRendering: 'pixelated', display: 'block' })
+                d.style.width = `${canvas.width}px`; d.style.height = `${canvas.height}px`
+                d.appendChild(canvas)
+            }
         } else if (n.type === 'label') {
             const fs = (n.props.fontScale ?? 1) * scale
             Object.assign(d.style, {
@@ -181,7 +204,8 @@ export function mountPreview(el: HTMLElement, options: PreviewOptions): Preview 
             })
             // 样式延续到下一行（与游戏里一段文字被折成多行时一致；预折行的每行开头也补了样式码）
             let st: TextStyle = PLAIN
-            d.innerHTML = (b.lines ?? []).map((l) => { const r = lineHtml(l, rgb(n.props.color), st, fs); st = r.end; return `<div>${r.html}</div>` }).join('')
+            const uni = usesUnifont((b.lines ?? []).join('\n'))
+            d.innerHTML = (b.lines ?? []).map((l) => { const r = lineHtml(l, rgb(n.props.color), st, fs, uni); st = r.end; return `<div>${r.html}</div>` }).join('')
         } else if (!outlines.value) {
             return undefined
         }
@@ -191,7 +215,7 @@ export function mountPreview(el: HTMLElement, options: PreviewOptions): Preview 
 
     const render = effect(() => {
         // 读信号 → 建立依赖
-        void formText.value; void formButtons.value; void title.value; void outlines.value; void groups.value; void flags.value
+        void formText.value; void formButtons.value; void title.value; void outlines.value; void groups.value; void flags.value; void pixel.value
         const st = { hover: hover.value, pressed: pressed.value }
         current = layout(tree(), {
             viewport, data: data as never, translate: options.translate,
@@ -208,6 +232,7 @@ export function mountPreview(el: HTMLElement, options: PreviewOptions): Preview 
         let found: Box | undefined
         for (const b of drawOrder(current)) {
             if (b.node.type !== 'button' && b.node.type !== 'toggle') continue
+            if (b.enabled === false) continue
             const r = b.rect
             const c = b.clip
             if (x < r.x || y < r.y || x >= r.x + r.w || y >= r.y + r.h) continue

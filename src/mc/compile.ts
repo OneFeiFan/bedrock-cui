@@ -21,6 +21,7 @@ const THROUGH_TOGGLE = '\u0000toggle:'
 /** 可写成表达式的属性 → 绑定的目标属性名；text / texture 还要把属性本身写成 '#…' */
 const DYNAMIC: Record<string, { target: string, prop?: string }> = {
     visible: { target: '#visible' },
+    enabled: { target: '#enabled' },
     text: { target: '#text', prop: 'text' },
     texture: { target: '#texture', prop: 'texture' },
     clipRatio: { target: '#clip_ratio', prop: 'clip_ratio' },
@@ -47,6 +48,7 @@ class Compiler {
         if (p.clip) out.clips_children = true
         if (p.gridPos) out.grid_position = p.gridPos
         if (p.visible !== undefined && !isExpr(p.visible)) out.visible = p.visible
+        if (p.enabled !== undefined && !isExpr(p.enabled)) out.enabled = p.enabled
         for (const [k, v] of Object.entries(p.variables ?? {})) vars[k.startsWith('$') ? k : `$${k}`] = v
 
         // 动态属性 → 绑定
@@ -130,8 +132,9 @@ class Compiler {
                 out.controls = [
                     this.state('unchecked', s.unchecked, inCollection), this.state('checked', s.checked, inCollection),
                     this.state('unchecked_hover', hoverOf('unchecked'), inCollection), this.state('checked_hover', hoverOf('checked'), inCollection),
-                    this.state('unchecked_locked', s.unchecked, inCollection), this.state('checked_locked', s.checked, inCollection),
-                    this.state('unchecked_locked_hover', s.unchecked, inCollection), this.state('checked_locked_hover', s.checked, inCollection),
+                    // 禁用（locked）态：缺省沿用普通态；lockedVisible: false 则什么都不画
+                    this.state('unchecked_locked', p.lockedVisible === false ? [] : s.unchecked, inCollection), this.state('checked_locked', p.lockedVisible === false ? [] : s.checked, inCollection),
+                    this.state('unchecked_locked_hover', p.lockedVisible === false ? [] : s.unchecked, inCollection), this.state('checked_locked_hover', p.lockedVisible === false ? [] : s.checked, inCollection),
                 ]
                 break
             }

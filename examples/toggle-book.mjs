@@ -101,7 +101,8 @@ class ItemSlot extends Panel {
             const holder = new CollectionItem({ collection: 'form_buttons', index, size: [size, size], layer: 30 })
             const payload = form.buttonText.minus(tag)
             const tip = new Image({ texture: T.purple, size: ['100%c + 8px', '100%c + 8px'], anchorFrom: 'top_right', anchorTo: 'top_left', offset: [2, -2] })
-            tip.add(new Stack({ size: ['100%c', '100%c'], children: [
+            // 宽用 %cm：纵向 stack 交叉方向的 %c 是子控件之和（真机：提示框比文字宽很多）
+            tip.add(new Stack({ size: ['100%cm', '100%c'], children: [
                 new Label({ text: name, color: WHITE, shadow: true, anchor: 'left_middle' }),
                 new Label({ text: payload, color: GRAY, shadow: true, anchor: 'left_middle', visible: payload.isEmpty().not() }),
             ] }))
@@ -146,7 +147,8 @@ export function buildBook() {
         new RowLink(pages, 'trich', { icon: T.name_tag, text: '富文本', y: 38 }),
         new RowLink(pages, 'truler', { icon: T.map, text: '字宽标尺', y: 56 }),
         new RowLink(pages, 'tlong0', { icon: T.writable, text: '长文本分页', y: 74 }),
-        new RowLink(pages, 'trun', { icon: T.emerald, text: '运行期长文本', y: 92 })))
+        new RowLink(pages, 'trun', { icon: T.emerald, text: '运行期长文本', y: 92 }),
+        new RowLink(pages, 'tnav', { icon: T.sword, text: '翻页手感（A/B）', y: 110 })))
     home.add(new Side('R').add(new Title('目录'),
         new RowLink(pages, 'sword', { icon: T.sword, text: '钻石剑', y: 20 }),
         new RowLink(pages, 'diamond', { icon: T.diamond, text: '钻石', y: 38 }),
@@ -216,8 +218,9 @@ export const LONG = [
 ].join('\n')
 
 /** 字宽标尺：每行一串字符 + 下面一把刻度尺（每 10 像素一根长刻度）；右边灰字是 CUI 的估计宽度 */
-const RULER_ROWS_L = ['iiiiiiiiii', 'llllllllll', 'tttttttttt', 'ffffffffff', 'aaaaaaaaaa', 'WWWWWWWWWW', '0123456789', '@@@@@@@@@@']
-const RULER_ROWS_R = ['中中中中中中中中中中', '，，，，，，，，，，', '。。。。。。。。。。', '§lWWWWWWWWWW', '§l中中中中中中中中中', 'a a a a a a', 'Esc 关闭；左键', '§oitalic 斜体']
+// 左页纯 ASCII（Minecraft 字体），右页含汉字（整段 Unifont）；右边灰字是 CUI 按规则算的宽度
+const RULER_ROWS_L = ['Il!.,;:|', 'kfkf<><>', '[](){}"*', '~~~~~~~~', 'Hello World', '§lBold Text', 'mmmmmmmmmm', '#$%&+=?/']
+const RULER_ROWS_R = ['钻石剑钻石剑钻石剑钻', 'abc 中文 xyz', '中一二三十口日', '，。、；：！？', '「引号」（括号）', '§l粗体钻石剑', '背包里有 12 个', '§oitalic 斜体']
 
 class RulerRow extends Panel {
     constructor(text, y) {
@@ -238,7 +241,46 @@ class Swatches extends Panel {
     }
 }
 
-/** 文本测试的各页：折行对比、富文本、字宽标尺、长文本分页、运行期长文本 */
+/** 小箭头（翻页手感测试用） */
+class MiniArrow extends Toggle {
+    constructor(pages, key, dir, extra = {}) {
+        super({ ...pages.toggleOptions(key), size: [28, 18], anchor: 'top_left', offset: [dir === 'left' ? 4 : 84, 112], ...extra })
+        pages.attach(key, this)
+        const art = (hover) => new Image({ texture: dir === 'left' ? (hover ? T.arrowLH : T.arrowL) : (hover ? T.arrowRH : T.arrowR), size: [20, 12] })
+        this.unchecked.add(art(false)); this.checked.add(art(false))
+        this.uncheckedHover.add(art(true)); this.checkedHover.add(art(true))
+    }
+}
+
+/**
+ * 翻页手感：点了箭头翻页后，鼠标不动再点，按钮没反应（真机）——游戏只在鼠标移动时重新判定光标下的控件。
+ *   A：每页自己的箭头（显示 / 隐藏切换，现状）
+ *   B：三页的箭头始终都在、叠在同一位置，只有当前页的那个启用（禁用的什么都不画）
+ */
+function buildNavTest(sideA, sideB) {
+    const mini = (group, letter) => {
+        const p = new Pages({ group, start: `${letter}0`, size: [116, 140], anchor: 'top_left', offset: [0, 20] })
+        for (let k = 0; k < 3; k++) p.page(`${letter}${k}`).add(new Label({ text: `§l${letter.toUpperCase()}${k + 1}`, color: TITLE, fontScale: 3, anchor: 'top_middle', offset: [0, 40] }))
+        return p
+    }
+    const a = mini('nava', 'a')
+    for (let k = 0; k < 3; k++) {
+        if (k > 0) a.page(`a${k}`).add(new MiniArrow(a, `a${k - 1}`, 'left'))
+        if (k < 2) a.page(`a${k}`).add(new MiniArrow(a, `a${k + 1}`, 'right'))
+    }
+    sideA.add(new Title('A：显示切换'), new Body('§8鼠标停在右箭头上不动，连点', 20), a)
+    const b = mini('navb', 'b')
+    const arrows = []
+    for (let k = 0; k < 3; k++) {
+        if (k > 0) arrows.push([k, b.add(new MiniArrow(b, `b${k - 1}`, 'left', { lockedVisible: false })).children.at(-1)])
+        if (k < 2) arrows.push([k, b.add(new MiniArrow(b, `b${k + 1}`, 'right', { lockedVisible: false })).children.at(-1)])
+    }
+    // 箭头都建完再设启用条件（showing() 要包含所有入口）
+    for (const [k, arrow] of arrows) arrow.set({ enabled: b.showing(`b${k}`) })
+    sideB.add(new Title('B：启用切换'), new Body('§8同上：看哪一边不动鼠标也能连续翻页', 20), b)
+}
+
+/** 文本测试的各页：折行对比、富文本、字宽标尺、长文本分页、运行期长文本、翻页手感 */
 function buildTextPages(pages) {
     const chain = ['twrap', 'trich', 'truler']
     // 折行对比
@@ -276,6 +318,12 @@ function buildTextPages(pages) {
     clipped.add(new CollectionItem({ collection: 'form_buttons', index: 5, size: [110, 10], anchor: 'top_left' })
         .add(new Label({ text: form.buttonText.minus('txt|'), color: BODY, size: [110, 'default'], anchor: 'top_left' })))
     run.add(new Side('R').add(new Title('运行期：裁剪到 50 高'), clipped, new Body('§8上面的框只有 50 像素高，超出的部分被裁掉。', 80)))
+    // 翻页手感
+    chain.push('tnav')
+    const nav = pages.page('tnav')
+    const sideA = new Side('L'), sideB = new Side('R')
+    buildNavTest(sideA, sideB)
+    nav.add(sideA, sideB)
     // 文本页之间的箭头
     chain.forEach((key, i) => {
         const page = pages.page(key)

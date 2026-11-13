@@ -91,3 +91,20 @@ test('静态检查：开关里读外层集合项的数据（真机读不到）�
     t2.uncheckedHover.add(new CollectionItem({ collection: 'form_buttons', index: 0, size: [20, 20] }).add(new Label({ text: form.buttonText.minus('s0|') })))
     assert.deepEqual(compileNamespace('t', { root: new Panel({ children: [t2] }) }).issues, [])
 })
+
+test('启用 / 禁用：enabled 表达式 → #enabled 绑定；禁用的开关显示 locked 态（lockedVisible: false 则不画）；预览不参与鼠标判定', async () => {
+    const { Toggle, Label, Panel, compileNamespace, finalize, layout, findBox, toggleState } = await import('../dist/index.js')
+    const t = new Toggle({ name: 'arrow', group: 'g', index: 1, size: [20, 10], enabled: toggleState('page0'), lockedVisible: false })
+    t.unchecked.add(new Label({ name: 'art', text: '→' }))
+    const { json } = compileNamespace('t', { root: new Panel({ children: [t] }) })
+    const tj = json.root.controls[0]['arrow@common.toggle']
+    assert.equal(tj.bindings.at(-1).target_property_name, '#enabled')
+    const states = Object.fromEntries(tj.controls.map((c) => Object.entries(c)[0]))
+    assert.deepEqual(states.unchecked_locked.controls, [], 'lockedVisible: false → 禁用时什么都不画')
+    assert.equal(states.unchecked.controls.length, 1)
+    const run = (on) => layout(finalize(new Panel({ size: [100, 50], children: [t.clone()] })), { viewport: [100, 50], data: (n, src) => (src.kind === 'control' ? on : '') })
+    assert.ok(findBox(run(true), 'art'))
+    assert.equal(findBox(run(true), 'arrow').enabled, true)
+    assert.equal(findBox(run(false), 'art'), undefined)
+    assert.equal(findBox(run(false), 'arrow').enabled, false)
+})

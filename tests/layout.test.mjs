@@ -1,7 +1,7 @@
 // 排版引擎：按 JSON UI 规则（锚点、尺寸单位、stack、grid、clip、layer、keep_ratio、文字、按钮态、集合项）
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { Panel, Stack, Grid, Image, Label, FormGate, FormButton, buttonPayload, finalize, layout, findBox } from '../dist/index.js'
+import { Panel, Stack, Grid, Image, Label, FormGate, FormButton, buttonPayload, finalize, layout, findBox, textWidth } from '../dist/index.js'
 
 const run = (root, env = {}) => layout(finalize(root), { viewport: [200, 100], ...env })
 const R = (b) => [b.rect.x, b.rect.y, b.rect.w, b.rect.h].map((v) => Math.round(v * 100) / 100)
@@ -45,8 +45,11 @@ test('stack：顺序排列、隐藏的子控件不占位、fill 平分剩余、%
     assert.equal(findBox(b, 'hidden'), undefined)
     assert.deepEqual(R(findBox(b, 'f1')), [0, 10, 40, 45])
     assert.deepEqual(R(findBox(b, 'f2')), [10, 55, 20, 45], '交叉方向缺省居中')
+    // 真机：%c 在两个方向上都是子控件之和（交叉方向也求和）；%cm 取最大
     const fit = new Stack({ name: 's', size: ['100%c', '100%c'], orientation: 'horizontal', anchor: 'top_left', children: [new Panel({ size: [10, 5] }), new Panel({ size: [15, 8] })] })
-    assert.deepEqual(R(findBox(run(fit), 's')).slice(2), [25, 8])
+    assert.deepEqual(R(findBox(run(fit), 's')).slice(2), [25, 13])
+    const cm = new Stack({ name: 's', size: ['100%c', '100%cm'], orientation: 'horizontal', anchor: 'top_left', children: [new Panel({ size: [10, 5] }), new Panel({ size: [15, 8] })] })
+    assert.deepEqual(R(findBox(run(cm), 's')).slice(2), [25, 8])
 })
 
 test('grid：格子 = 尺寸 / 行列数，按 gridPos 落格；clip 与 layer', () => {
@@ -76,9 +79,9 @@ test('label：default 尺寸 = 文字尺寸；宽度确定时折行；中文 8�
         new Label({ name: 'p', text: '提示，左', anchor: 'top_left' }), '纯文字')
     const b = run(root)
     assert.deepEqual(R(findBox(b, 'a')).slice(2), [18, 10])
-    assert.deepEqual(findBox(b, 'w').lines, ['中文', '中文', '中文'])
+    assert.deepEqual(findBox(b, 'w').lines, ['中文', '中文', '中文'], '「中」6.5 +「文」8.5 = 15 ≤ 20，再加一个就超')
     assert.equal(findBox(b, 'w').rect.h, 30)
-    assert.equal(findBox(b, 'p').rect.w, 8 * 3 + 3)
+    assert.equal(findBox(b, 'p').rect.w, textWidth('提示，左'))
     assert.deepEqual(findBox(b, 'label0').lines, ['纯文字'])
 })
 

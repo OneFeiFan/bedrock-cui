@@ -13,11 +13,25 @@ test('基岩版语义：换颜色不清掉粗体 / 斜体，§r 全部重置；�
     assert.equal(styleCodes({ color: 'c', bold: true, italic: false, obfuscated: false }), '§c§l')
 })
 
-test('测宽：§ 码不占宽度；粗体每字 +1', () => {
-    assert.equal(textWidth('WW'), 12)
-    assert.equal(textWidth('§lWW'), 14)
+test('测宽（真机字宽标尺校准）：纯 ASCII 用 Minecraft 字体；含非 ASCII 的整段用 Unifont（连英文一起）；粗体 +1 / +0.5', async () => {
+    const { charWidth, usesUnifont } = await import('../dist/index.js')
+    // 纯 ASCII：Minecraft 字体
+    assert.deepEqual(['i', 'l', 't', 'f', 'a', 'W', '0', '@', ' '].map((c) => charWidth(c, false)), [2, 3, 4, 5, 6, 6, 6, 6, 4])
+    assert.equal(textWidth('a a a a a a'), 56)
+    assert.equal(textWidth('§lWWWWWWWWWW'), 70, '粗体 ASCII 每字 +1')
+    // Unifont：字距 = 墨迹 / 2 + 1
+    assert.equal(textWidth('中'.repeat(10)), 65, '「中」6.5（窄字）')
+    assert.equal(charWidth('钻'), 8.5, '绝大多数汉字 8.5')
+    assert.equal(textWidth('，'.repeat(10)), 20)
+    assert.equal(textWidth('。'.repeat(10)), 30)
+    assert.equal(textWidth('§l' + '中'.repeat(9)), 63, '粗体 Unifont 每字 +0.5')
+    // 含汉字 ⇒ 整段 Unifont：E s c 的字距是 4（真机），不是 6
+    assert.equal(usesUnifont('Esc 关闭'), true)
+    assert.equal(usesUnifont('§cEsc'), false)
+    assert.equal(textWidth('Esc 关闭；左键'), 4 * 3 + 4 + 8.5 + 7.5 + 2 + 8.5 + 8.5)
+    assert.equal(textWidth('背包里有 1 个'), 53, '提示框第二行（真机逐字位置吻合）')
     assert.equal(textWidth('§lW§cW§rW'), 7 + 7 + 6, '换颜色不清粗体，§r 清')
-    assert.equal(richWidth('§l中文'), 18)
+    assert.equal(richWidth('§l中文'), 7 + 9)
 })
 
 test('预折行：避头尾、续行补样式码、不丢字；中英文留空跳过格式码', () => {
