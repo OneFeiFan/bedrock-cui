@@ -9,7 +9,7 @@
  *   4. 与表单数据混用：物品格子是开关，提示框里的运行期数据来自表单按钮文字；弹层里的数据来自表单正文
  *   5. 诊断：最后一页列出每个开关的选中状态（同序号的开关会不会一起选中）
  */
-import { CollectionItem, FormButton, Image, Label, Pages, Panel, Paragraph, Stack, Toggle, form, paginate, textWidth } from 'cui'
+import { CollectionItem, FormButton, Image, Label, Pages, Panel, Paragraph, Stack, Toggle, form, paginate, textWidth, toggleState } from 'cui'
 
 export const T = {
     book: 'textures/cui_test/book', line: 'textures/cui_test/line', rowHover: 'textures/cui_test/row_hover',
@@ -138,10 +138,36 @@ class DetailOverlay extends Panel {
     }
 }
 
+/** 诊断格：某个开关是否选中（是 / 否） */
+class DebugCell extends Panel {
+    constructor(caption, toggleName, x) {
+        super({ size: [60, 10], anchor: 'top_left', offset: [x, 0] })
+        this.add(new Label({ text: caption, color: WHITE, shadow: true, anchor: 'left_middle' }))
+        this.add(new Label({ text: '§a是', shadow: true, anchor: 'right_middle', visible: toggleState(toggleName) }))
+        this.add(new Label({ text: '§c否', shadow: true, anchor: 'right_middle', visible: toggleState(toggleName).not() }))
+    }
+}
+
+/**
+ * 诊断带（书本下方）：开关状态与表单标题——真机 1.5.1 目录点不进子页面，看点了目录行之后哪个状态变了 / 没变。
+ */
+class DebugStrip extends Panel {
+    constructor(variant, bookmarkName) {
+        super({ size: [290, 24], anchor: 'top_left', offset: [0, 184] })
+        this.add(new Image({ texture: T.purple, size: ['100%', '100%'] }))
+        const row1 = new Panel({ size: ['100% - 8px', 10], anchor: 'top_left', offset: [4, 2] })
+        row1.add(new DebugCell('锚点', 'gbp__server', 0), new DebugCell('目录·剑', 'gbp_sword_l1', 66), new DebugCell('目录·钻石', 'gbp_diamond_l1', 132), new DebugCell('书签', bookmarkName, 214))
+        const row2 = new Panel({ size: ['100% - 8px', 10], anchor: 'top_left', offset: [4, 12] })
+        row2.add(new Label({ text: `§e${variant}§7 标题：`, shadow: true, anchor: 'left_middle' }), new Label({ text: form.title, color: WHITE, shadow: true, anchor: 'left_middle', offset: [86, 0] }))
+        this.add(row1, row2)
+    }
+}
+
 // ───────────── 整本书 ─────────────
 
-export function buildBook() {
-    const root = new Panel({ size: [290, 180] })
+export function buildBook(options = {}) {
+    // 书本 180 高 + 下方诊断带 24 高：整体居中
+    const root = new Panel({ size: [290, 210] })
     root.add(new Image({ texture: T.book, size: [272, 180], anchor: 'top_left' }))
     ARROWS = []
     // 混合翻页：翻页箭头走服务端（标题带 P:<页>;），目录 / 书签用开关
@@ -192,6 +218,7 @@ export function buildBook() {
 
     // 书签（任何页都在）
     root.add(bookmark)
+    root.add(new DebugStrip(options.variant ?? '预览', bookmark.name))
     void bookmark
 
     // 详情弹层

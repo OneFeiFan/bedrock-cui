@@ -23,7 +23,7 @@ for (const a of ARROWS as { index: number, tag: string }[]) buttons[a.index] = a
 const routes = Object.fromEntries((ARROWS as { index: number, target: string }[]).map((a) => [a.index, a.target]))
 const title = signal(FORM.title)
 const preview = mountPreview(document.getElementById('app')!, {
-    root: book, viewport: [300, 190], scale: 3, textures,
+    root: book, viewport: [300, 220], scale: 3, textures,
     formText: signal(FORM.body), formButtons: signal(buttons), title,
     // 模拟服务端：翻页箭头 → 重新打开表单（标题带 P:<页>;、开关回到初始状态）
     onFormButton: (i) => {

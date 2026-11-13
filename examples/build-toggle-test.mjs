@@ -12,12 +12,13 @@ import { buildBook, ARROWS, FORM, T, TEXTURE_INFO } from './toggle-book.mjs'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 const outRoot = path.resolve(process.argv[2] ?? path.join(here, '..', 'out'))
-const VERSION = [1, 5, 1]
+const VERSION = [1, 5, 2]
 const UUID = { bp: '6a3f0e2c-91d4-4b7a-8c55-0e1f7a2b9c31', bpScript: 'c2e8b7d1-4f6a-4c9e-a1b2-3d4e5f607182', rp: '1f9c3a7e-2b4d-4e6f-8a90-b1c2d3e4f5a6', rpRes: '7d8e9f0a-1b2c-4d3e-9f4a-5b6c7d8e9f01' }
 const NAME = 'cui_toggle_test'
 
-// 去掉屏幕进出场动画（缺省）：混合翻页每次重开表单不再滑入
-const { files, issues } = serverForm({ namespace: NAME, panelId: FORM.title, content: buildBook(), textures: (p) => TEXTURE_INFO[p] })
+// 诊断：两个变体——无动画（重定义 third_party_server_screen）/ 有动画（原版屏幕），看目录开关失灵是不是屏幕重定义导致的
+const VARIANT = process.env.CUI_VARIANT ?? '无动画'
+const { files, issues } = serverForm({ namespace: NAME, panelId: FORM.title, content: buildBook({ variant: VARIANT }), textures: (p) => TEXTURE_INFO[p], screenAnimation: VARIANT === '有动画' })
 const ROUTES = Object.fromEntries(ARROWS.map((a) => [a.index, a.target]))
 if (issues.some((i) => i.level === 'error')) { console.error(issues); process.exit(1) }
 
@@ -98,6 +99,8 @@ function open(player, page) {
     form.show(player).then((r) => {
         if (r.canceled) { camera(player, true); player.sendMessage('§7[CUI] 表单关闭（Esc）：' + (r.cancelationReason ?? '')); return }
         const target = ROUTES[r.selection]
+        // 诊断：每次点击都回报收到的按钮序号与当时所在的页
+        player.sendMessage('§7[CUI] 在「' + (page ?? 'home') + '」收到按钮 ' + r.selection + (target ? ' → 翻到「' + target + '」' : r.selection === 4 ? '（右上角 ×）' : '（不是翻页按钮）'))
         if (target) return open(player, target)
         camera(player, true)
         player.sendMessage('§a[CUI] 服务端收到表单按钮 ' + r.selection + (r.selection === 4 ? '（右上角 ×）' : ''))
@@ -112,7 +115,7 @@ system.afterEvents.scriptEventReceive.subscribe((e) => {
 })
 `)
 
-const mcaddon = path.join(outRoot, `${NAME}.mcaddon`)
+const mcaddon = path.join(outRoot, `${NAME}_${VARIANT}.mcaddon`)
 fs.rmSync(mcaddon, { force: true })
 execSync(`zip -qr ${JSON.stringify(mcaddon)} ${NAME}_BP ${NAME}_RP`, { cwd: outRoot })
 console.log('输出：', mcaddon, fs.statSync(mcaddon).size, '字节；界面 JSON', JSON.stringify(files[`ui/${NAME}.json`]).length, '字节')
