@@ -94,11 +94,11 @@ class ItemSlot extends Panel {
         const t = new Toggle({ ...detail.toggleOptions(detailKey), size: [size, size] })
         detail.attach(detailKey, t)
         const icn = size >= 32 ? 32 : 16
-        const base = () => [new Image({ texture: T.cell, size: ['100%', '100%'], nineslice: 1 }), new Image({ texture: icon, size: [icn, icn], layer: 2 })]
+        const base = () => [new Image({ texture: T.cell, size: ['100%', '100%'] }), new Image({ texture: icon, size: [icn, icn], layer: 2 })]
         const tipHolder = () => {
             const holder = new CollectionItem({ collection: 'form_buttons', index, size: [size, size], layer: 30 })
             const payload = form.buttonText.minus(tag)
-            const tip = new Image({ texture: T.purple, nineslice: 4, size: ['100%c + 8px', '100%c + 8px'], anchorFrom: 'top_right', anchorTo: 'top_left', offset: [2, -2] })
+            const tip = new Image({ texture: T.purple, size: ['100%c + 8px', '100%c + 8px'], anchorFrom: 'top_right', anchorTo: 'top_left', offset: [2, -2] })
             tip.add(new Stack({ size: ['100%c', '100%c'], children: [
                 new Label({ text: name, color: WHITE, shadow: true, anchor: 'left_middle' }),
                 new Label({ text: payload, color: GRAY, shadow: true, anchor: 'left_middle', visible: payload.isEmpty().not() }),
@@ -112,24 +112,11 @@ class ItemSlot extends Panel {
     }
 }
 
-/**
- * 弹层底板：铺满整本书的开关（跳回 none 页）。真机：弹层下面的开关能被点穿，
- * 底板比下面的箭头层级高，先接住点击——点空白处 = 关闭弹层。
- */
-class Backdrop extends Toggle {
-    constructor(detail) {
-        super({ ...detail.toggleOptions('none'), size: [272, 180], anchor: 'top_left' })
-        detail.attach('none', this)
-        const dim = () => new Image({ texture: T.line, keepRatio: false, alpha: 0.35, size: ['100%', '100%'] })
-        this.unchecked.add(dim()); this.checked.add(dim())
-    }
-}
-
 /** 物品详情弹层（第二组开关）：内容来自表单正文；「关闭」= 跳回 none 页 */
 class DetailOverlay extends Panel {
     constructor(detail) {
         super({ size: [150, 90], layer: 50 })
-        this.add(new Image({ texture: T.purple, nineslice: 4, size: ['100%', '100%'] }))
+        this.add(new Image({ texture: T.purple, size: ['100%', '100%'] }))
         this.add(new Label({ text: '钻石剑 · 详情（弹层）', color: WHITE, shadow: true, anchor: 'top_left', offset: [8, 8] }))
         this.add(new Label({ text: form.text.minus('CUI;|'), color: GRAY, shadow: true, size: [134, 'default'], anchor: 'top_left', offset: [8, 22] }))
         const close = new Toggle({ ...detail.toggleOptions('none'), size: [40, 14], anchor: 'bottom_right', offset: [-6, -6] })
@@ -179,7 +166,7 @@ export function buildBook() {
     const about = pages.page('about')
     const bookmark = new Bookmark(pages, 'home')
     about.add(new Side('L').add(new Title('1.0.1 的结论'), new Body('按名字读开关是全局的；同序号的开关不会一起选中（只有被点的那个选中）；弹层会被点穿。')))
-    about.add(new Side('R').add(new Title('1.0.2 请检查'), new Body('1 钻石剑页悬停格子：提示框有「背包里有 N 个」（背包里放几把钻石剑、钻石、木棍试试）\n2 打开弹层后点底下的箭头：应当点不穿，而是关闭弹层\n3 点弹层外的空白处也会关闭')))
+    about.add(new Side('R').add(new Title('1.0.2 请检查'), new Body('1 钻石剑页悬停格子：提示框有「背包里有 N 个」\n2 打开弹层后点底下的箭头：点不穿，也不关弹层（透明、无声）\n3 只有「关闭」按钮才关弹层')))
     about.add(new Arrow(pages, 'diamond', 'left'))
 
     // 书签（任何页都在）
@@ -188,7 +175,8 @@ export function buildBook() {
 
     // 详情弹层
     detail.page('none')
-    detail.page('sword').add(new Backdrop(detail), new DetailOverlay(detail))
+    // 透明拦截层：挡住下面的点击；点它不关弹层（只有「关闭」按钮才关）
+    detail.page('sword').add(detail.blocker('sword', { size: [272, 180], anchor: 'top_left' }), new DetailOverlay(detail))
 
     // 关闭整本书：普通表单按钮（序号 4），点了表单关闭，服务端收到选择
     const close = new FormButton({ index: 4, tag: 'close|', size: [14, 14], anchor: 'top_left', offset: [248, 3], layer: 60 })
@@ -203,6 +191,7 @@ export const TEXTURE_INFO = {
     [T.book]: { size: [272, 180] }, [T.line]: { size: [1, 1] }, [T.rowHover]: { size: [1, 1] },
     [T.arrowL]: { size: [20, 12] }, [T.arrowLH]: { size: [20, 12] }, [T.arrowR]: { size: [20, 12] }, [T.arrowRH]: { size: [20, 12] },
     [T.tab]: { size: [20, 16] }, [T.tabHover]: { size: [20, 16] },
-    [T.cell]: { size: [10, 10], nineslice: 1 }, [T.highlight]: { size: [1, 1] }, [T.purple]: { size: [16, 16], nineslice: 4 },
+    // 原版 .json：cell_image 是两倍精度（10×10 像素、base_size 5×5、nineslice 1）；highlight_slot 也是九宫格
+    [T.cell]: { size: [10, 10], baseSize: [5, 5], nineslice: 1 }, [T.highlight]: { size: [1, 1], baseSize: [1, 1], nineslice: 1 }, [T.purple]: { size: [16, 16], baseSize: [16, 16], nineslice: 4 },
     [T.sword]: { size: [16, 16] }, [T.diamond]: { size: [16, 16] }, [T.stick]: { size: [16, 16] }, [T.book_item]: { size: [16, 16] },
 }

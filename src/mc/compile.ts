@@ -88,6 +88,7 @@ class Compiler {
                 if (!isExpr(p.texture)) out.texture = p.texture
                 if (p.keepRatio !== undefined) out.keep_ratio = p.keepRatio
                 if (p.nineslice !== undefined) out.nineslice_size = p.nineslice
+                if (p.baseSize !== undefined) out.base_size = p.baseSize
                 if (p.uv) out.uv = p.uv
                 if (p.uvSize) out.uv_size = p.uvSize
                 if (p.color) out.color = p.color

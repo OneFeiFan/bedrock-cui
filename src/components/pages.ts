@@ -78,6 +78,15 @@ export class Pages extends Panel {
         return { group: this.group, index: this.indexOf(key) }
     }
 
+    /**
+     * 透明、无声的拦截层：一个指向 key 页（通常是弹层自己所在的页）的开关。
+     * 真机：弹层下面的开关能被点穿；拦截层层级更高、先接住点击，点它不改变任何状态（选中的还是这一页）。
+     */
+    blocker(key: string, options: Omit<LayoutOptions, 'name'> & { name?: string } = {}): Toggle {
+        const t = new Toggle({ ...this.toggleOptions(key), size: ['100%', '100%'], ...options, raw: { sound_volume: 0, ...(options.raw ?? {}) } })
+        return this.attach(key, t)
+    }
+
     /** 某页「正在显示」的表达式（例如书签的选中样式用） */
     showing(key: string): Expr {
         const e = this.entries.get(key)

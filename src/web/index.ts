@@ -54,6 +54,16 @@ const COLORS: Record<string, string> = {
 }
 const rgb = (c?: number[]) => (c ? `rgb(${c.map((v) => Math.round(v * 255)).join(',')})` : '#ffffff')
 
+/**
+ * 九宫格的切片把整张贴图都切完了（原版 highlight_slot：1×1 像素、nineslice 1）：中间区域为 0，
+ * 浏览器的 border-image 会把中间画成空的，游戏里则是整块拉伸 ⇒ 按拉伸画。
+ */
+function degenerate(b: Box, t: PreviewTexture): boolean {
+    const s = b.slice ?? b.nineslice
+    if (!s || !t.size) return false
+    return s[0] + s[2] >= t.size[0] || s[1] + s[3] >= t.size[1]
+}
+
 /** 一行文字：§ 颜色码 → span */
 function lineHtml(line: string, base: string): string {
     let color = base
@@ -138,9 +148,11 @@ export function mountPreview(el: HTMLElement, options: PreviewOptions): Preview 
             if (!t) {
                 Object.assign(d.style, { background: 'repeating-linear-gradient(45deg,#f0f 0 4px,#000 4px 8px)', opacity: '0.6' })
                 d.title = `缺贴图：${b.texture}`
-            } else if (b.nineslice !== undefined) {
-                const [l, tp, r, bt] = Array.isArray(b.nineslice) ? b.nineslice : [b.nineslice, b.nineslice, b.nineslice, b.nineslice]
-                Object.assign(d.style, { borderStyle: 'solid', borderWidth: `${S(tp)} ${S(r)} ${S(bt)} ${S(l)}`, borderImage: `url("${t.url}") ${tp} ${r} ${bt} ${l} fill stretch`, boxSizing: 'border-box' })
+            } else if (b.nineslice !== undefined && !degenerate(b, t)) {
+                // 切图用贴图像素（高清贴图 = 边宽 × 像素 / base_size），画宽用界面像素
+                const [l, tp, r, bt] = b.nineslice
+                const [sl, st, sr, sb] = b.slice ?? b.nineslice
+                Object.assign(d.style, { borderStyle: 'solid', borderWidth: `${S(tp)} ${S(r)} ${S(bt)} ${S(l)}`, borderImage: `url("${t.url}") ${st} ${sr} ${sb} ${sl} fill stretch`, boxSizing: 'border-box' })
             } else {
                 Object.assign(d.style, { backgroundImage: `url("${t.url}")`, backgroundSize: '100% 100%', backgroundRepeat: 'no-repeat' })
             }

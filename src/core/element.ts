@@ -46,7 +46,10 @@ export interface ImageOptions extends LayoutOptions {
     texture: Dyn<string>
     /** 保持贴图宽高比。**JSON UI 缺省为 true**：拉伸 1×1 的纯色贴图请写 false（lint 会提示） */
     keepRatio?: boolean
+    /** 九宫格边宽（通常写在贴图 .json 里，不用在这里写） */
     nineslice?: number | [number, number, number, number]
+    /** 逻辑尺寸（base_size；高清贴图用，通常写在贴图 .json 里） */
+    baseSize?: [number, number]
     uv?: [number, number]
     uvSize?: [number, number]
     color?: RGB

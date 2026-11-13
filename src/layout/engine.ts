@@ -18,11 +18,20 @@ import { evalOffset, evalTerms, parseSize, usesChildren, usesSelf, type SizeSpec
 export interface Rect { x: number, y: number, w: number, h: number }
 
 export interface TextureInfo {
-    /** 贴图像素尺寸（keep_ratio 要用；不知道时按拉伸画，并由 lint 提示） */
+    /** 贴图像素尺寸（keep_ratio 要用；不知道时按拉伸画） */
     size?: [number, number]
-    /** 九宫格（贴图的 .json 里声明的 nineslice_size） */
+    /** 九宫格边宽（贴图 .json 的 nineslice_size，单位是 base_size 的格） */
     nineslice?: number | [number, number, number, number]
+    /**
+     * 逻辑尺寸（贴图 .json 的 base_size）。高清贴图的像素数是它的整数倍：原版 cell_image.png 是 10×10、base_size [5,5]，
+     * nineslice_size 1 = 贴图上 2 个像素、界面上 1 个像素。缺省 = size。
+     */
+    baseSize?: [number, number]
 }
+
+/** 九宫格四边 [左, 上, 右, 下] */
+export type Edges = [number, number, number, number]
+const edges = (n: number | Edges): Edges => (Array.isArray(n) ? n : [n, n, n, n])
 
 /** 求值作用域：所在的集合项（FormButton 里读 #form_button_text 用） */
 export interface Scope { collection?: { name: string, index: number } }
@@ -52,7 +61,10 @@ export interface Box {
     texture?: string
     /** 实际画出贴图的矩形（keep_ratio 之后） */
     draw?: Rect
-    nineslice?: number | [number, number, number, number]
+    /** 九宫格边宽：界面像素（画到屏幕上的宽度） */
+    nineslice?: Edges
+    /** 九宫格切图位置：贴图像素（= 边宽 × 贴图尺寸 / base_size） */
+    slice?: Edges
     clipRatio?: number
     // label
     lines?: string[]
@@ -190,7 +202,14 @@ class Engine {
             const tex = String(this.value(n.props.texture, scope, ''))
             const info = this.env.textures?.(tex)
             box.texture = tex
-            box.nineslice = n.props.nineslice ?? info?.nineslice
+            const nine = n.props.nineslice ?? info?.nineslice
+            if (nine !== undefined) {
+                const e = edges(nine)
+                const size = info?.size, base = n.props.baseSize ?? info?.baseSize ?? size
+                const kx = size && base ? size[0] / base[0] : 1, ky = size && base ? size[1] / base[1] : 1
+                box.nineslice = e
+                box.slice = [e[0] * kx, e[1] * ky, e[2] * kx, e[3] * ky]
+            }
             box.draw = rect
             const keep = n.props.keepRatio ?? true
             if (keep && !box.nineslice && info?.size) {

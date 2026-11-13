@@ -120,3 +120,25 @@ test('对象树：一个元素只能有一个父元素（加两处报错）；cl
     const p = new Panel(); p.add(c)
     assert.equal(c.parent, p)
 })
+
+test('九宫格：高清贴图按 base_size 切图（原版 cell_image：10×10 像素、base_size 5×5、nineslice 1 → 切 2 像素、画 1 像素）', () => {
+    const textures = (p) => ({ cell: { size: [10, 10], baseSize: [5, 5], nineslice: 1 }, border: { size: [16, 16], nineslice: [4, 3, 4, 3] } })[p]
+    const root = new Panel({ size: [40, 40], anchor: 'top_left', children: [new Image({ name: 'c', texture: 'cell', size: [20, 20] }), new Image({ name: 'b', texture: 'border', size: [30, 10] })] })
+    const b = run(root, { textures })
+    assert.deepEqual(findBox(b, 'c').nineslice, [1, 1, 1, 1], '画到屏幕上：1 界面像素')
+    assert.deepEqual(findBox(b, 'c').slice, [2, 2, 2, 2], '切图：2 贴图像素')
+    assert.deepEqual(findBox(b, 'c').draw, findBox(b, 'c').rect, '九宫格不受 keep_ratio 影响')
+    assert.deepEqual(findBox(b, 'b').slice, [4, 3, 4, 3], 'base_size 缺省 = 贴图尺寸')
+})
+
+test('cui/node：从资源包目录读贴图信息（PNG 宽高 + 同名 .json 的 nineslice_size / base_size，带注释也能读）', async () => {
+    const fs = await import('node:fs'); const os = await import('node:os'); const path = await import('node:path')
+    const { textureInfoFrom } = await import('../dist/node/index.js')
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'cui-tex-'))
+    fs.mkdirSync(path.join(dir, 'textures/ui'), { recursive: true })
+    fs.copyFileSync(new URL('../preview-src/public/textures/cell_image.png', import.meta.url), path.join(dir, 'textures/ui/cell_image.png'))
+    fs.writeFileSync(path.join(dir, 'textures/ui/cell_image.json'), '{\n  // 原版\n  "nineslice_size": 1, "base_size": [5, 5]\n}')
+    const info = textureInfoFrom([path.join(dir, 'nope'), dir])
+    assert.deepEqual(info('textures/ui/cell_image'), { size: [10, 10], nineslice: 1, baseSize: [5, 5] })
+    assert.equal(info('textures/ui/missing'), undefined)
+})
