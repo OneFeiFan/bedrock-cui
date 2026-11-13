@@ -103,6 +103,8 @@ export interface ToggleOptions extends LayoutOptions {
     defaultState?: boolean
     /** 禁用（locked）时是否照常显示（缺省 true：沿用普通态的样子；false：什么都不画） */
     lockedVisible?: boolean
+    /** 默认聚焦优先级（default_focus_precedence，越大越优先） */
+    focusPrecedence?: number
     /**
      * 用表达式设定开关状态（view 绑定写 #toggle_state）。用途：把「只读全局绑定」的条件变成一个开关状态，
      * 别处再按开关名读——真机 1.5.2：一条表达式同时读开关状态与全局绑定（#title_text）时，开关变化不会触发重新计算。

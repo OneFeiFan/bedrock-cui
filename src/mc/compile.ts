@@ -145,6 +145,7 @@ class Compiler {
                 vars.$toggle_default_state = p.defaultState ?? false
                 // 纯界面开关：不从全局绑定读初始状态（原版 light_template_toggle 同样设为 none）
                 vars.$toggle_binding_type = 'none'
+                if (p.focusPrecedence !== undefined) out.default_focus_precedence = p.focusPrecedence
                 const s = n.slots!
                 const hoverOf = (base: 'unchecked' | 'checked') => (s[`${base}_hover`].length ? s[`${base}_hover`] : s[base])
                 out.controls = [

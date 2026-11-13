@@ -197,7 +197,8 @@ export function buildBook(options = {}) {
         new RowLink(pages, 'sword', { icon: T.sword, text: '钻石剑', y: 20 }),
         new RowLink(pages, 'diamond', { icon: T.diamond, text: '钻石', y: 38 }),
         new RowLink(pages, 'about', { icon: T.book_item, text: '检查清单', y: 56 }),
-        new RowLink(pages, 'tlayer', { icon: T.paper, text: '叠放顺序', y: 74 })))
+        new RowLink(pages, 'tlayer', { icon: T.paper, text: '叠放顺序', y: 74 }),
+        new RowLink(pages, 'tfocus', { icon: T.sword, text: '实验 E（客户端聚焦）', y: 92 })))
     home.add(new ServerArrow('home', 'sword', 'right'))
 
     // 钻石剑
@@ -224,6 +225,12 @@ export function buildBook(options = {}) {
     about.add(new ServerArrow('about', 'diamond', 'left'))
 
     buildTextPages(pages)
+
+    // 实验 E：客户端翻页 + 聚焦优先级（不在文本章节的翻页链里，用书签回目录）
+    const focusPage = pages.page('tfocus')
+    const fl = new Side('L'), fr = new Side('R')
+    buildFocusTest(fl, fr)
+    focusPage.add(fl, fr)
 
     // 「原地不动」：透明的表单按钮（序号 9），聚焦优先级 50——介于聚焦版箭头（100）与普通箭头（10）之间。
     // 当前方向没有箭头时（例如最后一页再点「下一页」），鼠标没动的点击交给它：服务端原样重开当前页（真机 1.5.3：否则落到反方向的箭头，来回循环）
@@ -293,6 +300,47 @@ class Swatches extends Panel {
         codes.forEach((c, i) => bg.add(new Label({ text: `§7${c} §${c}示例Ab`, shadow: true, anchor: 'top_left', offset: [6 + (i % 2) * 52, 5 + Math.floor(i / 2) * 10] })))
         this.add(bg)
     }
+}
+
+/** 小箭头（翻页手感测试用） */
+class MiniArrow extends Toggle {
+    constructor(pages, key, dir, extra = {}) {
+        // 聚焦优先级：右 200、左 190（比书本自己的箭头 100、「原地不动」50 都高）
+        super({ ...pages.toggleOptions(key), size: [28, 18], anchor: 'top_left', offset: [dir === 'left' ? 2 : 80, 100], focusPrecedence: dir === 'right' ? 200 : 190, ...extra })
+        pages.attach(key, this)
+        const art = (hover) => new Image({ texture: dir === 'left' ? (hover ? T.arrowLH : T.arrowL) : (hover ? T.arrowRH : T.arrowR), size: [20, 12] })
+        this.unchecked.add(art(false)); this.checked.add(art(false))
+        this.uncheckedHover.add(art(true)); this.checkedHover.add(art(true))
+    }
+}
+
+/**
+ * 实验 E：客户端翻页能不能靠聚焦——A / B（真机 1.2.0）点了箭头后鼠标不动再点没反应；服务端翻页靠默认聚焦解决了（1.5.3）。
+ * 这里给小翻页器的箭头加聚焦优先级，看「聚焦的箭头隐藏 / 禁用后，焦点会不会挪到新页的箭头、鼠标没动的点击会不会交给它」。
+ *   E1：每页自己的箭头（显示 / 隐藏切换）
+ *   E2：三页的箭头叠在同一位置，只有当前页的那个启用（禁用的什么都不画）
+ */
+function buildFocusTest(sideA, sideB) {
+    const mini = (group, letter) => {
+        const p = new Pages({ group, start: `${letter}0`, size: ['100%', 120], anchor: 'top_left', offset: [0, 20] })
+        for (let k = 0; k < 3; k++) p.page(`${letter}${k}`).add(new Label({ text: `§l${letter.toUpperCase()}${k + 1}`, color: TITLE, fontScale: 3, anchor: 'top_middle', offset: [0, 40] }))
+        return p
+    }
+    const a = mini('nfa', 'a')
+    for (let k = 0; k < 3; k++) {
+        if (k > 0) a.page(`a${k}`).add(new MiniArrow(a, `a${k - 1}`, 'left'))
+        if (k < 2) a.page(`a${k}`).add(new MiniArrow(a, `a${k + 1}`, 'right'))
+    }
+    sideA.add(new Title('E1：显示切换'), new Body('§8鼠标停在右箭头上不动，连点', 20), a)
+    const b = mini('nfb', 'b')
+    const arrows = []
+    for (let k = 0; k < 3; k++) {
+        if (k > 0) arrows.push([k, b.add(new MiniArrow(b, `b${k - 1}`, 'left', { lockedVisible: false })).children.at(-1)])
+        if (k < 2) arrows.push([k, b.add(new MiniArrow(b, `b${k + 1}`, 'right', { lockedVisible: false })).children.at(-1)])
+    }
+    // 箭头都建完再设启用条件（showing() 要包含所有入口）
+    for (const [k, arrow] of arrows) arrow.set({ enabled: b.showing(`b${k}`) })
+    sideB.add(new Title('E2：启用切换'), new Body('§8同上：看哪一边不动鼠标也能连续翻页', 20), b)
 }
 
 /** 特殊字符：左边原样输出（绕过编译器的保护），右边经编译器处理（# / $ 开头补 §r） */
