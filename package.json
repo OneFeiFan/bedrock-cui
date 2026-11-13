@@ -1,0 +1,24 @@
+{
+  "name": "cui",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "description": "跨平台 UI 框架：一棵组件树 → 基岩版 JSON UI ＋ 浏览器预览（按游戏排版规则）",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js",
+    "./jsx-runtime": "./dist/core/jsx-runtime.js",
+    "./web": "./dist/web/index.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "tsc -p tsconfig.json && node --test tests/*.test.mjs",
+    "dev": "vite",
+    "preview:build": "vite build"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3",
+    "vite": "^5.4.11"
+  }
+}
