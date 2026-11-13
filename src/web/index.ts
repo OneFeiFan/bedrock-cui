@@ -7,6 +7,7 @@
  *     · 贴图：像素风缩放；九宫格用 border-image；keep_ratio 按引擎算出的实际绘制矩形画
  */
 import { finalize, Panel, type Element } from '../core/element.js'
+import { asBool, evalExpr } from '../core/expr.js'
 import { walk, type RNode } from '../core/node.js'
 import { effect, signal, type Signal } from '../core/reactivity.js'
 import { drawOrder, layout, type Box, type Rect, type TextureInfo } from '../layout/engine.js'
@@ -124,6 +125,8 @@ export function mountPreview(el: HTMLElement, options: PreviewOptions): Preview 
         return nodes
     }
     const checked = (n: RNode): boolean => {
+        // 用表达式设定状态的开关（stateFrom）：按当前数据算
+        if (n.props.stateFrom) return asBool(evalExpr(n.props.stateFrom, { ref: (name, src) => data(name, src as never, {}) as never }))
         if (n.props.radio === false) return flags.value[n.name] ?? Boolean(n.props.defaultState)
         const picked = groups.value[n.props.group]
         return picked !== undefined ? picked === n.name : (n.props.defaultSelected ?? 0) === n.props.index

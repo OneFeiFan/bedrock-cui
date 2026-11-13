@@ -27,6 +27,8 @@ export interface FormButtonOptions extends Omit<LayoutOptions, 'size' | 'visible
     size: [number, number]
     /** 仅预览：点击回调 */
     onPress?: () => void
+    /** 默认聚焦优先级（服务端重开表单、鼠标没动时，点击交给默认聚焦的控件） */
+    focusPrecedence?: number
 }
 
 /** 表单按钮：子元素加在按钮里；状态面板 default / hover / pressed 直接用 */
@@ -35,10 +37,10 @@ export class FormButton extends CollectionItem {
     readonly tag: string
 
     constructor(options: FormButtonOptions) {
-        const { index, tag, size, onPress, children, name, anchor, anchorFrom, anchorTo, offset, layer, gridPos } = options
+        const { index, tag, size, onPress, focusPrecedence, children, name, anchor, anchorFrom, anchorTo, offset, layer, gridPos } = options
         super({ name, collection: 'form_buttons', index, size, anchor, anchorFrom, anchorTo, offset, layer, gridPos })
         this.tag = tag
-        this.button = new Button({ name: 'button', size, anchor: 'center', visible: form.buttonText.contains(tag), onPress })
+        this.button = new Button({ name: 'button', size, anchor: 'center', visible: form.buttonText.contains(tag), onPress, focusPrecedence })
         super.add(this.button)
         if (children) this.add(...children)
     }

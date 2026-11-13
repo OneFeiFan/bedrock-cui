@@ -17,17 +17,25 @@ const FILE: Record<string, string> = {
 const textures: Record<string, PreviewTexture> = Object.fromEntries(Object.entries(FILE).map(([p, f]) => [p, { url: `./textures/${f}.png`, ...TEXTURE_INFO[p] }]))
 
 const book = buildBook()
-// 表单按钮：0–5 与真机脚本相同，6–9 空，10 起是翻页箭头（服务端翻页）
-const buttons = [...FORM.buttons, '', '', '', '']
-for (const a of ARROWS as { index: number, tag: string }[]) buttons[a.index] = a.tag
-const routes = Object.fromEntries((ARROWS as { index: number, target: string }[]).map((a) => [a.index, a.target]))
+// 表单按钮：0–5 与真机脚本相同，6–9 空，10 起是翻页箭头（服务端翻页）；与真机脚本同一套逻辑：
+// 箭头文字 goN|，新页面上「刚才点击方向」的箭头加 F（聚焦版显示）
+type Arrow = { index: number, from: string, target: string, dir: string }
+const arrows = ARROWS as Arrow[]
+const buttonsFor = (here: string, dir: string) => {
+    const b = [...FORM.buttons, '', '', '', '']
+    for (const a of arrows) b[a.index] = `go${a.index}|` + (a.from === here && a.dir === dir ? 'F' : '')
+    return b
+}
+const routes = Object.fromEntries(arrows.map((a) => [a.index, a]))
 const title = signal(FORM.title)
+const formButtons = signal(buttonsFor('home', 'right'))
 const preview = mountPreview(document.getElementById('app')!, {
     root: book, viewport: [300, 220], scale: 3, textures,
-    formText: signal(FORM.body), formButtons: signal(buttons), title,
+    formText: signal(FORM.body), formButtons, title,
     // 模拟服务端：翻页箭头 → 重新打开表单（标题带 P:<页>;、开关回到初始状态）
     onFormButton: (i) => {
-        if (routes[i]) { title.value = `${FORM.title}|P:${routes[i]};`; preview.resetToggles() }
+        const a = routes[i]
+        if (a) { title.value = `${FORM.title}|P:${a.target};`; formButtons.value = buttonsFor(a.target, a.dir); preview.resetToggles() }
         else console.log('表单按钮', i, '（真机里这会关掉表单，服务端收到选择）')
     },
     // 像素字体（scripts/fetch-fonts.mjs 准备）：照游戏画文字

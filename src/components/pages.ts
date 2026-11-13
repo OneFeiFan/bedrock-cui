@@ -34,7 +34,7 @@ export class Pages extends Panel {
     readonly group: string
     private readonly entries = new Map<string, Entry>()
     private readonly start?: string
-    private readonly server?: { source: Expr, prefix: string, anchor: Toggle }
+    private readonly server?: { source: Expr, prefix: string, anchor: Toggle, flags: Map<string, Toggle> }
 
     constructor(options: PagesOptions) {
         const { group, start, server, ...rest } = options
@@ -46,7 +46,7 @@ export class Pages extends Panel {
             // ⚠️ 不能用 -1：toggle_group_forced_index 缺省就是 -1，意思是「不强制、按顺序自动分配」（真机 1.5.0：单选组乱掉、进不了子页面）
             const anchor = new Toggle({ name: `${group}__server`, group, index: 0, size: [0, 0] })
             this.add(anchor)
-            this.server = { source: server.source ?? form.title, prefix: server.prefix ?? 'P:', anchor }
+            this.server = { source: server.source ?? form.title, prefix: server.prefix ?? 'P:', anchor, flags: new Map() }
         }
     }
 
@@ -125,12 +125,20 @@ export class Pages extends Panel {
             for (const t of e.links) t.props.defaultSelected = start
             let visible = this.showing(key)
             if (this.server) {
-                // 服务端锚点选中（刚打开表单）时：按 source 里的页码；没有页码时显示初始页
-                const { source, prefix, anchor } = this.server
-                const atServer = toggleState(anchor.name!)
+                // 服务端锚点选中（刚打开表单）时：按 source 里的页码；没有页码时显示初始页。
+                // 真机 1.5.2：一条表达式同时读开关状态与全局绑定时，开关变化不会触发重新计算 ⇒
+                // 「标题里是不是这一页」放进一个只读标题的开关（stateFrom），页面显示条件只读开关状态
+                const { source, prefix, anchor, flags } = this.server
                 let byServer = source.contains(this.serverTag(key))
                 if (key === startKey) byServer = byServer.or(source.contains(prefix).not())
-                visible = visible.or(atServer.and(byServer))
+                let flag = flags.get(key)
+                if (!flag) {
+                    flag = new Toggle({ name: `${this.group}__srv_${key}`, group: `${this.group}__srv_${key}`, radio: false, index: 0, size: [0, 0] })
+                    flags.set(key, flag)
+                    this.add(flag)
+                }
+                flag.props.stateFrom = byServer
+                visible = visible.or(toggleState(anchor.name!).and(toggleState(flag.name!)))
             }
             e.panel.props.visible = visible
         }

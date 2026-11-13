@@ -84,6 +84,11 @@ export interface ButtonOptions extends LayoutOptions {
     pressedName?: string
     /** 仅预览：点击回调 */
     onPress?: () => void
+    /**
+     * 默认聚焦优先级（default_focus_precedence，越大越优先）。真机 1.5.2：服务端重开表单后鼠标没动，
+     * 点击交给**默认聚焦**的控件——翻页箭头要比关闭按钮优先。
+     */
+    focusPrecedence?: number
 }
 export interface ToggleOptions extends LayoutOptions {
     /** 开关组名（toggle_name）。同组 + radio = 单选组 */
@@ -98,6 +103,11 @@ export interface ToggleOptions extends LayoutOptions {
     defaultState?: boolean
     /** 禁用（locked）时是否照常显示（缺省 true：沿用普通态的样子；false：什么都不画） */
     lockedVisible?: boolean
+    /**
+     * 用表达式设定开关状态（view 绑定写 #toggle_state）。用途：把「只读全局绑定」的条件变成一个开关状态，
+     * 别处再按开关名读——真机 1.5.2：一条表达式同时读开关状态与全局绑定（#title_text）时，开关变化不会触发重新计算。
+     */
+    stateFrom?: Expr
 }
 export interface CollectionItemOptions extends LayoutOptions { collection: string, index: number }
 export interface RawOptions extends LayoutOptions {

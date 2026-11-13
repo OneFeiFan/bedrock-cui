@@ -35,6 +35,7 @@ const THROUGH_TOGGLE = '\u0000toggle:'
 const DYNAMIC: Record<string, { target: string, prop?: string }> = {
     visible: { target: '#visible' },
     enabled: { target: '#enabled' },
+    stateFrom: { target: '#toggle_state' },
     text: { target: '#text', prop: 'text' },
     texture: { target: '#texture', prop: 'texture' },
     clipRatio: { target: '#clip_ratio', prop: 'clip_ratio' },
@@ -73,6 +74,9 @@ class Compiler {
             if (!isExpr(v)) continue
             const c = compileExpr(v as Expr, `${key[0]}${dynIndex++}_`)
             Object.assign(vars, c.variables)
+            if (c.globals.length && c.controls.length) {
+                this.issues.push({ rule: 'mixed-sources', level: 'warning', path: n.path, message: `${key} 的表达式同时读全局绑定（${c.globals.join('、')}）与开关状态：真机里开关变化不会触发重新计算（1.5.2）。把全局条件放进一个 stateFrom 开关，再按开关名读` })
+            }
             for (const g of c.globals) if (!declaredGlobals.has(g)) { declaredGlobals.add(g); bindings.push({ binding_name: g }) }
             for (const col of c.collections) {
                 if (inCollection?.startsWith(THROUGH_TOGGLE)) this.issues.push({ rule: 'collection-through-toggle', level: 'error', path: n.path, message: `开关里读不到外层集合项的 ${col.name}（真机：common.toggle 自带空集合名的 collection_details 绑定）。把 CollectionItem 放进开关的状态面板里` })
@@ -123,6 +127,7 @@ class Compiler {
             case 'button': {
                 key = `${n.name}@${p.template ?? 'common.button'}`
                 vars.$pressed_button_name = p.pressedName ?? 'button.form_button_click'
+                if (p.focusPrecedence !== undefined) out.default_focus_precedence = p.focusPrecedence
                 const s = n.slots!
                 // 悬停 / 按下态没写内容时沿用默认态：游戏里悬停只画 hover 控件，空的话内容会消失
                 out.controls = [this.state('default', s.default, inCollection), this.state('hover', s.hover.length ? s.hover : s.default, inCollection), this.state('pressed', s.pressed.length ? s.pressed : s.hover.length ? s.hover : s.default, inCollection)]

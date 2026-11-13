@@ -128,18 +128,28 @@ test('混合翻页：Pages 服务端页码——刚打开时按标题里的页�
         return p
     }
     assert.equal(make().serverTag('sword'), 'P:sword;')
-    // checked：哪个开关被点了（undefined = 刚打开表单，服务端锚点选中）
+    // clicked：哪个开关被点了（undefined = 刚打开表单，服务端锚点选中）；页码开关 bk__srv_<页> 只读标题
+    const flag = (key, title) => (key === 'home' ? title.includes('P:home;') || !title.includes('P:') : title.includes(`P:${key};`))
     const run = (title, clicked) => layout(finalize(make()), {
         viewport: [200, 100],
         toggleChecked: (n) => (clicked ? n.name === clicked : n.name === 'bk__server'),
-        data: (name, src) => (src.kind === 'control' ? (clicked ? src.control === clicked : src.control === 'bk__server') : name === '#title_text' ? title : ''),
+        data: (name, src) => (src.kind === 'control'
+            ? (src.control.startsWith('bk__srv_') ? flag(src.control.slice(8), title) : clicked ? src.control === clicked : src.control === 'bk__server')
+            : name === '#title_text' ? title : ''),
     })
     assert.ok(findBox(run('cui_ui:book', undefined), 'home_t'), '没有页码 → 初始页')
     assert.equal(findBox(run('cui_ui:book', undefined), 'sword_t'), undefined)
     assert.ok(findBox(run('cui_ui:book|P:sword;', undefined), 'sword_t'), '标题带 P:sword; → 剑那一页')
     assert.equal(findBox(run('cui_ui:book|P:sword;', undefined), 'home_t'), undefined)
     assert.ok(findBox(run('cui_ui:book|P:sword;', 'bk__home'), 'home_t'), '点了开关（例如书签回目录）→ 开关接管，忽略标题里的页码')
-    const { json } = compileNamespace('t', { root: make() })
+    const { json, issues } = compileNamespace('t', { root: make() })
+    assert.deepEqual(issues, [], '页面显示条件只读开关状态（没有 mixed-sources 警告）')
+    const flagJson = json.root.controls.find((c) => c['bk__srv_sword@common.toggle'])['bk__srv_sword@common.toggle']
+    assert.equal(flagJson.$radio_toggle_group, false)
+    assert.equal(flagJson.bindings.at(-1).target_property_name, '#toggle_state', '页码开关：只读标题，写进自己的开关状态')
+    assert.ok(flagJson.bindings.every((b) => !b.source_control_name), '页码开关不读别的开关')
+    const swordPage = json.root.controls.find((c) => c.bk_sword).bk_sword
+    assert.ok(swordPage.bindings.every((b) => b.binding_name !== '#title_text'), '页面不再直接读标题')
     const anchor = json.root.controls.find((c) => c['bk__server@common.toggle'])['bk__server@common.toggle']
     assert.deepEqual([anchor.$toggle_group_forced_index, anchor.$toggle_group_default_selected], [2, 2], '服务端锚点：序号 = 页数（不能用 -1），初始选中')
     const row = json.root.controls.find((c) => c.bk_home).bk_home.controls.find((c) => c['row_sword@common.toggle'])['row_sword@common.toggle']
@@ -155,4 +165,17 @@ test('静态检查：开关序号必须是非负整数（-1 = 不强制、自动
     const { Toggle, Panel, compileNamespace } = await import('../dist/index.js')
     const root = new Panel({ children: [new Toggle({ name: 'a', group: 'g', index: -1 }), new Toggle({ name: 'b', group: 'g', index: 1.5 })] })
     assert.deepEqual(compileNamespace('t', { root }).issues.map((i) => i.rule), ['toggle-index', 'toggle-index'])
+})
+
+test('静态检查 mixed-sources：一条表达式同时读开关状态与全局绑定（真机 1.5.2：开关变化不会触发重新计算）', async () => {
+    const { Panel, Label, compileNamespace, toggleState, form } = await import('../dist/index.js')
+    const root = new Panel({ children: [new Label({ name: 'x', text: 'a', visible: toggleState('t').and(form.title.contains('P:')) })] })
+    assert.deepEqual(compileNamespace('t', { root }).issues.map((i) => i.rule), ['mixed-sources'])
+})
+
+test('FormButton 默认聚焦优先级：default_focus_precedence', async () => {
+    const { FormButton, compileNamespace } = await import('../dist/index.js')
+    const { json } = compileNamespace('t', { b: new FormButton({ index: 12, tag: 'go12|F', size: [28, 18], focusPrecedence: 100 }) })
+    const btn = json.b.controls[0].grid.controls[0].grid_item_012.controls[0].cell.controls[0]['button@common.button']
+    assert.equal(btn.default_focus_precedence, 100)
 })

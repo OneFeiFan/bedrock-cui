@@ -69,14 +69,23 @@ class RowLink extends Toggle {
  */
 export let ARROWS = []
 const ARROW_BASE = 10
-class ServerArrow extends FormButton {
-    constructor(target, dir) {
+/**
+ * 一个翻页箭头 = 两个**序号相同**的表单按钮（点哪个都发同一个序号）：
+ *   普通版：文字含 goN| 就显示，聚焦优先级 10
+ *   聚焦版：文字含 goN|F 才显示，聚焦优先级 100——服务端重开表单时给「刚才点击方向」的箭头加 F，
+ *   真机 1.5.2：鼠标没动时点击交给默认聚焦的控件（原来是右上角 ×，书就关了）
+ */
+class ServerArrow extends Panel {
+    constructor(from, target, dir) {
+        super({ size: [28, 18], anchor: 'top_left', offset: [dir === 'left' ? 10 : 234, 156] })
         const index = ARROW_BASE + ARROWS.length
-        const tag = `go${index}|`
-        super({ index, tag, size: [28, 18], anchor: 'top_left', offset: [dir === 'left' ? 10 : 234, 156] })
-        ARROWS.push({ index, tag, target })
+        ARROWS.push({ index, from, target, dir })
         const art = (hover) => new Image({ texture: dir === 'left' ? (hover ? T.arrowLH : T.arrowL) : (hover ? T.arrowRH : T.arrowR), size: [20, 12] })
-        this.default.add(art(false)); this.hover.add(art(true)); this.pressed.add(art(true))
+        for (const [tag, focusPrecedence] of [[`go${index}|`, 10], [`go${index}|F`, 100]]) {
+            const b = new FormButton({ index, tag, size: [28, 18], focusPrecedence })
+            b.default.add(art(false)); b.hover.add(art(true)); b.pressed.add(art(true))
+            this.add(b)
+        }
     }
 }
 
@@ -189,7 +198,7 @@ export function buildBook(options = {}) {
         new RowLink(pages, 'diamond', { icon: T.diamond, text: '钻石', y: 38 }),
         new RowLink(pages, 'about', { icon: T.book_item, text: '检查清单', y: 56 }),
         new RowLink(pages, 'tlayer', { icon: T.paper, text: '叠放顺序', y: 74 })))
-    home.add(new ServerArrow('sword', 'right'))
+    home.add(new ServerArrow('home', 'sword', 'right'))
 
     // 钻石剑
     const sword = pages.page('sword')
@@ -199,20 +208,20 @@ export function buildBook(options = {}) {
         new ItemSlot(detail, 'sword', { index: 1, icon: T.diamond, name: '钻石', x: 35, y: 24 }),
         new ItemSlot(detail, 'sword', { index: 2, icon: T.diamond, name: '钻石', x: 35, y: 44 }),
         new ItemSlot(detail, 'sword', { index: 3, icon: T.stick, name: '木棍', x: 35, y: 64 })))
-    sword.add(new ServerArrow('home', 'left'), new ServerArrow('diamond', 'right'))
+    sword.add(new ServerArrow('sword', 'home', 'left'), new ServerArrow('sword', 'diamond', 'right'))
 
     // 钻石
     const diamond = pages.page('diamond')
     diamond.add(new Side('L').add(new Title('钻石'), new Body('这一页从目录、上一页箭头都能到达：同一页有多个入口（同序号的开关）。')))
     diamond.add(new Side('R').add(new Title('说明'), new Body('右下箭头去诊断页，左下箭头回钻石剑页。')))
-    diamond.add(new ServerArrow('sword', 'left'), new ServerArrow('about', 'right'))
+    diamond.add(new ServerArrow('diamond', 'sword', 'left'), new ServerArrow('diamond', 'about', 'right'))
 
     // 检查页
     const about = pages.page('about')
     const bookmark = new Bookmark(pages, 'home')
     about.add(new Side('L').add(new Title('1.0.1 的结论'), new Body('按名字读开关是全局的；同序号的开关不会一起选中（只有被点的那个选中）；弹层会被点穿。')))
     about.add(new Side('R').add(new Title('1.0.2 请检查'), new Body('1 钻石剑页悬停格子：提示框有「背包里有 N 个」\n2 打开弹层后点底下的箭头：点不穿，也不关弹层（透明、无声）\n3 只有「关闭」按钮才关弹层')))
-    about.add(new ServerArrow('diamond', 'left'))
+    about.add(new ServerArrow('about', 'diamond', 'left'))
 
     buildTextPages(pages)
 
@@ -359,8 +368,8 @@ function buildTextPages(pages) {
     // 文本页之间的箭头
     chain.forEach((key, i) => {
         const page = pages.page(key)
-        page.add(new ServerArrow(i === 0 ? 'home' : chain[i - 1], 'left'))
-        if (i < chain.length - 1) page.add(new ServerArrow(chain[i + 1], 'right'))
+        page.add(new ServerArrow(key, i === 0 ? 'home' : chain[i - 1], 'left'))
+        if (i < chain.length - 1) page.add(new ServerArrow(key, chain[i + 1], 'right'))
     })
 }
 
