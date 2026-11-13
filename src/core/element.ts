@@ -32,6 +32,15 @@ export interface LayoutOptions {
     clip?: boolean
     /** 能否交互（按钮 / 开关；可写表达式 → #enabled 绑定）。禁用的开关显示 locked 态 */
     enabled?: Dyn<boolean>
+    /**
+     * 内边距（安全区）：子元素放进一个缩进的内容面板里（JSON UI 没有 padding，CUI 编译成内层面板）。
+     * 数字 = 四边相同；[左, 上, 右, 下]
+     */
+    padding?: number | [number, number, number, number]
+    /** 子元素不得越出本元素（含内边距）的范围：lint 按排版结果检查（out-of-bounds） */
+    contain?: boolean
+    /** 允许越界（例如提示框、弹出物）：contain 检查跳过它和它的子孙 */
+    overflow?: boolean
     /** 在 grid 里的格位 [列, 行] */
     gridPos?: [number, number]
     /** JSON UI 变量（$name: value） */
@@ -91,7 +100,11 @@ export interface ToggleOptions extends LayoutOptions {
     lockedVisible?: boolean
 }
 export interface CollectionItemOptions extends LayoutOptions { collection: string, index: number }
-export interface RawOptions extends LayoutOptions { json: Record<string, unknown> }
+export interface RawOptions extends LayoutOptions {
+    json: Record<string, unknown>
+    /** 继承的原版模板（编译成 `名字@模板`，例如 common.text_cycler） */
+    template?: string
+}
 
 type Addable = Element | string | null | undefined | false
 
@@ -254,7 +267,14 @@ function snapshot(list: Element[], parentPath: string): RNode[] {
         let name = el.name
         if (name === undefined) { name = `${prefix}${used.get(prefix) ?? 0}`; used.set(prefix, (used.get(prefix) ?? 0) + 1) }
         const path = parentPath ? `${parentPath}/${name}` : name
-        const r: RNode = { type: el.type, name, path, props: { ...el.props }, children: snapshot(el.children, path) }
+        const { padding, ...props } = el.props
+        let children = snapshot(el.children, padding !== undefined ? `${path}/content` : path)
+        if (padding !== undefined) {
+            // 内边距 → 内层内容面板：尺寸 = 100% − 左右 / 上下，偏移 = [左, 上]
+            const [l, t, r2, b] = typeof padding === 'number' ? [padding, padding, padding, padding] : padding
+            children = [{ type: 'panel', name: 'content', path: `${path}/content`, props: { size: [`100% - ${l + r2}px`, `100% - ${t + b}px`], anchor: 'top_left', offset: [l, t], padded: true }, children }]
+        }
+        const r: RNode = { type: el.type, name, path, props, children }
         const slots = el.slots()
         if (slots) r.slots = Object.fromEntries(Object.entries(slots).map(([k, p]) => [k, snapshot(p.children, `${path}/${k}`)]))
         return r

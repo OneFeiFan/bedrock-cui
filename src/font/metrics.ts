@@ -2,7 +2,7 @@
  * 字体度量（基岩版，真机字宽标尺校准，2026-11）：
  *   **整段文字的字体由内容决定**：只要含非 ASCII 字符（例如汉字），整段（连同其中的英文、数字、空格）都用 Unifont 画；
  *   纯 ASCII 的文字才用 Minecraft 默认字体（真机：「Esc 关闭」里 E s c 的字距是 4；纯英文行里是 6）。
- *   Minecraft 默认字体：i 2、l 3、t 4、f k 5、大多数 6（含 @）……
+ *   Minecraft 默认字体：! ' , . : ; i | 2，l ` 3，I t [ ] 空格 4，f k < > ( ) { } " * 5，~ 7，其余 6（含 @）
  *   Unifont：字距 = 点阵墨迹宽 / 2 + 1（半像素精度）——绝大多数汉字 8.5，「中」6.5，中文逗号 2、句号 3，空格 4（表见 unifontWidths.ts）
  *   粗体：Minecraft 字体每字 +1，Unifont 每字 +0.5（实测「中」粗体 7.0）
  * 行高 10（字形 8 + 行距 2）。`§x` 格式码不占宽度。
@@ -15,8 +15,9 @@ export const GLYPH_HEIGHT = 8
 const ASCII: Record<string, number> = {}
 for (const ch of "!',.:;i|") ASCII[ch] = 2
 for (const ch of 'l`') ASCII[ch] = 3
-for (const ch of 'It[](){}"* ') ASCII[ch] = 4
-for (const ch of 'fk<>') ASCII[ch] = 5
+for (const ch of 'It[] ') ASCII[ch] = 4
+// 真机（字宽标尺 1.2.0）：( ) { } " * 的字距是 5（Java 版是 4）
+for (const ch of 'fk<>(){}"*') ASCII[ch] = 5
 for (const ch of '~') ASCII[ch] = 7
 
 /** 是否 ASCII 可见字符 */

@@ -9,7 +9,7 @@
  *   4. 与表单数据混用：物品格子是开关，提示框里的运行期数据来自表单按钮文字；弹层里的数据来自表单正文
  *   5. 诊断：最后一页列出每个开关的选中状态（同序号的开关会不会一起选中）
  */
-import { CollectionItem, FormButton, Image, Label, Pages, Panel, Paragraph, Stack, Toggle, form, paginate, textWidth } from 'cui'
+import { Button, CollectionItem, FormButton, Image, Label, Pages, Panel, Paragraph, Raw, Stack, Toggle, form, paginate, ref, textWidth } from 'cui'
 
 export const T = {
     book: 'textures/cui_test/book', line: 'textures/cui_test/line', rowHover: 'textures/cui_test/row_hover',
@@ -42,17 +42,18 @@ class Title extends Panel {
 }
 
 class Body extends Label {
-    constructor(text, y = 22) { super({ text, color: BODY, size: [110, 'default'], anchor: 'top_left', offset: [3, y] }) }
+    constructor(text, y = 22) { super({ text, color: BODY, size: ['100%', 'default'], anchor: 'top_left', offset: [0, y] }) }
 }
 
 class Side extends Panel {
-    constructor(side) { super({ size: [116, 160], anchor: 'top_left', offset: [side === 'L' ? 14 : 142, 10] }) }
+    // 安全区：左右各 3 像素、底部让出翻页箭头（18 像素）；contain = 内容不得越出（lint 按排版结果检查）
+    constructor(side) { super({ size: [116, 160], anchor: 'top_left', offset: [side === 'L' ? 14 : 142, 10], padding: [3, 0, 3, 18], contain: true }) }
 }
 
 /** 目录行：跳到某页的开关（悬停整行高亮） */
 class RowLink extends Toggle {
     constructor(pages, key, { icon, text, y }) {
-        super({ ...pages.toggleOptions(key), size: [116, 18], anchor: 'top_left', offset: [0, y] })
+        super({ ...pages.toggleOptions(key), size: ['100%', 18], anchor: 'top_left', offset: [0, y] })
         pages.attach(key, this)
         const content = () => [new Image({ texture: icon, size: [16, 16], anchor: 'left_middle', offset: [3, 0], layer: 2 }), new Label({ text, color: BODY, anchor: 'left_middle', offset: [23, 0], layer: 2 })]
         this.unchecked.add(...content())
@@ -98,7 +99,7 @@ class ItemSlot extends Panel {
         const icn = size >= 32 ? 32 : 16
         const base = () => [new Image({ texture: T.cell, size: ['100%', '100%'] }), new Image({ texture: icon, size: [icn, icn], layer: 2 })]
         const tipHolder = () => {
-            const holder = new CollectionItem({ collection: 'form_buttons', index, size: [size, size], layer: 30 })
+            const holder = new CollectionItem({ collection: 'form_buttons', index, size: [size, size], layer: 30, overflow: true })
             const payload = form.buttonText.minus(tag)
             const tip = new Image({ texture: T.purple, size: ['100%c + 8px', '100%c + 8px'], anchorFrom: 'top_right', anchorTo: 'top_left', offset: [2, -2] })
             // 宽用 %cm：纵向 stack 交叉方向的 %c 是子控件之和（真机：提示框比文字宽很多）
@@ -148,21 +149,23 @@ export function buildBook() {
         new RowLink(pages, 'truler', { icon: T.map, text: '字宽标尺', y: 56 }),
         new RowLink(pages, 'tlong0', { icon: T.writable, text: '长文本分页', y: 74 }),
         new RowLink(pages, 'trun', { icon: T.emerald, text: '运行期长文本', y: 92 }),
-        new RowLink(pages, 'tnav', { icon: T.sword, text: '翻页手感（A/B）', y: 110 })))
+        new RowLink(pages, 'tspecial', { icon: T.name_tag, text: '特殊字符', y: 110 })))
     home.add(new Side('R').add(new Title('目录'),
         new RowLink(pages, 'sword', { icon: T.sword, text: '钻石剑', y: 20 }),
         new RowLink(pages, 'diamond', { icon: T.diamond, text: '钻石', y: 38 }),
-        new RowLink(pages, 'about', { icon: T.book_item, text: '检查清单', y: 56 })))
+        new RowLink(pages, 'about', { icon: T.book_item, text: '检查清单', y: 56 }),
+        new RowLink(pages, 'tnav', { icon: T.sword, text: '翻页手感 A / B', y: 74 }),
+        new RowLink(pages, 'tpager', { icon: T.writable, text: '翻页实验 C（循环器）', y: 92 })))
     home.add(new Arrow(pages, 'sword', 'right'))
 
     // 钻石剑
     const sword = pages.page('sword')
-    sword.add(new Side('L').add(new Title('钻石剑'), new ItemSlot(detail, 'sword', { index: 0, icon: T.sword, name: '钻石剑', x: 40, y: 24, size: 36 }),
+    sword.add(new Side('L').add(new Title('钻石剑'), new ItemSlot(detail, 'sword', { index: 0, icon: T.sword, name: '钻石剑', x: 37, y: 24, size: 36 }),
         new Body('悬停：提示框显示表单按钮带来的运行期数据。点击：打开详情弹层。', 68)))
     sword.add(new Side('R').add(new Title('合成'),
-        new ItemSlot(detail, 'sword', { index: 1, icon: T.diamond, name: '钻石', x: 38, y: 24 }),
-        new ItemSlot(detail, 'sword', { index: 2, icon: T.diamond, name: '钻石', x: 38, y: 44 }),
-        new ItemSlot(detail, 'sword', { index: 3, icon: T.stick, name: '木棍', x: 38, y: 64 })))
+        new ItemSlot(detail, 'sword', { index: 1, icon: T.diamond, name: '钻石', x: 35, y: 24 }),
+        new ItemSlot(detail, 'sword', { index: 2, icon: T.diamond, name: '钻石', x: 35, y: 44 }),
+        new ItemSlot(detail, 'sword', { index: 3, icon: T.stick, name: '木棍', x: 35, y: 64 })))
     sword.add(new Arrow(pages, 'home', 'left'), new Arrow(pages, 'diamond', 'right'))
 
     // 钻石
@@ -225,9 +228,9 @@ const RULER_ROWS_R = ['钻石剑钻石剑钻石剑钻', 'abc 中文 xyz', '中�
 class RulerRow extends Panel {
     constructor(text, y) {
         const expected = textWidth(text)
-        super({ size: [116, 15], anchor: 'top_left', offset: [3, y] })
+        super({ size: ['100%', 15], anchor: 'top_left', offset: [0, y] })
         this.add(new Label({ text, color: BODY, anchor: 'top_left' }))
-        this.add(new Image({ texture: T.ruler, size: [121, 5], anchor: 'top_left', offset: [0, 9] }))
+        this.add(new Image({ texture: T.ruler, size: [101, 5], anchor: 'top_left', offset: [0, 9] }))
         this.add(new Label({ text: `§8${expected}`, fontScale: 0.75, anchor: 'top_right', offset: [-2, 0] }))
     }
 }
@@ -235,7 +238,7 @@ class RulerRow extends Panel {
 /** 颜色样例：深色底（浅色字在米黄纸上看不清） */
 class Swatches extends Panel {
     constructor(codes, y, height) {
-        super({ size: [110, height], anchor: 'top_left', offset: [3, y] })
+        super({ size: ['100%', height], anchor: 'top_left', offset: [0, y] })
         this.add(new Image({ texture: T.purple, size: ['100%', '100%'] }))
         codes.forEach((c, i) => this.add(new Label({ text: `§7${c} §${c}示例Ab`, anchor: 'top_left', offset: [6 + (i % 2) * 52, 5 + Math.floor(i / 2) * 10] })))
     }
@@ -244,7 +247,7 @@ class Swatches extends Panel {
 /** 小箭头（翻页手感测试用） */
 class MiniArrow extends Toggle {
     constructor(pages, key, dir, extra = {}) {
-        super({ ...pages.toggleOptions(key), size: [28, 18], anchor: 'top_left', offset: [dir === 'left' ? 4 : 84, 112], ...extra })
+        super({ ...pages.toggleOptions(key), size: [28, 18], anchor: 'top_left', offset: [dir === 'left' ? 2 : 80, 100], ...extra })
         pages.attach(key, this)
         const art = (hover) => new Image({ texture: dir === 'left' ? (hover ? T.arrowLH : T.arrowL) : (hover ? T.arrowRH : T.arrowR), size: [20, 12] })
         this.unchecked.add(art(false)); this.checked.add(art(false))
@@ -259,7 +262,7 @@ class MiniArrow extends Toggle {
  */
 function buildNavTest(sideA, sideB) {
     const mini = (group, letter) => {
-        const p = new Pages({ group, start: `${letter}0`, size: [116, 140], anchor: 'top_left', offset: [0, 20] })
+        const p = new Pages({ group, start: `${letter}0`, size: ['100%', 120], anchor: 'top_left', offset: [0, 20] })
         for (let k = 0; k < 3; k++) p.page(`${letter}${k}`).add(new Label({ text: `§l${letter.toUpperCase()}${k + 1}`, color: TITLE, fontScale: 3, anchor: 'top_middle', offset: [0, 40] }))
         return p
     }
@@ -280,22 +283,56 @@ function buildNavTest(sideA, sideB) {
     sideB.add(new Title('B：启用切换'), new Body('§8同上：看哪一边不动鼠标也能连续翻页', 20), b)
 }
 
+/** 特殊字符：左边原样输出（绕过编译器的保护），右边经编译器处理（# / $ 开头补 §r） */
+const SPECIAL = ['#abc', '$abc', 'a#b$c', '100%', 'a%b%c', '%s %d %%', '&+=?/', '@abc']
+function buildSpecialPage(page) {
+    const row = (i, text, raw) => {
+        const p = new Panel({ size: ['100%', 12], anchor: 'top_left', offset: [0, 22 + i * 15] })
+        p.add(new Label({ text: `§8${i + 1}`, anchor: 'left_middle' }))
+        p.add(new Label({ text, color: BODY, anchor: 'left_middle', offset: [12, 0], ...(raw ? { raw: { text } } : {}) }))
+        return p
+    }
+    page.add(new Side('L').add(new Title('原样输出'), ...SPECIAL.map((t, i) => row(i, t, true))))
+    page.add(new Side('R').add(new Title('CUI 处理后'), ...SPECIAL.map((t, i) => row(i, t, false))))
+}
+
+/**
+ * 翻页实验 C：原版的文字循环器（common.text_cycler，label_cycler）＋ 两个**始终存在**的按钮发「上一页 / 下一页」事件
+ * （原版角色外观界面的写法：$pressed_button_name = button.cast_subpage_left / right）。同一个按钮反复点 = 相对动作，
+ * 不需要移动鼠标。要验证：① 循环器能不能在服务端表单里翻；② 别的控件能不能读到它的当前文字（#text）——能读就能驱动整本书。
+ */
+function buildPagerTest(sideL, sideR) {
+    const cycler = new Raw({ name: 'cui_pager', template: 'common.text_cycler', size: [60, 10], anchor: 'top_middle', offset: [0, 30], json: { $text_cycler_labels: ['p0', 'p1', 'p2'], color: [0.24, 0.13, 0.03] } })
+    const read = ref('#text', { kind: 'control', control: 'cui_pager' })
+    const arrow = (dir) => {
+        const b = new Button({ name: `pager_${dir}`, size: [28, 18], anchor: 'top_left', offset: [dir === 'left' ? 2 : 80, 120], pressedName: dir === 'left' ? 'button.cast_subpage_left' : 'button.cast_subpage_right' })
+        const art = (hover) => new Image({ texture: dir === 'left' ? (hover ? T.arrowLH : T.arrowL) : (hover ? T.arrowRH : T.arrowR), size: [20, 12] })
+        b.default.add(art(false)); b.hover.add(art(true)); b.pressed.add(art(true))
+        return b
+    }
+    sideL.add(new Title('C：循环器'), new Body('§8循环器本身（应显示 p0 / p1 / p2）：', 20), cycler, arrow('left'), arrow('right'))
+    sideR.add(new Title('C：读循环器'), new Body('§8读到的 #text：', 20),
+        new Label({ text: read, color: TITLE, anchor: 'top_left', offset: [0, 32] }),
+        ...[0, 1, 2].map((k) => new Label({ text: `§lC${k + 1}`, color: TITLE, fontScale: 3, anchor: 'top_middle', offset: [0, 55], visible: read.eq(`p${k}`) })),
+        new Body('§8左页箭头不动鼠标连点；也试试手柄 LB / RB', 112))
+}
+
 /** 文本测试的各页：折行对比、富文本、字宽标尺、长文本分页、运行期长文本、翻页手感 */
 function buildTextPages(pages) {
     const chain = ['twrap', 'trich', 'truler']
     // 折行对比
     const wrap = pages.page('twrap')
-    wrap.add(new Side('L').add(new Title('引擎自动折行'), new Label({ text: SAMPLE, color: BODY, size: [110, 'default'], anchor: 'top_left', offset: [3, 22] })))
-    wrap.add(new Side('R').add(new Title('CUI 预折行'), new Paragraph({ text: SAMPLE, width: 110, color: BODY, anchor: 'top_left', offset: [3, 22] })))
+    wrap.add(new Side('L').add(new Title('引擎自动折行'), new Label({ text: SAMPLE, color: BODY, size: ['100%', 'default'], anchor: 'top_left', offset: [0, 22] })))
+    wrap.add(new Side('R').add(new Title('CUI 预折行'), new Paragraph({ text: SAMPLE, width: 110, color: BODY, anchor: 'top_left', offset: [0, 22] })))
     // 富文本
     const rich = pages.page('trich')
     rich.add(new Side('L').add(new Title('颜色 §0–§f'), new Swatches('0123456789abcdef'.split(''), 22, 90)))
     rich.add(new Side('R').add(new Title('基岩版独有 + 格式'), new Swatches('ghijmnpqstuv'.split(''), 22, 70),
-        new Paragraph({ text: '§l粗体 Bold§r  §o斜体 Italic§r\n§k乱码abc§r ← 乱码\n§c红§l红粗§9蓝粗§r普通（换颜色不清粗体）', width: 110, color: BODY, anchor: 'top_left', offset: [3, 96] })))
+        new Paragraph({ text: '§l粗体 Bold§r  §o斜体 Italic§r\n§k乱码abc§r ← 乱码\n§c红§l红粗§9蓝粗§r普通（换颜色不清粗体）', width: 110, color: BODY, anchor: 'top_left', offset: [0, 96] })))
     // 字宽标尺
     const ruler = pages.page('truler')
-    ruler.add(new Side('L').add(new Title('字宽标尺'), ...RULER_ROWS_L.map((t, i) => new RulerRow(t, 20 + i * 17))))
-    ruler.add(new Side('R').add(new Title('字宽标尺（续）'), ...RULER_ROWS_R.map((t, i) => new RulerRow(t, 20 + i * 17))))
+    ruler.add(new Side('L').add(new Title('字宽标尺'), ...RULER_ROWS_L.map((t, i) => new RulerRow(t, 20 + i * 15))))
+    ruler.add(new Side('R').add(new Title('字宽标尺（续）'), ...RULER_ROWS_R.map((t, i) => new RulerRow(t, 20 + i * 15))))
     // 长文本分页：每页 = 半边书页（标题下 22 起，到翻页箭头上方，约 12 行）
     const chunks = paginate(LONG, 110, { height: 120, firstHeight: 120 })
     const spreads = Math.ceil(chunks.length / 2)
@@ -305,16 +342,16 @@ function buildTextPages(pages) {
         const page = pages.page(key)
         for (const [side, k] of [['L', 2 * s], ['R', 2 * s + 1]]) {
             if (k >= chunks.length) continue
-            page.add(new Side(side).add(new Title(`长文本 ${k + 1} / ${chunks.length}`), new Label({ text: chunks[k], color: BODY, size: [110, 'default'], anchor: 'top_left', offset: [3, 22] })))
+            page.add(new Side(side).add(new Title(`长文本 ${k + 1} / ${chunks.length}`), new Label({ text: chunks[k], color: BODY, size: ['100%', 'default'], anchor: 'top_left', offset: [0, 22] })))
         }
     }
     // 运行期长文本：按钮 5 的文字（脚本按玩家背包生成）
     chain.push('trun')
     const run = pages.page('trun')
-    const runtimeText = (size) => new CollectionItem({ collection: 'form_buttons', index: 5, size: [110, 10], anchor: 'top_left', offset: [3, 22] })
+    const runtimeText = (size) => new CollectionItem({ collection: 'form_buttons', index: 5, size: [110, 10], anchor: 'top_left', offset: [0, 22] })
         .add(new Label({ text: form.buttonText.minus('txt|'), color: BODY, size, anchor: 'top_left' }))
     run.add(new Side('L').add(new Title('运行期：高度 default'), runtimeText([110, 'default'])))
-    const clipped = new Panel({ size: [110, 50], anchor: 'top_left', offset: [3, 22], clip: true })
+    const clipped = new Panel({ size: [110, 50], anchor: 'top_left', offset: [0, 22], clip: true })
     clipped.add(new CollectionItem({ collection: 'form_buttons', index: 5, size: [110, 10], anchor: 'top_left' })
         .add(new Label({ text: form.buttonText.minus('txt|'), color: BODY, size: [110, 'default'], anchor: 'top_left' })))
     run.add(new Side('R').add(new Title('运行期：裁剪到 50 高'), clipped, new Body('§8上面的框只有 50 像素高，超出的部分被裁掉。', 80)))
@@ -324,6 +361,14 @@ function buildTextPages(pages) {
     const sideA = new Side('L'), sideB = new Side('R')
     buildNavTest(sideA, sideB)
     nav.add(sideA, sideB)
+    // 特殊字符、翻页实验 C
+    chain.push('tspecial')
+    buildSpecialPage(pages.page('tspecial'))
+    chain.push('tpager')
+    const pager = pages.page('tpager')
+    const pl = new Side('L'), pr = new Side('R')
+    buildPagerTest(pl, pr)
+    pager.add(pl, pr)
     // 文本页之间的箭头
     chain.forEach((key, i) => {
         const page = pages.page(key)
@@ -340,5 +385,5 @@ export const TEXTURE_INFO = {
     // 原版 .json：cell_image 是两倍精度（10×10 像素、base_size 5×5、nineslice 1）；highlight_slot 也是九宫格
     [T.cell]: { size: [10, 10], baseSize: [5, 5], nineslice: 1 }, [T.highlight]: { size: [1, 1], baseSize: [1, 1], nineslice: 1 }, [T.purple]: { size: [16, 16], baseSize: [16, 16], nineslice: 4 },
     [T.sword]: { size: [16, 16] }, [T.diamond]: { size: [16, 16] }, [T.stick]: { size: [16, 16] }, [T.book_item]: { size: [16, 16] },
-    [T.ruler]: { size: [121, 5] }, [T.paper]: { size: [16, 16] }, [T.name_tag]: { size: [16, 16] }, [T.map]: { size: [16, 16] }, [T.emerald]: { size: [16, 16] }, [T.writable]: { size: [16, 16] },
+    [T.ruler]: { size: [101, 5] }, [T.paper]: { size: [16, 16] }, [T.name_tag]: { size: [16, 16] }, [T.map]: { size: [16, 16] }, [T.emerald]: { size: [16, 16] }, [T.writable]: { size: [16, 16] },
 }

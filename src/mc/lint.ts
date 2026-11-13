@@ -5,7 +5,7 @@ import { isExpr } from '../core/expr.js'
 import { walk, type RNode } from '../core/node.js'
 import { parseSize } from '../layout/units.js'
 import { measureText } from '../font/metrics.js'
-import type { TextureInfo } from '../layout/engine.js'
+import { layout, type Box, type TextureInfo } from '../layout/engine.js'
 
 export interface LintIssue {
     rule: string
@@ -17,6 +17,40 @@ export interface LintIssue {
 export interface LintOptions {
     /** 贴图信息（知道尺寸才能准确判断 keep_ratio 问题） */
     textures?: (path: string) => TextureInfo | undefined
+    /** 按排版结果检查越界时用的视口（缺省 [400, 300]） */
+    viewport?: [number, number]
+}
+
+/**
+ * 按排版结果检查：contain 的元素里，子孙不得越出它的范围（有内边距时是内容面板的范围）。
+ * 所有页面都排出来（忽略动态 visible）；overflow: true 的子树跳过（提示框等）。
+ */
+export function lintLayout(roots: RNode[], options: LintOptions = {}): LintIssue[] {
+    const issues: LintIssue[] = []
+    let boxes: Box[]
+    // 排不出来（例如尺寸表达式写错——静态检查的 bad-size 已经报了）就跳过
+    try { boxes = layout(roots, { viewport: options.viewport ?? [400, 300], textures: options.textures, forceVisible: true }) } catch { return issues }
+    const visit = (b: Box, bounds: { rect: Box['rect'], path: string } | undefined) => {
+        if (b.node.props.overflow) return
+        if (bounds) {
+            const r = b.rect, o = bounds.rect
+            const out = [o.x - r.x, r.x + r.w - (o.x + o.w), o.y - r.y, r.y + r.h - (o.y + o.h)].map((v) => Math.max(0, Math.round(v * 10) / 10))
+            if (out.some((v) => v > 0.01)) {
+                const side = ['左', '右', '上', '下'].map((s, i) => (out[i] > 0.01 ? `${s} ${out[i]}` : '')).filter(Boolean).join('、')
+                issues.push({ rule: 'out-of-bounds', level: 'warning', path: b.node.path, message: `越出 ${bounds.path} 的安全区（${side} 像素）` })
+                return // 只报最外层越界的元素，子孙不再重复报
+            }
+        }
+        // 自己是 contain：子孙的边界 = 自己（有内边距时 = 内容面板）
+        let next = bounds
+        if (b.node.props.contain) {
+            const content = b.children.find((c) => c.node.props.padded)
+            next = { rect: (content ?? b).rect, path: b.node.path }
+        }
+        for (const c of b.children) visit(c, next)
+    }
+    boxes.forEach((b) => visit(b, undefined))
+    return issues
 }
 
 const isFixed = (v: unknown) => v !== undefined && v !== 'default'

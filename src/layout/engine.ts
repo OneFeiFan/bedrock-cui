@@ -46,6 +46,8 @@ export interface LayoutEnv {
     buttonState?: (path: string) => 'default' | 'hover' | 'pressed'
     /** 开关是否选中（预览里由开关组状态决定） */
     toggleChecked?: (n: RNode) => boolean
+    /** 忽略动态的 visible（lint 用：所有页面都排出来检查） */
+    forceVisible?: boolean
     translate?: (key: string) => string
 }
 
@@ -99,6 +101,7 @@ class Engine {
     visible(n: RNode, scope: Scope): boolean {
         const v = n.props.visible
         if (v === undefined) return true
+        if (this.env.forceVisible && isExpr(v)) return true
         return isExpr(v) ? asBool(evalExpr(v, this.evalEnv(scope))) : Boolean(v)
     }
 

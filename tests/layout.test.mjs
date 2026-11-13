@@ -145,3 +145,26 @@ test('cui/node：从资源包目录读贴图信息（PNG 宽高 + 同名 .json �
     assert.deepEqual(info('textures/ui/cell_image'), { size: [10, 10], nineslice: 1, baseSize: [5, 5] })
     assert.equal(info('textures/ui/missing'), undefined)
 })
+
+test('内边距（安全区）与越界检查：padding 编译成内层面板；contain 里越出安全区的子孙报 out-of-bounds；overflow 的跳过', async () => {
+    const { compileNamespace } = await import('../dist/index.js')
+    const side = new Panel({ name: 'side', size: [116, 160], anchor: 'top_left', padding: [3, 0, 3, 0], contain: true })
+    side.add(new Image({ name: 'ruler', texture: 'r', size: [121, 5], anchor: 'top_left' }))
+    side.add(new Panel({ name: 'ok', size: ['100%', 10], anchor: 'top_left', offset: [0, 20] }))
+    side.add(new Panel({ name: 'tip', size: [80, 20], anchorFrom: 'top_right', anchorTo: 'top_left', overflow: true }))
+    const b = run(new Panel({ size: [200, 200], anchor: 'top_left', children: [side] }))
+    assert.deepEqual(R(findBox(b, 'ok')), [3, 20, 110, 10], '子元素按内容面板（110 宽、左缩 3）排')
+    const { json, issues } = compileNamespace('t', { root: new Panel({ size: [200, 200], children: [side.clone()] }) })
+    const content = json.root.controls[0].side.controls[0].content
+    assert.deepEqual([content.size, content.offset], [['100% - 6px', '100% - 0px'], [3, 0]])
+    assert.deepEqual(issues.map((i) => `${i.rule}@${i.path.split('/').pop()}：${i.message.replace(/^.*（|）$/g, '')}`), ['out-of-bounds@ruler：右 11 像素'])
+})
+
+test('静态文字以 # / $ 开头会被游戏当成绑定 / 变量（真机整行空白）：编译时补 §r', async () => {
+    const { compileNamespace, escapeText } = await import('../dist/index.js')
+    assert.equal(escapeText('#$%&'), '§r#$%&')
+    assert.equal(escapeText('$abc'), '§r$abc')
+    assert.equal(escapeText('a#b'), 'a#b')
+    const { json } = compileNamespace('t', { root: new Panel({ children: [new Label({ name: 'x', text: '#hash' })] }) })
+    assert.equal(json.root.controls[0].x.text, '§r#hash')
+})

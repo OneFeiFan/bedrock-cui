@@ -11,9 +11,17 @@
 import { compileExpr, isExpr, type Expr } from '../core/expr.js'
 import { finalize, type Element } from '../core/element.js'
 import type { RNode } from '../core/node.js'
-import { lint, type LintIssue, type LintOptions } from './lint.js'
+import { lint, lintLayout, type LintIssue, type LintOptions } from './lint.js'
 
 type Json = Record<string, unknown>
+
+/**
+ * 静态文字的保护：以 # 开头会被当成绑定属性（#text…）、以 $ 开头会被当成变量，游戏里整段不显示
+ * （真机：字宽标尺 1.2.0 的「#$%&+=?/」整行空白）⇒ 开头补一个不占宽度的 §r。
+ */
+export function escapeText(text: unknown): unknown {
+    return typeof text === 'string' && /^[#$]/.test(text) ? `§r${text}` : text
+}
 
 /** 标记：外层集合项的上下文被开关遮住了 */
 const THROUGH_TOGGLE = '\u0000toggle:'
@@ -100,7 +108,7 @@ class Compiler {
                 break
             case 'label':
                 out.type = 'label'
-                if (!isExpr(p.text)) out.text = p.text
+                if (!isExpr(p.text)) out.text = escapeText(p.text)
                 if (p.color) out.color = p.color
                 if (p.shadow !== undefined) out.shadow = p.shadow
                 if (p.fontScale !== undefined) out.font_scale_factor = p.fontScale
@@ -141,6 +149,7 @@ class Compiler {
             case 'collection_item':
                 return this.collectionItem(n)
             case 'raw':
+                if (p.template) key = `${n.name}@${p.template}`
                 Object.assign(out, p.json)
                 break
         }
@@ -212,5 +221,5 @@ export function compileNamespace(namespace: string, roots: Record<string, Elemen
         Object.assign(json, c.control(n, undefined))
         all.push(n)
     }
-    return { json, issues: [...lint(all, options), ...c.issues] }
+    return { json, issues: [...lint(all, options), ...lintLayout(all, options), ...c.issues] }
 }
