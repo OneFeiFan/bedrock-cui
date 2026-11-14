@@ -7,7 +7,9 @@
  */
 import { Anchor, Color, FormButton, Image, Label, Length, Pages, Panel, Size, Texture, TextStyle } from 'cui'
 
-export const FOCUS_ROUTED = { title: 'cui_ui:focus_routed' }
+/** 两个对照：指南针 = 路由界面（无焦点交接）；时钟 = 路由界面 + 焦点交接（静态部分的透明缓冲按钮） */
+export const FOCUS_ROUTED = { title: 'cui_ui:focus_routed', group: 'frt', heading: '§l路由版翻页（无交接）', handoff: false }
+export const FOCUS_SINK = { title: 'cui_ui:sink_routed', group: 'frs', heading: '§l路由版翻页 + 焦点交接', handoff: true }
 
 const BOOK = Texture.of('textures/cui_test/book').withSize(272, 180)
 const ARROW = {
@@ -19,20 +21,16 @@ const ARROW = {
 const BIG = TextStyle.of(Color.hex('#3d2108')).withScale(4)
 const BODY = TextStyle.of(Color.hex('#45301c'))
 
-/** 箭头表单按钮：序号 → { 所在页, 目标页, 方向 }（构建时给脚本） */
-export let FOCUS_ROUTES = []
-/** 分页（构建时给 serverForm 的路由） */
-export let FOCUS_PAGES
 /** 「原地不动」按钮的序号 */
 export const FOCUS_STAY = 20
 
 /** 一个翻页箭头 = 两个同序号的表单按钮：普通版（聚焦优先级 10）+ 聚焦版（文字带 F 才显示，优先级 100） */
 class Arrow extends Panel {
-    constructor(from, target, dir) {
+    constructor(routes, from, target, dir) {
         super()
         this.setSize(28, 18).setAnchor(Anchor.TOP_LEFT).setOffset(dir === 'left' ? 10 : 234, 156)
-        const index = FOCUS_ROUTES.length
-        FOCUS_ROUTES.push({ index, from, target, dir })
+        const index = routes.length
+        routes.push({ index, from, target, dir })
         const art = (hover) => new Image(dir === 'left' ? (hover ? ARROW.leftHover : ARROW.left) : (hover ? ARROW.rightHover : ARROW.right)).setSize(20, 12)
         for (const [tag, precedence] of [[`go${index}|`, 10], [`go${index}|F`, 100]]) {
             const b = new FormButton(index, tag, 28, 18).setFocusPrecedence(precedence)
@@ -42,22 +40,22 @@ class Arrow extends Panel {
     }
 }
 
-export function buildFocusRouted() {
-    FOCUS_ROUTES = []
+/** 生成一个路由版翻页界面；返回 { content, pages, routes }（routes：箭头序号 → { 所在页, 目标页, 方向 }） */
+export function buildFocusRouted(config) {
+    const routes = []
     const root = new Panel().setSize(272, 180)
     root.add(new Image(BOOK).setSize(Size.full()))
-    const pages = new Pages('frt').startAt('p1').useRoutePages()
-    FOCUS_PAGES = pages
+    const pages = new Pages(config.group).startAt('p1').useRoutePages()
     const keys = ['p1', 'p2', 'p3']
     keys.forEach((key, i) => {
         const page = pages.page(key)
-        page.add(new Label('§l路由版翻页（对照）', BODY).setAnchor(Anchor.TOP_CENTER).setOffset(0, 16))
+        page.add(new Label(config.heading, BODY).setAnchor(Anchor.TOP_CENTER).setOffset(0, 16))
         page.add(new Label(`${i + 1}`, BIG).setAnchor(Anchor.CENTER).setOffset(0, -6))
         page.add(new Label('鼠标停在右下箭头上不动，连点；看聊天栏收到的按钮是否乱跳', BODY).setSize(Length.pct(80), Length.auto()).setAlign('center').setAnchor(Anchor.BOTTOM_CENTER).setOffset(0, -32))
-        if (i > 0) page.add(new Arrow(key, keys[i - 1], 'left'))
-        if (i < keys.length - 1) page.add(new Arrow(key, keys[i + 1], 'right'))
+        if (i > 0) page.add(new Arrow(routes, key, keys[i - 1], 'left'))
+        if (i < keys.length - 1) page.add(new Arrow(routes, key, keys[i + 1], 'right'))
     })
     root.add(pages)
     root.add(new FormButton(FOCUS_STAY, 'stay|', 1, 1).setAnchor(Anchor.TOP_LEFT).setFocusPrecedence(50))
-    return root
+    return { content: root, pages, routes }
 }

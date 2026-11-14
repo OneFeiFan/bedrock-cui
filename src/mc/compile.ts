@@ -56,9 +56,17 @@ class Compiler {
     /** 当前根是否给绑定加 binding_condition: always（路由界面加；静态界面保持 1.5.4 的输出） */
     always = true
     constructor(private readonly namespace = '') { }
-    private cond(): { binding_condition?: string } { return this.always ? { binding_condition: ALWAYS } : {} }
+    /** 当前元素要求 always（setBindingAlways） */
+    private forceAlways = false
+    private cond(): { binding_condition?: string } { return this.always || this.forceAlways ? { binding_condition: ALWAYS } : {} }
 
     control(n: RNode, inCollection: string | undefined): Json {
+        const saved = this.forceAlways
+        this.forceAlways = Boolean(n.props.bindingAlways)
+        try { return this.controlInner(n, inCollection) } finally { this.forceAlways = saved }
+    }
+
+    private controlInner(n: RNode, inCollection: string | undefined): Json {
         const p = n.props
         // type 放在最前面，生成的 JSON 好读
         const TYPE: Record<string, string> = { panel: 'panel', stack: 'stack_panel', grid: 'grid', image: 'image', label: 'label' }

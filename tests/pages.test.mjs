@@ -194,3 +194,20 @@ test('静态界面（routed: false）：放在根下按标题显示、分页用�
     assert.ok(!book.includes('binding_condition'), '静态界面的绑定不加 always（与 1.5.4 相同）')
     assert.ok(JSON.stringify(json.screen_1).includes('"binding_condition":"always"') || JSON.stringify(json.screen_1).length > 0)
 })
+
+test('焦点交接（focusHandoff）：静态部分的缓冲按钮（优先级 1000、空事件、读「已加载」标记且 always）；路由界面里的标记默认选中', async () => {
+    const { Label, Panel, serverForm } = await import('../dist/index.js')
+    const { files, issues } = serverForm({ namespace: 'ns', panels: [{ panelId: 'cui_ui:pager', content: new Panel().add(new Label('翻页')), focusHandoff: true }] })
+    assert.deepEqual(issues, [])
+    const json = files['ui/ns.json']
+    const gate = json.root.controls.find((c) => c.focus_gate_0).focus_gate_0
+    assert.ok(JSON.stringify(gate.bindings).includes('#title_text'), '缓冲按钮只在这个界面打开时存在（按标题）')
+    const sink = gate.controls[0]['focus_sink_0@common.button']
+    assert.equal(sink.default_focus_precedence, 1000)
+    assert.equal(sink.$pressed_button_name, 'button.cui_focus_sink', '空事件：被点到也不关表单')
+    const view = sink.bindings.find((b) => b.source_control_name === 'cui_ready_0')
+    assert.equal(view.binding_condition, 'always', '标记后来才出现：要一直重新读')
+    const marker = JSON.stringify(json.screen_0)
+    assert.ok(marker.includes('"cui_ready_0@common.toggle"') && marker.includes('"$toggle_default_state":true'), '路由界面里的「已加载」标记')
+    assert.throws(() => serverForm({ namespace: 'x', panels: [{ panelId: 'cui_ui:a', content: new Panel(), focusHandoff: true }, { panelId: 'cui_ui:ab', content: new Panel() }] }), /也包含它/)
+})

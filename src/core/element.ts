@@ -264,6 +264,8 @@ export abstract class Element {
     setVariable(name: string, value: unknown): this { this.props.variables = { ...this.props.variables, [name.startsWith('$') ? name : `$${name}`]: value }; return this }
     /** 逃生口：原样并入输出 JSON 的属性 */
     setRaw(key: string, value: unknown): this { this.props.raw = { ...this.props.raw, [key]: value }; return this }
+    /** 本元素的绑定一律 binding_condition: always（要在别的控件后来才出现时重新读取，例如读路由界面里的标记） */
+    setBindingAlways(on = true): this { this.props.bindingAlways = on || undefined; return this }
 
     /** 按名字找后代 */
     find(name: string): Element | undefined {
