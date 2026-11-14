@@ -13,7 +13,7 @@ import { buildResponsiveDemo, RESPONSIVE_FORM } from './responsive-demo.mjs'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 const outRoot = path.resolve(process.argv[2] ?? path.join(here, '..', 'out'))
-const VERSION = [1, 16, 1]
+const VERSION = [1, 16, 2]
 const UUID = { bp: '6a3f0e2c-91d4-4b7a-8c55-0e1f7a2b9c31', bpScript: 'c2e8b7d1-4f6a-4c9e-a1b2-3d4e5f607182', rp: '1f9c3a7e-2b4d-4e6f-8a90-b1c2d3e4f5a6', rpRes: '7d8e9f0a-1b2c-4d3e-9f4a-5b6c7d8e9f01' }
 const NAME = 'cui_toggle_test'
 
@@ -142,40 +142,31 @@ const DD_PAGES = [
     { title: '第 2 页 · 钻石', img: 'textures/cui_test/items/diamond.png', tip: '钻石', body: '图片可以带提示框，也可以点击。\\nDDUI 由 Ore UI 画：布局是一列，\\n外观要到 1.26.60 预览版\\n才开始支持资源包定制。\\n各页正文行数相同，高度不变。' },
     { title: '第 3 页 · 木棍', img: 'textures/cui_test/items/stick.png', tip: '木棍', body: '最后一页：「下一页」变成禁用，\\n不隐藏，位置不变。\\n对比 JSON UI 的书：外观完全自定义，\\n但翻页箭头要走服务端。\\n（这一行用来补齐行数）' },
 ]
-// ── 字形版 DDUI（羽毛）：图标写进文字（font/glyph_E2.png 的字符），不用图片组件、不需要预加载——
-//    字形随字体一起加载，没有「图片第一次加载」，也就没有翻页时「缩一下」，底部也没有预加载的小点
-const G = { SWORD: String.fromCodePoint(0xE200), DIAMOND: String.fromCodePoint(0xE201), STICK: String.fromCodePoint(0xE202), BOOK: String.fromCodePoint(0xE203) }
-const GLYPH_PAGES = [
-    { title: G.SWORD + ' 第 1 页 · 钻石剑', body: '图标是字体里的字形（' + G.SWORD + G.DIAMOND + G.STICK + G.BOOK + '），\\n随字体一起加载，没有图片组件，\\n翻页时不会「缩一下」，也不需要预加载。\\n合成：' + G.DIAMOND + G.DIAMOND + G.STICK + ' → ' + G.SWORD + '\\n鼠标停在「下一页」上不动，连点。' },
-    { title: G.DIAMOND + ' 第 2 页 · 钻石', body: '字形和文字同一行：' + G.DIAMOND + ' 钻石 ×3\\n大小跟着字号走（标题里更大）。\\n原版只用 E0 / E1 两张字形图，\\n这里用 E2（U+E200 起），不覆盖原版。\\n（这一行用来补齐行数）' },
-    { title: G.STICK + ' 第 3 页 · 木棍', body: '最后一页：「下一页」变成禁用。\\n' + G.STICK + ' 木棍 ×12　' + G.BOOK + ' 书 ×1\\n同样的字形在聊天栏（JSON UI）里也能用。\\n对比燧石：图片组件 + 预加载小点。\\n（这一行用来补齐行数）' },
-]
-// 对照行：原版 E0 页、原版 E1 页（手柄 / 键盘按键之类的原版图标）、我们的 E2 页——
-// 真机 1.16.0：聊天栏（JSON UI）显示 E2 图标，DDUI 里是方框 ⇒ 看 DDUI 认不认原版自带的 E0 / E1
-const run = (base, n) => Array.from({ length: n }, (_, i) => String.fromCodePoint(base + i)).join('')
-const GLYPH_PROBE = 'E0：' + run(0xE000, 8) + '　E1：' + run(0xE100, 8) + '　E2：' + run(0xE200, 4)
 function openDDUI(player) {
-    // 聊天栏是 JSON UI 画的：参照
-    player.sendMessage('§7[CUI] 字形对照（聊天栏 = JSON UI）：' + GLYPH_PROBE)
     let k = 0
-    const p0 = GLYPH_PAGES[0]
-    const title = new ObservableString(p0.title), body = new ObservableString(p0.body)
+    const p0 = DD_PAGES[0]
+    const title = new ObservableString(p0.title), body = new ObservableString(p0.body), img = new ObservableString(p0.img), tip = new ObservableString(p0.tip)
     const noPrev = new ObservableBoolean(true), noNext = new ObservableBoolean(false)
     const go = (d) => {
-        k = Math.max(0, Math.min(GLYPH_PAGES.length - 1, k + d))
-        title.setData(GLYPH_PAGES[k].title); body.setData(GLYPH_PAGES[k].body)
-        noPrev.setData(k === 0); noNext.setData(k === GLYPH_PAGES.length - 1)
+        k = Math.max(0, Math.min(DD_PAGES.length - 1, k + d))
+        const p = DD_PAGES[k]
+        title.setData(p.title); body.setData(p.body); img.setData(p.img); tip.setData(p.tip)
+        noPrev.setData(k === 0); noNext.setData(k === DD_PAGES.length - 1)
     }
-    new CustomForm(player, 'CUI · DDUI 字形版')
-        .label('字形对照（DDUI）：' + GLYPH_PROBE)
+    // 翻页按钮放最上面：正文长短不一，放下面会把按钮挤到不同位置；最后一页用「禁用」不用「隐藏」，位置不变
+    const form = new CustomForm(player, 'CUI · DDUI 翻页实验')
         .button('下一页 →', () => go(1), { disabled: noNext })
         .button('← 上一页', () => go(-1), { disabled: noPrev })
         .divider()
         .header(title)
+        .image(img, RP_UUID, { tooltip: tip, width: 0.15 })
         .label(body)
-        .closeButton()
+    // 预加载：三张图一直显示在底部（贴图始终是加载好的）。width 是「占表单宽度的比例」。
+    // 真机 1.14.0：width 0.01 不再闪，但小点还看得见；DDUI 没有透明度 / 层叠 ⇒ 再缩小，羽毛 0.002、燧石 0.004 对照（太小可能连贴图都不载入）
+    for (const p of DD_PAGES) form.image(p.img, RP_UUID, { width: 0.002 })
+    form.closeButton()
         .show()
-        .then((reason) => player.sendMessage('§7[CUI] DDUI 字形版关闭：' + reason))
+        .then((reason) => player.sendMessage('§7[CUI] DDUI 表单关闭：' + reason))
         .catch((e) => player.sendMessage('§c[CUI] DDUI 出错：' + e))
 }
 
@@ -217,7 +208,8 @@ function openDDUI2(player) {
         .catch((e) => player.sendMessage('§c[CUI] DDUI 出错：' + e))
 }
 
-// 触发物品：书 = 测试书；纸 = 响应式演示；羽毛 = DDUI 字形版（图标写进文字、不预加载）；燧石 = DDUI 图片版（图片组件 + 预加载小点）
+// 触发物品：书 = 测试书；纸 = 响应式演示；羽毛 = DDUI（改写内容）；燧石 = DDUI 对照版（切换显示）；两者都用图片组件 + 预加载
+// （1.16.x 字形实验：DDUI 不认任何字形页，E0 / E1 / E2 都是方框；JSON UI（聊天栏）能显示 E2——字形图保留给 JSON UI 用）
 // （1.9.0 用书与笔触发 DDUI：原版书写界面会先打开，关掉后 DDUI 才「有概率」出现——换成没有原版界面的物品）
 world.afterEvents.itemUse.subscribe((e) => {
     if (e.source.typeId !== 'minecraft:player') return
