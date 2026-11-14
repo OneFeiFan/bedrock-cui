@@ -12,7 +12,7 @@ import { buildBook, ARROWS, FORM, T, TEXTURE_INFO } from './toggle-book.mjs'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 const outRoot = path.resolve(process.argv[2] ?? path.join(here, '..', 'out'))
-const VERSION = [1, 7, 0]
+const VERSION = [1, 8, 0]
 const UUID = { bp: '6a3f0e2c-91d4-4b7a-8c55-0e1f7a2b9c31', bpScript: 'c2e8b7d1-4f6a-4c9e-a1b2-3d4e5f607182', rp: '1f9c3a7e-2b4d-4e6f-8a90-b1c2d3e4f5a6', rpRes: '7d8e9f0a-1b2c-4d3e-9f4a-5b6c7d8e9f01' }
 const NAME = 'cui_toggle_test'
 
@@ -96,7 +96,8 @@ system.run(() => { for (const p of world.getAllPlayers()) camera(p, true) })
  */
 function open(player, page = 'home', dir = 'right') {
     camera(player, false)
-    const form = new ActionFormData().title(TITLE + '|P:' + page + ';').body('CUI;|' + info(player, 'minecraft:diamond_sword') + '\\n§8（这段来自表单正文）')
+    // 标题必须与路由键完全相同（只创建这一个界面）；页码放正文
+    const form = new ActionFormData().title(TITLE).body('P:' + page + ';')
     SLOT_ITEMS.forEach((id, i) => form.button('s' + i + '|' + info(player, id)))
     form.button('close|')
     form.button('txt|' + inventoryText(player))
@@ -105,7 +106,8 @@ function open(player, page = 'home', dir = 'right') {
     for (let i = 6; i <= last; i++) {
         const a = ROUTES[i]
         // 9 = 「原地不动」：当前方向没有箭头时接住鼠标没动的点击
-        form.button(i === 9 ? 'stay|' : a ? 'go' + i + '|' + (a.from === here && a.dir === dir ? 'F' : '') : '')
+        // 8 = 详情弹层的运行期数据；9 =「原地不动」
+        form.button(i === 8 ? 'od|' + info(player, 'minecraft:diamond_sword') + '\\n§8（这段来自 8 号表单按钮）' : i === 9 ? 'stay|' : a ? 'go' + i + '|' + (a.from === here && a.dir === dir ? 'F' : '') : '')
     }
     form.show(player).then((r) => {
         if (r.canceled) { camera(player, true); player.sendMessage('§7[CUI] 表单关闭（Esc）：' + (r.cancelationReason ?? '')); return }

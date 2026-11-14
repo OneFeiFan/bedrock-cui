@@ -7,7 +7,7 @@ test('动态文字：text = "#text"、声明 #form_text、字面量提升成变�
     const { json } = compileNamespace('t', { props: new Label({ text: form.text.minus('ITM:3;|') }) })
     assert.deepEqual(json.props, {
         type: 'label', text: '#text', layer: 1,
-        bindings: [{ binding_name: '#form_text' }, { binding_type: 'view', source_property_name: '(#form_text - $t0_0)', target_property_name: '#text' }],
+        bindings: [{ binding_name: '#form_text', binding_condition: 'always' }, { binding_type: 'view', source_property_name: '(#form_text - $t0_0)', target_property_name: '#text', binding_condition: 'always' }],
         $t0_0: 'ITM:3;|',
     })
 })

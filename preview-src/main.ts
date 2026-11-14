@@ -24,23 +24,26 @@ const arrows = ARROWS as Arrow[]
 const buttonsFor = (here: string, dir: string) => {
     const b = [...FORM.buttons, '', '', '', '']
     for (const a of arrows) b[a.index] = `go${a.index}|` + (a.from === here && a.dir === dir ? 'F' : '')
+    b[8] = 'od|§7耐久 1561\n§7可附魔：锋利 V、耐久 III\n§8（这段来自 8 号表单按钮）'
     b[9] = 'stay|'
     return b
 }
 const routes = Object.fromEntries(arrows.map((a) => [a.index, a]))
-const title = signal(`${FORM.title}|P:home;`)
+// 标题固定（路由按完整标题）；页码在正文
+const title = signal(FORM.title)
+const formText = signal(FORM.body)
 const formButtons = signal(buttonsFor('home', 'right'))
 const preview = mountPreview(document.getElementById('app')!, {
     root: book, viewport: [300, 220], scale: 3, textures,
-    formText: signal(FORM.body), formButtons, title,
+    formText, formButtons, title,
     // 模拟服务端：翻页箭头 → 重新打开表单（标题带 P:<页>;、开关回到初始状态）
     onFormButton: (i) => {
         const a = routes[i]
-        if (a) { title.value = `${FORM.title}|P:${a.target};`; formButtons.value = buttonsFor(a.target, a.dir); preview.resetToggles() }
+        if (a) { formText.value = `P:${a.target};`; formButtons.value = buttonsFor(a.target, a.dir); preview.resetToggles() }
         else console.log('表单按钮', i, '（真机里这会关掉表单，服务端收到选择）')
     },
     // 像素字体（scripts/fetch-fonts.mjs 准备）：照游戏画文字
     fonts: { unifont: './font/unifont.hex.gz', ascii: './font/ascii.png' },
 })
 mountDevtools(document.getElementById('devtools')!, preview)
-;(window as any).__cui = { preview }
+;(window as any).__cui = { preview, formText }

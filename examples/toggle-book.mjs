@@ -25,7 +25,8 @@ const TITLE = [0.24, 0.13, 0.03], BODY = [0.27, 0.19, 0.11], WHITE = [1, 1, 1], 
 /** 表单数据（脚本发的）：正文带运行期数据；按钮 0–3 是格子的数据载体，按钮 4 是「关闭」 */
 export const FORM = {
     title: 'cui_ui:toggle_test',
-    body: 'CUI;|§7耐久 1561\n§7可附魔：锋利 V、耐久 III\n§8（这段来自表单正文）',
+    // 正文 = 服务端页码（标题必须与路由键完全相同，页码不能再附在标题后面）
+    body: 'P:home;',
     // 预览用的样例；真机脚本在运行期按玩家背包实时计算（examples/build-toggle-test.mjs）
     buttons: ['s0|§7耐久 1561\n§a背包里有 1 个', 's1|§a背包里有 3 个', 's2|§a背包里有 3 个', 's3|§8背包里没有', 'close|',
         'txt|§6Steve§r 的背包（4 种物品）：\n§8diamond_sword §0×1§8、§8diamond §0×3§8、§8stick §0×12§8、§8oak_planks §0×64\n§2这段文字由脚本在运行期生成，长度不固定，由引擎负责折行。'],
@@ -137,7 +138,9 @@ class DetailOverlay extends Panel {
         super({ size: [150, 90], layer: 50 })
         this.add(new Image({ texture: T.purple, size: ['100%', '100%'] }))
         this.add(new Label({ text: '钻石剑 · 详情（弹层）', color: WHITE, shadow: true, anchor: 'top_left', offset: [8, 8] }))
-        this.add(new Label({ text: form.text.minus('CUI;|'), color: GRAY, shadow: true, size: [134, 'default'], anchor: 'top_left', offset: [8, 22] }))
+        // 运行期数据：8 号表单按钮的文字（正文放页码了）
+        this.add(new CollectionItem({ collection: 'form_buttons', index: 8, size: [134, 60], anchor: 'top_left', offset: [8, 22] })
+            .add(new Label({ text: form.buttonText.minus('od|'), color: GRAY, shadow: true, size: [134, 'default'], anchor: 'top_left' })))
         const close = new Toggle({ ...detail.toggleOptions('none'), size: [40, 14], anchor: 'bottom_right', offset: [-6, -6] })
         detail.attach('none', close)
         const btn = (hover) => [new Image({ texture: hover ? T.rowHover : T.line, keepRatio: false, size: ['100%', '100%'] }), new Label({ text: '关闭', color: hover ? TITLE : WHITE, layer: 2 })]
@@ -167,7 +170,7 @@ class DebugStrip extends Panel {
         const row1 = new Panel({ size: ['100% - 8px', 10], anchor: 'top_left', offset: [4, 2] })
         row1.add(new DebugCell('锚点', 'gbp__server', 0), new DebugCell('目录·剑', 'gbp_sword_l1', 66), new DebugCell('目录·钻石', 'gbp_diamond_l1', 132), new DebugCell('书签', bookmarkName, 214))
         const row2 = new Panel({ size: ['100% - 8px', 10], anchor: 'top_left', offset: [4, 12] })
-        row2.add(new Label({ text: `§e${variant}§7 标题：`, shadow: true, anchor: 'left_middle' }), new Label({ text: form.title, color: WHITE, shadow: true, anchor: 'left_middle', offset: [86, 0] }))
+        row2.add(new Label({ text: `§e${variant}§7 正文：`, shadow: true, anchor: 'left_middle' }), new Label({ text: form.text, color: WHITE, shadow: true, anchor: 'left_middle', offset: [86, 0] }))
         this.add(row1, row2)
     }
 }
@@ -180,7 +183,7 @@ export function buildBook(options = {}) {
     root.add(new Image({ texture: T.book, size: [272, 180], anchor: 'top_left' }))
     ARROWS = []
     // 混合翻页：翻页箭头走服务端（标题带 P:<页>;），目录 / 书签用开关
-    const pages = new Pages({ group: 'gbp', start: 'home', size: [272, 180], anchor: 'top_left', server: {} })
+    const pages = new Pages({ group: 'gbp', start: 'home', size: [272, 180], anchor: 'top_left', server: { source: form.text } })
     const detail = new Pages({ group: 'gbd', start: 'none', size: [272, 180], anchor: 'top_left', layer: 40 })
     root.add(pages, detail)
 

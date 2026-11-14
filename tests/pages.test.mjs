@@ -74,9 +74,17 @@ test('serverForm：挂到原版服务端表单（工厂 + 标题门控 + 隐藏�
     const hook = files['ui/server_form.json']
     assert.equal(hook.main_screen_content.modifications[0].value[0].cui_form_factory_cui_test.factory.control_ids.long_form, '@cui_test.root')
     assert.equal(hook.long_form.modifications[0].value[1].source_property_name, "((#title_text - 'cui_ui:') = #title_text)")
-    const root = files['ui/cui_test.json'].root
-    assert.equal(root.bindings[0].binding_name, '#title_text')
-    assert.equal(root[root.bindings[1].source_property_name.match(/\$\w+/)[0]], 'cui_ui:test')
+    const ns = files['ui/cui_test.json']
+    assert.equal(ns.root.bindings[0].binding_name, '#title_text')
+    assert.equal(ns.root[ns.root.bindings[1].source_property_name.match(/\$\w+/)[0]], 'cui_ui:', '根面板按前缀显示（隐藏原版长表单的同一前缀）')
+    // 标题路由：只创建标题完全相同的那个界面
+    const router = ns.root.controls[0].router
+    assert.equal(router.type, 'collection_panel')
+    assert.deepEqual(router.property_bag, { '#route_': [], '#route_cui_ui:test': ['screen_0'] })
+    assert.deepEqual(router.factory.control_ids, { screen_0: '@cui_test.screen_0' })
+    assert.equal(router.bindings[1].source_property_name, "('#route_' + #title_text)")
+    assert.equal(router.bindings[1].target_property_name, '#collection_length')
+    assert.ok(ns.screen_0, '界面是命名空间里的独立元素，由工厂按需创建')
     assert.throws(() => serverForm({ namespace: 'x', panelId: 'nope', content: book() }), /cui_ui:/)
 })
 
@@ -109,13 +117,14 @@ test('启用 / 禁用：enabled 表达式 → #enabled 绑定；禁用的开关�
     assert.equal(findBox(run(false), 'arrow').enabled, false)
 })
 
-test('serverForm 多个界面：同一命名空间按标题区分；标题互为子串时报错', async () => {
+test('serverForm 多个界面：按标题路由，只创建标题完全相同的那一个；标题重复时报错', async () => {
     const { serverForm, Panel, Label } = await import('../dist/index.js')
-    const { files } = serverForm({ namespace: 'two', panels: [{ panelId: 'cui_ui:book', content: new Panel({ children: [new Label({ text: '书' })] }) }, { panelId: 'cui_ui:pager', content: new Panel({ children: [new Label({ text: '翻页' })] }) }] })
-    const root = files['ui/two.json'].root
-    assert.equal(root.controls.length, 2, '两个界面面板')
-    assert.equal(root[root.bindings[1].source_property_name.match(/\$\w+/)[0]], 'cui_ui:', '根面板按前缀显示')
-    assert.throws(() => serverForm({ namespace: 'x', panels: [{ panelId: 'cui_ui:a', content: new Panel() }, { panelId: 'cui_ui:ab', content: new Panel() }] }), /子串/)
+    const { files } = serverForm({ namespace: 'two', panels: [{ panelId: 'cui_ui:book', content: new Panel({ children: [new Label({ text: '书' })] }) }, { panelId: 'cui_ui:bookshelf', content: new Panel({ children: [new Label({ text: '书架' })] }) }] })
+    const ns = files['ui/two.json']
+    const router = ns.root.controls[0].router
+    assert.deepEqual(router.property_bag, { '#route_': [], '#route_cui_ui:book': ['screen_0'], '#route_cui_ui:bookshelf': ['screen_1'] }, '标题互为子串也没关系：按完整标题查')
+    assert.ok(ns.screen_0 && ns.screen_1)
+    assert.throws(() => serverForm({ namespace: 'x', panels: [{ panelId: 'cui_ui:a', content: new Panel() }, { panelId: 'cui_ui:a', content: new Panel() }] }), /同一个标题/)
 })
 
 test('混合翻页：Pages 服务端页码——刚打开时按标题里的页码显示（没有页码 = 初始页）；点了开关就由开关接管', async () => {

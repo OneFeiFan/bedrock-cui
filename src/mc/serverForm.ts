@@ -5,7 +5,7 @@
  * 脚本里 `new ActionFormData().title(panelId)` 打开。
  */
 import { form } from '../core/expr.js'
-import { Panel, type Element } from '../core/element.js'
+import { Panel, Raw, type Element } from '../core/element.js'
 import { compileNamespace, type CompileResult } from './compile.js'
 import type { LintOptions } from './lint.js'
 
@@ -23,7 +23,10 @@ export interface ServerFormOptions extends LintOptions {
     /** 单个界面：标题 + 内容 */
     panelId?: string
     content?: Element
-    /** 多个界面放在同一个命名空间里，按标题区分（标题互相不能是子串） */
+    /**
+     * 多个界面放在同一个命名空间里，按标题路由：只创建标题**完全等于** panelId 的那一个（标题里不要再附加别的内容，
+     * 页码之类放进表单正文）
+     */
     panels?: ServerFormPanel[]
     /**
      * 屏幕进出场动画（缺省 false = 去掉）：服务端翻页每次重开表单都会滑入（真机 1.4.0）。
@@ -45,13 +48,27 @@ export function serverForm(options: ServerFormOptions): ServerFormFiles {
     if (!panels.length) throw new Error('serverForm：要给 panelId + content，或 panels')
     for (const p of panels) {
         if (!p.panelId.startsWith(prefix)) throw new Error(`panelId 必须以 ${prefix} 开头：${p.panelId}`)
-        const clash = panels.find((q) => q !== p && q.panelId.includes(p.panelId))
-        if (clash) throw new Error(`标题 ${p.panelId} 是 ${clash.panelId} 的子串：门控按「包含」判断，会同时显示`)
+        if (panels.filter((q) => q.panelId === p.panelId).length > 1) throw new Error(`两个界面用了同一个标题：${p.panelId}`)
     }
-    const root = panels.length === 1
-        ? new Panel({ size: ['100%', '100%'], visible: form.title.contains(panels[0].panelId), children: [panels[0].content] })
-        : new Panel({ size: ['100%', '100%'], visible: form.title.contains(prefix), children: panels.map((p) => new Panel({ size: ['100%', '100%'], visible: form.title.contains(p.panelId), children: [p.content] })) })
-    const { json, issues } = compileNamespace(options.namespace, { root }, options)
+    // 只创建需要的界面（与 @bedrock-core/ui 的表单路由同一机制）：一个带工厂的 collection_panel，属性包里
+    // 「#route_<标题>」= [界面 id]；('#route_' + #title_text) 求出的是一个属性名，引擎再读它的值（界面 id 列表）写进
+    // #collection_length，工厂只实例化列表里的那一个——其它界面根本不创建。标题必须与 panelId 完全相同。
+    const routeId = (i: number) => `screen_${i}`
+    const router = new Raw({
+        name: 'router', size: ['100%', '100%'], anchor: 'top_left',
+        json: {
+            type: 'collection_panel',
+            property_bag: { '#route_': [], ...Object.fromEntries(panels.map((p, i) => [`#route_${p.panelId}`, [routeId(i)]])) },
+            factory: { name: `${options.namespace}_title_screen`, control_ids: Object.fromEntries(panels.map((_, i) => [routeId(i), `@${options.namespace}.${routeId(i)}`])) },
+            bindings: [
+                { binding_name: '#title_text', binding_condition: 'always' },
+                { binding_type: 'view', source_property_name: "('#route_' + #title_text)", target_property_name: '#collection_length', binding_condition: 'always' },
+            ],
+        },
+    })
+    const screens: Record<string, Element> = { root: new Panel({ size: ['100%', '100%'], visible: form.title.contains(prefix), children: [router] }) }
+    panels.forEach((p, i) => { screens[routeId(i)] = new Panel({ size: ['100%', '100%'], children: [p.content] }) })
+    const { json, issues } = compileNamespace(options.namespace, screens, options)
     const hook = {
         namespace: 'server_form',
         main_screen_content: {

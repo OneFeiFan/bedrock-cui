@@ -28,6 +28,12 @@ export function escapeText(text: unknown, localize = false): unknown {
     return /^[#$]/.test(t) ? `§r${t}` : t
 }
 
+/**
+ * 绑定的计算时机：一律 always。@bedrock-core/ui 的编译器对服务端表单里的集合 / 视图绑定也这样做（注释：工厂创建控件之后，
+ * 集合与视图数据才可能到达）——我们的界面同样由 server_form 的工厂创建；真机 1.5.2 / 1.5.3 的「不重算」很可能与此有关。
+ */
+const ALWAYS = 'always'
+
 /** 标记：外层集合项的上下文被开关遮住了 */
 const THROUGH_TOGGLE = '\u0000toggle:'
 
@@ -77,7 +83,7 @@ class Compiler {
             if (c.globals.length && c.controls.length) {
                 this.issues.push({ rule: 'mixed-sources', level: 'warning', path: n.path, message: `${key} 的表达式同时读全局绑定（${c.globals.join('、')}）与开关状态：真机里开关变化不会触发重新计算（1.5.2）。把全局条件放进一个 stateFrom 开关，再按开关名读` })
             }
-            for (const g of c.globals) if (!declaredGlobals.has(g)) { declaredGlobals.add(g); bindings.push({ binding_name: g }) }
+            for (const g of c.globals) if (!declaredGlobals.has(g)) { declaredGlobals.add(g); bindings.push({ binding_name: g, binding_condition: ALWAYS }) }
             for (const col of c.collections) {
                 if (inCollection?.startsWith(THROUGH_TOGGLE)) this.issues.push({ rule: 'collection-through-toggle', level: 'error', path: n.path, message: `开关里读不到外层集合项的 ${col.name}（真机：common.toggle 自带空集合名的 collection_details 绑定）。把 CollectionItem 放进开关的状态面板里` })
                 else if (!inCollection) this.issues.push({ rule: 'collection-ref-outside', level: 'error', path: n.path, message: `${col.name} 只能在 ${col.collection} 的集合项（FormButton）里使用` })
@@ -85,14 +91,14 @@ class Compiler {
                 if (!declaredCollections.has(k2)) {
                     if (!declaredCollections.size) bindings.push({ binding_type: 'collection_details', binding_collection_name: col.collection })
                     declaredCollections.add(k2)
-                    bindings.push({ binding_type: 'collection', binding_collection_name: col.collection, binding_name: col.name })
+                    bindings.push({ binding_type: 'collection', binding_collection_name: col.collection, binding_name: col.name, binding_condition: ALWAYS })
                 }
             }
             // 跨区域读开关状态：不写 resolve_sibling_scope（原版主界面标签页的写法；只有兄弟控件才写 true）
             for (const ctl of c.controls) {
-                bindings.push({ binding_type: 'view', source_control_name: ctl.control, ...(ctl.siblingScope ? { resolve_sibling_scope: true } : {}), source_property_name: ctl.property, target_property_name: ctl.local })
+                bindings.push({ binding_type: 'view', source_control_name: ctl.control, ...(ctl.siblingScope ? { resolve_sibling_scope: true } : {}), source_property_name: ctl.property, target_property_name: ctl.local, binding_condition: ALWAYS })
             }
-            bindings.push({ binding_type: 'view', source_property_name: c.text, target_property_name: spec.target })
+            bindings.push({ binding_type: 'view', source_property_name: c.text, target_property_name: spec.target, binding_condition: ALWAYS })
             if (spec.prop) out[spec.prop] = spec.target
         }
 
