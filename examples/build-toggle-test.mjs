@@ -9,12 +9,12 @@ import { execSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { serverForm } from 'cui'
 import { renderGlyphSheet } from 'cui/node'
-import { buildBook, ARROWS, BOOK_PAGES, BIG_ICONS, FORM, ICONS, T, TEXTURE_INFO } from './toggle-book.mjs'
+import { buildBook, ARROWS, BOOK_PAGES, FORM, GLYPHS, T, TEXTURE_INFO } from './toggle-book.mjs'
 import { buildResponsiveDemo, RESPONSIVE_FORM } from './responsive-demo.mjs'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 const outRoot = path.resolve(process.argv[2] ?? path.join(here, '..', 'out'))
-const VERSION = [1, 23, 0]
+const VERSION = [1, 24, 0]
 const UUID = { bp: '6a3f0e2c-91d4-4b7a-8c55-0e1f7a2b9c31', bpScript: 'c2e8b7d1-4f6a-4c9e-a1b2-3d4e5f607182', rp: '1f9c3a7e-2b4d-4e6f-8a90-b1c2d3e4f5a6', rpRes: '7d8e9f0a-1b2c-4d3e-9f4a-5b6c7d8e9f01' }
 const NAME = 'cui_toggle_test'
 
@@ -48,9 +48,8 @@ for (const [tex, file] of Object.entries(FILE)) {
     fs.mkdirSync(path.join(rp, path.dirname(tex)), { recursive: true })
     fs.copyFileSync(path.join(src, `${file}.png`), path.join(rp, `${tex}.png`))
 }
-// 字形图标：框架按 ICONS 生成 font/glyph_E2.png（读物品贴图、算墨迹）；墨迹与代码不符就停下（预览的字距要一致）
-// 两张：文字页 A0（正文用，与汉字同高）、emoji 页 E2（标题用，16 高）
-for (const sheet of [ICONS, BIG_ICONS]) {
+// 字形图标：框架按 GLYPHS 生成 font/glyph_E2.png（读物品贴图、算墨迹）；墨迹与代码不符就停下（预览的字距要一致）
+for (const sheet of [GLYPHS]) {
     // 物品图标用原版贴图：文件名 = 路径最后一段（预览素材目录里有同名文件）
     const glyphs = renderGlyphSheet(sheet, (p) => path.join(src, `${FILE[p] ?? path.basename(p)}.png`))
     if (glyphs.issues.length) { console.error(glyphs.issues.join('\n')); process.exit(1) }

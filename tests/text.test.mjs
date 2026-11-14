@@ -105,18 +105,12 @@ test('分页孤行控制：标题不落在页底（挪到下一页和正文在�
     }
 })
 
-test('游戏折行（真机 1.20.1）：单词与紧跟的开括号不断、开括号后不断、闭括号 / 句读前不断——「6（line_padding），」整体换行；汉字之间照常可断', async () => {
-    const { measureText, textWidth } = await import('../dist/index.js')
-    for (const [open, close] of [['（', '）'], ['(', ')']]) {
-        const text = `上：emoji 字形 + 行距 6${open}line_padding${close}，图标不压行。`
-        // 宽度恰好放得下「…行距 6（」——先前会在「（」后断开
-        const w = textWidth(`上：emoji 字形 + 行距 6${open}`)
-        const { lines } = measureText(text, 1, w)
-        assert.equal(lines[0], '上：emoji 字形 + 行距', `${open}${close}`)
-        assert.ok(lines[1].startsWith(`6${open}line_padding${close}，`), lines[1])
-    }
-    // 纯汉字照常逐字断；句号不在行首
-    const { lines } = measureText('看图标是否参与折行有没有阴影。', 1, textWidth('看图标是否参与折行有没'))
-    assert.equal(lines[0], '看图标是否参与折行有没')
-    assert.ok(!lines[1].startsWith('。'))
+test('游戏折行（真机 1.20.1 / 1.23.0）：只在空格处换行；单词一整行放得下就整个移到下一行，放不下就从当前行剩下的地方逐字往下排', async () => {
+    const { measureText } = await import('../dist/index.js')
+    const cases = [
+        ['§8页首有一张 1 层紫色小图抢先出现（1.22.0 的 G 没有它，被盖住）。', ['页首有一张 1', '层紫色小图抢先出现（1.22.0 的', 'G 没有它，被盖住）。']],
+        ['§8青色贴图在 0 层第一次出现时，0 层的文字已经出现过了：青色这一批后画。', ['青色贴图在 0', '层第一次出现时，0 层的文字已', '经出现过了：青色这一批后画。']],
+        ['§8上：emoji 字形 + 行距 6（line_padding），图标不压行。', ['上：emoji 字形 + 行距', '6（line_padding），图标不压行。']],
+    ]
+    for (const [text, game] of cases) assert.deepEqual(measureText(text, 1, 110).lines.map((l) => l.replace(/§./g, '')), game, text)
 })

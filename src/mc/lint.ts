@@ -56,6 +56,14 @@ export function lintLayout(roots: RNode[], options: LintOptions = {}): LintIssue
             const ox = Math.min(a.x + a.w, c.x + c.w) - Math.max(a.x, c.x), oy = Math.min(a.y + a.h, c.y + c.h) - Math.max(a.y, c.y)
             if (ox > 0.5 && oy > 0.5) issues.push({ rule: 'text-overlap', level: 'warning', path: labels[j].node.path, message: `与 ${labels[i].node.path.split('/').pop()} 重叠（${Math.round(ox * 10) / 10} × ${Math.round(oy * 10) / 10} 像素）` })
         }
+        // 九宫格图片比自己的边框还小：游戏与预览的画法不同（真机 1.23.0：1×1 的紫色九宫格在游戏里画成更大、更深的方块，位置也偏）
+        if (b.node.type === 'image' && b.slice) {
+            const [l, t, r, bt] = b.slice
+            if (b.rect.w + 0.01 < l + r || b.rect.h + 0.01 < t + bt) issues.push({
+                rule: 'nineslice-too-small', level: 'warning', path: b.node.path,
+                message: `九宫格图片 ${Math.round(b.rect.w * 10) / 10}×${Math.round(b.rect.h * 10) / 10} 比它的边框还小（左右 ${l + r}、上下 ${t + bt}）：游戏里的画法与预览不同，别用这么小的尺寸`,
+            })
+        }
         // 自己是 contain：子孙的边界 = 自己（有内边距时 = 内容面板）
         let next = bounds
         if (b.node.props.contain) {
@@ -194,10 +202,10 @@ export function lint(roots: RNode[], options: LintOptions = {}): LintIssue[] {
             push('inline-icon-in-label', 'error', n, '行内图标（InlineIcon）只能用在 Text 里（编译时换成图片控件）；普通 Label 会把它画成方框。运行期文字请用 emoji 字形图标 + setLineSpacing(6)')
         }
         // 大字形图标（16 高）在多行文字里：以文字行为中心上下各多 4，行距 10 → 压到上下行（真机 1.17.0）
-        if (n.type === 'label' && typeof n.props.text === 'string' && [...n.props.text].some((ch) => GlyphSheet.lookup(ch)?.kind === 'emoji')) {
+        if (n.type === 'label' && typeof n.props.text === 'string' && [...n.props.text].some((ch) => GlyphSheet.lookup(ch))) {
             const w = typeof n.props.size?.[0] === 'number' ? n.props.size[0] : Infinity
             const lines = measureText(n.props.text, n.props.fontScale ?? 1, w).lines.length
-            if (lines > 1 && (n.props.lineSpacing ?? 0) < 6) push('glyph-line-overlap', 'warning', n, 'emoji 页的字形图标（16 高）放在多行文字里会压到上下行：正文里用文字页图标（GlyphSheet(\'A0\', { kind: \'text\' })，与汉字同高），emoji 页图标放标题或单独一行')
+            if (lines > 1 && (n.props.lineSpacing ?? 0) < 6) push('glyph-line-overlap', 'warning', n, '字形图标（16 高、以文字行为中心）放在多行文字里会压到上下行：setLineSpacing(6) 让开；构建时确定的文字请用 Text + InlineIcon')
         }
         // §k 乱码：含汉字（整段用 Unifont 画）时真机只显示成一串点（1.5.3）
         if (n.type === 'label' && typeof n.props.text === 'string' && /§k/i.test(n.props.text) && usesUnifont(n.props.text)) {

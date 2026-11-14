@@ -225,8 +225,7 @@ export function buildBook(options = {}) {
         new RowLink(pages, 'diamond', T.diamond, '钻石', 38),
         new RowLink(pages, 'about', T.book_item, '检查清单', 56),
         new RowLink(pages, 'tlayer', T.paper, '叠放规则验证', 74),
-        new RowLink(pages, 'tinline', T.emerald, '行内图标（Text）', 92),
-        new RowLink(pages, 'tglyph', T.diamond, '字形图标', 110)))
+        new RowLink(pages, 'tinline', T.emerald, '行内图标（Text）', 92)))
     home.add(new ServerArrow('home', 'sword', 'right'))
 
     // 钻石剑
@@ -298,20 +297,13 @@ export const LONG = [
 /** 字宽标尺：每行一串字符 + 下面一把刻度尺（每 10 像素一根长刻度）；右边灰字是 CUI 的估计宽度 */
 // 左页纯 ASCII（Minecraft 字体），右页含汉字（整段 Unifont）；右边灰字是 CUI 按规则算的宽度
 const RULER_ROWS_L = ['Il!.,;:|', 'kfkf<><>', '[](){}"*', '~~~~~~~~', 'Hello World', '§lBold Text', 'mmmmmmmmmm', '#$%&+=?/']
-// ───────────── 字形图标（font/glyph_E2.png，构建时自动生成）：文字里写字符就显示物品图标 ─────────────
-export const ICONS = new GlyphSheet('A0', { kind: 'text' })
-export const BIG_ICONS = new GlyphSheet('E2')
-// 真机 1.18.0：缩成 8×8 的小图标模糊。日文字形图同样 256×256、16 像素格却按一半画 ⇒ 缩放看页的类型：
-// 文字页（借用彝文 A0）按一半画、与汉字同高、16×16 细节完整（正文用）；emoji 页（E2）1:1、16 高（标题用）
+// ───────────── 字形图标（emoji 字形页 font/glyph_E2.png，构建时自动生成）：服务端运行期文字里显示图标 ─────────────
+// 16 高、以文字行为中心（真机 1.17.0），配合 setLineSpacing(6) 不压行。构建时确定的文字用行内图标（Text + InlineIcon，下面的 II）。
+export const GLYPHS = new GlyphSheet('E2')
 export const GI = {
-    SWORD: ICONS.icon('diamond_sword', T.sword, { ink: [0, 16] }),
-    DIAMOND: ICONS.icon('diamond', T.diamond, { ink: [2, 12] }),
-    STICK: ICONS.icon('stick', T.stick, { ink: [2, 13] }),
-    BOOK: ICONS.icon('book', T.book_item, { ink: [0, 16] }),
-    SWORD_L: BIG_ICONS.icon('diamond_sword', T.sword, { ink: [0, 16] }),
-    DIAMOND_L: BIG_ICONS.icon('diamond', T.diamond, { ink: [2, 12] }),
+    SWORD: GLYPHS.icon('diamond_sword', T.sword, { ink: [0, 16] }),
+    DIAMOND: GLYPHS.icon('diamond', T.diamond, { ink: [2, 12] }),
 }
-const { SWORD: GS, DIAMOND: GD, STICK: GK, BOOK: GB, SWORD_L: GSL } = GI
 /** 字形采样（60 个）：常用中文标点、括号、引号、全角符号 / 数字 / 字母，再加几个常见汉字对照 */
 export const SAMPLE_CHARS = [...'，。、；：？！…—～·「」『』（）《》〈〉【】“”‘’％＋－＝×÷＃＆＊＠／０１２３４５６ＡＢＣａｂｃ一二三中国人口日月']
 if (SAMPLE_CHARS.length < 60) throw new Error(`字形采样不足 60 个：${SAMPLE_CHARS.length}`)
@@ -321,13 +313,6 @@ export const II = {
     SWORD: InlineIcon.of(T.sword), DIAMOND: InlineIcon.of(T.diamond), STICK: InlineIcon.of(T.stick), BOOK: InlineIcon.of(T.book_item),
     SWORD_L: InlineIcon.of(T.sword, 16),
 }
-/**
- * 字形图标的字宽标尺（文字页，预测与汉字同一规则：墨迹宽 / 2 + 1 → 钻石剑 / 书 9、钻石 7、木棍 7.5）。
- * 第 7 行加粗；第 8 行故意不包白色颜色码（直接写字符）——看文字页图标会不会被正文的深棕色染暗（说明文字里不能写 §，会被当成格式码）
- */
-const GLYPH_ROWS = [`${GS}${GS}${GS}${GS}`, `${GD}${GD}${GD}${GD}`, `${GK}${GK}${GK}${GK}`, `${GB}${GB}${GB}${GB}`, `a${GD}b${GK}c`, `钻石${GD}×2`,
-    `§l§f${GS.char}${GD.char}${GK.char}`, `${GD.char}${GK.char} 不包白色`]
-
 const RULER_ROWS_R = ['钻石剑钻石剑钻石剑钻', 'abc 中文 xyz', '中一二三十口日', '，。、；：！？', '「引号」（括号）', '§l粗体钻石剑', '背包里有 12 个', '§oitalic 斜体']
 
 class RulerRow extends Panel {
@@ -375,8 +360,9 @@ function buildSpecialPage(page) {
  * 预览就按这条规则画：游戏截图与预览一致，规则就确认了。
  */
 function buildLayerTest(page) {
-    // 页首：1 层的紫色小图（1×1，放在书本外框最左上角的深色边上），让紫色这一批在 1 层先于任何文字出现
-    page.add(new Image(T.purple).setSize(1, 1).setAnchor(TOP_LEFT).setOffset(1, 1).setLayer(1))
+    // 页首：1 层的紫色小图（8×8 = 九宫格四边边框之和，更小的尺寸游戏里画法不同——lint nineslice-too-small），
+    // 放在书本外框左上角，让紫色这一批在 1 层先于任何文字出现
+    page.add(new Image(T.purple).setSize(8, 8).setAnchor(TOP_LEFT).setLayer(1))
     const row = (i, ...items) => new Panel().setSize(FULL, 18).setAnchor(TOP_LEFT).setOffset(0, 22 + i * 20).add(...items)
     // 青色贴图不是九宫格：铺满整行要关掉保持宽高比（缺省保持，16×16 的图会画成正方形）
     const bg = (tex, layer) => new Image(tex).setKeepRatio(false).setSize(Size.full()).setLayer(layer)
@@ -445,14 +431,6 @@ function buildTextPages(pages) {
     buildSpecialPage(pages.page('tspecial'))
     chain.push('tlayer')
     buildLayerTest(pages.page('tlayer'))
-    // 字形图标：左页字宽标尺，右页带图标的段落（看折行）
-    chain.push('tglyph')
-    const glyphPage = pages.page('tglyph')
-    glyphPage.add(new Side('L').add(new Title('字形图标'), ...GLYPH_ROWS.map((t, i) => new RulerRow(t, 20 + i * 15))))
-    glyphPage.add(new Side('R').add(new Title('文字页图标与折行'),
-        paragraph(`合成钻石剑：工作台中间一列放 ${GD}${GD}，下面放 ${GK}，得到 ${GS}。附魔台旁放满 ${GB} 书架能提高附魔等级；耐久快用尽时，在铁砧上用 ${GD} 修复。`, 22),
-        at(new Label(`${GSL} §l钻石剑`).setColor(TITLE), 0, 90),
-        new Body('§8上：emoji 页大图标配标题（单独一行）。正文里是文字页图标，与汉字同高。', 106)))
     // 行内图标（Text）：图标是真正的图片控件，与文字同高、清晰、颜色正确；折行 / 行高 / 样式延续由 CUI 排版
     chain.push('tinline')
     const inlinePage = pages.page('tinline')
@@ -462,7 +440,7 @@ function buildTextPages(pages) {
         new Text(`§c红色 ${II.DIAMOND} 仍是红色§r，§l粗体 ${II.STICK} 仍是粗体§r，普通 abc ${II.SWORD} xyz`, 110, BODY_STYLE).setAnchor(TOP_LEFT).setOffset(0, 96)))
     inlinePage.add(new Side('R').add(new Title('大图标 · 运行期文字'),
         new Text(`${II.SWORD_L} §l钻石剑§r 这一行有 16 高的图标，自动加高。`, 110, TITLE_STYLE).setAnchor(TOP_LEFT).setOffset(0, 22),
-        engineText(`§8运行期文字（游戏折行）：§r\n${GI.DIAMOND_L} 钻石 ×3\n${GI.SWORD_L} 钻石剑 ×1`, 62).setLineSpacing(6),
+        engineText(`§8运行期文字（游戏折行）：§r\n${GI.DIAMOND} 钻石 ×3\n${GI.SWORD} 钻石剑 ×1`, 62).setLineSpacing(6),
         // 运行期文字高 = 3 行 × (10 + 6) = 48（line_padding：每行都多占 6，真机 1.20.0）→ 62–110，说明放在 114
         new Body('§8上：emoji 字形 + 行距 6（line_padding），图标不压行。', 114)))
     // 字形采样：常用标点 / 符号按 2 倍字号排成网格（每个点阵格子 = 1 界面像素），截图后逐格还原游戏的点阵、与 Unifont 比较

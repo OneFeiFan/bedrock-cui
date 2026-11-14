@@ -212,3 +212,13 @@ test('静态检查 text-covered：同层按材质分批、先出现的批先画�
     ]
     assert.deepEqual(rule(...pages), [])
 })
+
+test('静态检查 nineslice-too-small：九宫格图片比自己的边框还小（真机 1.23.0：1×1 的紫色九宫格画法与预览不同）', async () => {
+    const { compileNamespace, Image } = await import('../dist/index.js')
+    const tex = (p) => (p === 'textures/ui/purple' ? { size: [16, 16], baseSize: [16, 16], nineslice: 4 } : undefined)
+    const root = new Panel().setSize(200, 200).add(
+        new Image('textures/ui/purple').setName('tiny').setSize(1, 1),
+        new Image('textures/ui/purple').setName('ok').setSize(8, 8),
+        new Image('textures/ui/purple').setName('thin').setSize(100, 6))
+    assert.deepEqual(compileNamespace('t', { root }, { textures: tex }).issues.filter((i) => i.rule === 'nineslice-too-small').map((i) => i.path.split('/').pop()), ['tiny', 'thin'])
+})

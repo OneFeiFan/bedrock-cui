@@ -139,7 +139,7 @@ export interface DrawTextOptions {
     /** 行与行之间额外的间距（line_padding） */
     lineSpacing?: number
     /** 字形图标的图片（字符 → 已加载的图片；没有 / 没加载完就跳过） */
-    glyphImage?: (ch: string) => { img: CanvasImageSource, ink: [number, number], kind: 'emoji' | 'text' } | undefined
+    glyphImage?: (ch: string) => { img: CanvasImageSource, ink: [number, number] } | undefined
 }
 
 /** 在画布上画多行富文本；返回 false 表示字体不够（调用方退回 DOM 画法），否则返回画布上方的余量（界面像素，大字形图标用） */
@@ -157,7 +157,7 @@ export function drawText(canvas: HTMLCanvasElement, fonts: PixelFonts, o: DrawTe
     })
     const boxW = Math.max(o.width, ...lineWidths) + 2
     // 大字形图标（16 高、以文字行为中心）上下各超出 4：画布上下留余量，返回 padTop 让调用方把画布往上挪
-    const padTop = o.lines.some((l) => [...l].some((ch) => o.glyphImage?.(ch)?.kind === 'emoji')) ? 4 : 0
+    const padTop = o.lines.some((l) => [...l].some((ch) => o.glyphImage?.(ch))) ? 4 : 0
     canvas.width = Math.ceil(boxW * s)
     const pitch = LINE_HEIGHT + (o.lineSpacing ?? 0)
     canvas.height = Math.ceil((o.lines.length * pitch + 2 + padTop * 2) * s)
@@ -175,16 +175,13 @@ export function drawText(canvas: HTMLCanvasElement, fonts: PixelFonts, o: DrawTe
             const rgb = r.style.color ? hexToRgb(BEDROCK_COLORS[r.style.color]) : o.color.map((v) => Math.round(v * 255)) as [number, number, number]
             for (const ch of r.text) {
                 const adv = charWidth(ch, o.unifont) + (r.style.bold ? boldExtra(ch, o.unifont) : 0)
-                // 字形图标：裁掉左侧透明列。emoji 页 1:1、16 高、以 8 高的文字行为中心（上下各多 4，真机 1.17.0）、不染色；
-                // 文字页按一半画（16×16 → 8 高，与 Unifont 汉字同）——字符包在 §f…§r 里，按白色 = 原色画
+                // 字形图标（emoji 字形页，真机 1.17.0）：裁掉左侧透明列；1:1、16 高、以 8 高的文字行为中心（上下各多 4）；不染色
                 const gi = o.glyphImage?.(ch)
                 if (gi) {
                     const [left, w] = gi.ink
-                    ctx.imageSmoothingEnabled = false
-                    // 目标位置取整到屏幕像素（同字形方块）
                     const R = Math.round
-                    if (gi.kind === 'emoji') ctx.drawImage(gi.img, left, 0, w, 16, R(x * s), R((y - 4) * s), R(w * s), R(16 * s))
-                    else ctx.drawImage(gi.img, left, 0, w, 16, R(x * s), R(y * s), R((w / 2) * s), R(8 * s))
+                    ctx.imageSmoothingEnabled = false
+                    ctx.drawImage(gi.img, left, 0, w, 16, R(x * s), R((y - 4) * s), R(w * s), R(16 * s))
                     x += adv
                     continue
                 }

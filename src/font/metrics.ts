@@ -97,36 +97,14 @@ export interface TextMetrics {
  * 测量 / 折行：按 \n 分段；给了 maxWidth 时贪心折行（英文单词不拆，中文任意处可断）。
  * 这是对引擎的近似，用于预览与布局估算。
  */
-/** 开括号 / 开引号：后面不能断 */
-const OPEN = '([{（《「『【〈〔〖“‘'
-/** 闭括号、闭引号、句读与感叹问号：前面不能断 */
-const CLOSE = ')]}!?,.;:）》」』】〉〕〗”’，。、；：！？…'
-const isWordChar = (c: string) => /[\x21-\x7e]/.test(c) && !OPEN.includes(c) && !CLOSE.includes(c)
 /**
- * 两个相邻字符之间能不能断行——游戏的规则（真机 1.20.1，与 Unicode 断行算法 UAX #14 的核心规则一致）：
- * 空格之后可断；闭括号 / 句读前不断；开括号后不断；连续的可见 ASCII 字符（单词）中间不断，单词紧跟开括号也不断（「6（line_padding），」整体换行）；
- * 其余（汉字之间、汉字与英文之间）都可断。
+ * 一段文字 → 单词（游戏只在空格处换行，真机 1.20.1 / 1.23.0）：「页首有一张 1 层紫色小图抢先出现（1.22.0 的 G 没有它，被盖住）。」
+ * 折成「页首有一张 1」/「层紫色小图抢先出现（1.22.0 的」/「G 没有它，被盖住）。」——第一行明明还放得下，「层紫色…1.22.0」整串没有空格，
+ * 当成一个单词整个移到下一行。只有一个单词一整行都放不下时才在字与字之间断开（纯中文段落因此能在任意位置折行）。
+ * （先前按 Unicode 断行规则在汉字之间也断——与游戏不符。）
  */
-function canBreak(a: string, b: string): boolean {
-    if (/\s/.test(b)) return false
-    if (/\s/.test(a)) return true
-    if (CLOSE.includes(b) || OPEN.includes(a)) return false
-    if (isWordChar(a) && (isWordChar(b) || OPEN.includes(b))) return false
-    if (')]}'.includes(a) && isWordChar(b)) return false
-    return true
-}
-/** 一段文字 → 不可再分的片段（片段之间可以断行；空白单独成段；§ 码跟着后一个字） */
-function breakTokens(para: string): string[] {
-    const tokens: string[] = []
-    let cur = '', prev = '', codes = ''
-    for (const m of para.match(/§.|./gsu) ?? []) {
-        if (m.length === 2 && m[0] === '§') { codes += m; continue }
-        const ws = /\s/.test(m)
-        if (cur && (ws !== /\s/.test(prev) || (!ws && canBreak(prev, m)))) { tokens.push(cur); cur = '' }
-        cur += codes + m; codes = ''; prev = m
-    }
-    if (cur || codes) tokens.push(cur + codes)
-    return tokens
+function splitWords(para: string): string[] {
+    return para.match(/ +|[^ ]+/g) ?? []
 }
 
 export function measureText(text: string, scale = 1, maxWidth = Infinity): TextMetrics {
@@ -135,13 +113,17 @@ export function measureText(text: string, scale = 1, maxWidth = Infinity): TextM
     const lines: string[] = []
     for (const para of text.split('\n')) {
         if (maxWidth === Infinity) { lines.push(para); continue }
-        const tokens = breakTokens(para)
         let line = ''
-        for (const tok of tokens) {
-            if (line !== '' && tw(line + tok) > maxWidth && !/^\s+$/.test(tok)) {
-                lines.push(line.trimEnd())
-                line = tok.trimStart()
-            } else line += tok
+        for (const word of splitWords(para)) {
+            if (/^ +$/.test(word)) { if (line) line += word; continue }
+            if (tw(line + word) <= maxWidth) { line += word; continue }
+            // 单词一整行放得下：整个移到下一行（行尾的空格丢掉）
+            if (tw(word) <= maxWidth) { if (line.trim()) lines.push(line.trimEnd()); line = word; continue }
+            // 一整行都放不下：从当前行剩下的地方开始逐字往下排（真机 1.23.0：「…出现时，0 层的文字已」/「经出现过了…」）
+            for (const ch of word.match(/§.|./gsu) ?? []) {
+                if (line.trim() && tw(line + ch) > maxWidth) { lines.push(line.trimEnd()); line = '' }
+                line += ch
+            }
         }
         lines.push(line.trimEnd())
     }
