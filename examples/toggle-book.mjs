@@ -396,7 +396,8 @@ function buildLayerTest(sideL, sideR) {
     const bg = () => new Image({ texture: T.purple, size: ['100%', '100%'] })
     const txt = (s, extra = {}) => new Label({ text: s, color: WHITE, anchor: 'left_middle', offset: [6, 0], ...extra })
     sideL.add(new Title('叠放顺序'),
-        row(0, (p) => p.add(bg(), txt('V0 字显式 layer 0', { layer: 0 }))),
+        // V0 故意被盖住（预览与真机都是一片空白；静态检查 text-covered 也会报）——行内右侧用更高层级写明预期，免得以为是 bug
+        row(0, (p) => p.add(bg(), txt('V0 字 layer 0', { layer: 0 }), new Label({ text: '§7应被盖住', layer: 2, anchor: 'right_middle', offset: [-5, 0] }))),
         row(1, (p) => p.add(bg(), txt('V1 图在前 字在后'))),
         row(2, (p) => p.add(bg(), txt('V2 同上 + 阴影', { shadow: true }))),
         row(3, (p) => p.add(txt('V3 字在前 图在后'), bg())),

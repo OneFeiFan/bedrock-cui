@@ -65,7 +65,47 @@ export function lintLayout(roots: RNode[], options: LintOptions = {}): LintIssue
         for (const c of b.children) visit(c, next)
     }
     boxes.forEach((b) => visit(b, undefined))
+    issues.push(...lintCoveredText(boxes))
     issues.push(...lintFlexOverflow(roots, options))
+    return issues
+}
+
+/**
+ * 文字被图片盖住（真机 1.4.0：同层的图片会盖住文字，与书写顺序、父子关系无关——CUI 因此给文字缺省 layer 1）：
+ * 文字的层级 ≤ 与它重叠的图片的层级 → 警告（预览里同层也是先画文字、后画图片，所以看到的是空白）。
+ * 图片在另一个条件分支里（与文字的最近公共祖先之下有动态显示条件，例如书的另一页）不算——两者不会同时显示。
+ */
+function lintCoveredText(boxes: Box[]): LintIssue[] {
+    const issues: LintIssue[] = []
+    const entries: { b: Box, chain: Box[] }[] = []
+    const collect = (b: Box, chain: Box[]) => {
+        const c = [...chain, b]
+        if (b.node.type === 'label' || (b.node.type === 'image' && b.texture)) entries.push({ b, chain: c })
+        b.children.forEach((x) => collect(x, c))
+    }
+    boxes.forEach((b) => collect(b, []))
+    const hasText = (b: Box) => isExpr(b.node.props.text) || String(b.node.props.text ?? '').replace(/§./g, '').trim() !== ''
+    const images = entries.filter((e) => e.b.node.type === 'image')
+    for (const t of entries) {
+        if (t.b.node.type !== 'label' || !hasText(t.b)) continue
+        const a = t.b.rect
+        // 盖住它的图片里报关系最近的那张（与文字的公共祖先最深——通常是它自己的底板，而不是整页背景）
+        let best: { im: Box, k: number } | undefined
+        for (const im of images) {
+            if (im.b.z < t.b.z) continue
+            const c = im.b.rect
+            const ox = Math.min(a.x + a.w, c.x + c.w) - Math.max(a.x, c.x), oy = Math.min(a.y + a.h, c.y + c.h) - Math.max(a.y, c.y)
+            if (ox <= 0.5 || oy <= 0.5) continue
+            let k = 0
+            while (k < t.chain.length && k < im.chain.length && t.chain[k] === im.chain[k]) k++
+            if (im.chain.slice(k).some((x) => isExpr(x.node.props.visible))) continue
+            if (!best || k > best.k) best = { im: im.b, k }
+        }
+        if (best) issues.push({
+            rule: 'text-covered', level: 'warning', path: t.b.node.path,
+            message: `被图片 ${best.im.node.path.split('/').slice(-2).join('/')} 盖住：文字层级 ${t.b.z} ≤ 图片层级 ${best.im.z}（真机：同层的图片会盖住文字，与书写顺序无关）。文字缺省 layer 1——别把文字的 layer 写低，或把图片的调低`,
+        })
+    }
     return issues
 }
 

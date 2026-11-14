@@ -375,6 +375,7 @@ stack_panel 的 `%c` 在**两个方向上都是子控件之和**——交叉方�
 | `glyph-line-overlap`：大字形图标（16 高）在多行文字里（行距 < 6） | 警告 | 1.17.0 段落里压行 |
 | `inline-icon-in-label`：行内图标写进普通 Label | 错误 | 游戏画成方框 |
 | `text-overlap`：同一容器里两个文字控件重叠 | 警告 | 1.20.0 line_padding 压住说明 |
+| `text-covered`：文字层级 ≤ 与它重叠的图片的层级（被盖住；报关系最近的那张图，另一条件分支里的图不算） | 警告 | 1.4.0 同层图片盖住文字 |
 | `text-overflow`：固定高度的文字框放不下 | 警告 | — |
 | `stack-cross-c`：stack 交叉方向写 %c | 警告 | 1.1.0 提示框过宽 |
 | `out-of-bounds`：contain 元素里越出安全区（按排版结果，所有页面都排出来检查；overflow: true 的跳过） | 警告 | 1.2.0 刻度尺伸出书页 |

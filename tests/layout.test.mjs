@@ -184,3 +184,24 @@ test('静态检查 text-overlap：同一容器里两个文字控件重叠（line
     const { issues } = compileNamespace('t', { root: new Panel({ size: [200, 200], children: [side] }) })
     assert.deepEqual(issues.map((i) => `${i.rule}@${i.path.split('/').pop()}`), ['text-overlap@note'])
 })
+
+test('静态检查 text-covered：文字层级 ≤ 重叠图片的层级 → 被盖住（真机 1.4.0：同层图片盖住文字，与书写顺序无关）；报关系最近的那张图；另一个条件分支里的图不算', async () => {
+    const { compileNamespace, toggleState, Image } = await import('../dist/index.js')
+    const rule = (root) => compileNamespace('t', { root }).issues.filter((i) => i.rule === 'text-covered').map((i) => `${i.path.split('/').pop()}←${i.message.match(/图片 (\S+)/)[1]}`)
+    const row = (name, labelProps) => new Panel({ name, size: [100, 18], anchor: 'top_left' }).add(
+        new Image({ name: 'bg', texture: 'textures/ui/x', size: ['100%', '100%'] }), new Label({ name: 'txt', text: '文字', ...labelProps }))
+    // 同层（文字显式 layer 0）→ 报，指向这一行自己的底板，而不是整页背景
+    const page = new Panel({ size: [200, 200] }).add(new Image({ name: 'pagebg', texture: 'textures/ui/x', size: ['100%', '100%'] }), row('r0', { layer: 0 }), row('r1', {}))
+    assert.deepEqual(rule(page), ['txt←r0/bg'])
+    // 文字缺省 layer 1 → 不报（上面的 r1）；图片层级更高 → 报
+    const high = new Panel({ size: [200, 200] }).add(new Image({ name: 'cover', texture: 'textures/ui/x', size: [50, 50], layer: 2 }), new Label({ name: 'under', text: '被盖住' }))
+    assert.deepEqual(rule(high), ['under←root/cover'])
+    // 图片在另一个条件分支（书的另一页）→ 不报；文字所在页有条件、图片总在 → 报
+    const pages = new Panel({ size: [200, 200] }).add(
+        new Panel({ name: 'pA', size: ['100%', '100%'], visible: toggleState('p').not() }).add(new Label({ name: 'a', text: '甲页', layer: 0 })),
+        new Panel({ name: 'pB', size: ['100%', '100%'], visible: toggleState('p') }).add(new Image({ name: 'img', texture: 'textures/ui/x', size: ['100%', '100%'] })))
+    assert.deepEqual(rule(pages), [])
+    const always = new Panel({ size: [200, 200] }).add(new Image({ name: 'top', texture: 'textures/ui/x', size: ['100%', '100%'], layer: 3 }),
+        new Panel({ name: 'pA', size: ['100%', '100%'], visible: toggleState('p') }).add(new Label({ name: 'a', text: '甲页' })))
+    assert.deepEqual(rule(always), ['a←root/top'])
+})
