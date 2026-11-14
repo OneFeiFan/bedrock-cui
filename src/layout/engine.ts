@@ -157,8 +157,8 @@ class Engine {
             const fixedW = sw.kind === 'default' ? undefined : this.axis(fill(sw), pw, 0, 0, 0, 0)
             const m = measureText(text, scale, fixedW ?? Infinity)
             w = fixedW ?? m.width
-            // 行距（line_padding）：每两行之间多 n
-            const gap = (n.props.lineSpacing ?? 0) * Math.max(0, m.lines.length - 1)
+            // 行距（line_padding，真机 1.20.0）：每一行都多占 n（文字在行里居中：上下各 n/2），控件高 = 行数 × (10 + n)
+            const gap = (n.props.lineSpacing ?? 0) * m.lines.length
             h = sh.kind === 'default' ? m.height + gap : this.axis(fill(sh), ph, 0, 0, w, 0)
             return this.clamp(n, w, h, pw, ph)
         }

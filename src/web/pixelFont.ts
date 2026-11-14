@@ -135,12 +135,14 @@ export function drawText(canvas: HTMLCanvasElement, fonts: PixelFonts, o: DrawTe
     canvas.width = Math.ceil(boxW * s)
     const pitch = LINE_HEIGHT + (o.lineSpacing ?? 0)
     canvas.height = Math.ceil((o.lines.length * pitch + 2 + padTop * 2) * s)
+    // （pitch 已含 line_padding：每行 10 + n）
     const ctx = canvas.getContext('2d')!
     let style: RunStyle = PLAIN
     o.lines.forEach((line, li) => {
         const lw = lineWidths[li]
         let x = o.align === 'center' ? (o.width - lw) / 2 : o.align === 'right' ? o.width - lw : 0
-        const y = li * pitch + padTop
+        // line_padding：每行多占 n、文字在行里居中（第一行也下移 n/2，真机 1.20.0）
+        const y = li * pitch + padTop + (o.lineSpacing ?? 0) / 2
         const { runs, end } = parseRich(line, style)
         style = end
         for (const r of runs) {

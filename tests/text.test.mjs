@@ -77,7 +77,7 @@ test('静态检查：固定高度的文字框放不下', () => {
         new Label({ name: 'over', text: '很长的文字'.repeat(10), size: [40, 20] }),
         new Label({ name: 'ok', text: '短', size: [40, 20] }),
     ] })
-    assert.deepEqual(compileNamespace('t', { root }).issues.map((i) => `${i.rule}@${i.path.split('/').pop()}`), ['text-overflow@over'])
+    assert.deepEqual(compileNamespace('t', { root }).issues.filter((i) => i.rule !== 'text-overlap').map((i) => `${i.rule}@${i.path.split('/').pop()}`), ['text-overflow@over'])
 })
 
 test('格式码与自动留空 / 行首空白：§9 的 9 不算英文；行首空白丢掉但格式码保留', () => {

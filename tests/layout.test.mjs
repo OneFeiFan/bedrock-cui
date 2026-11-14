@@ -173,3 +173,14 @@ test('静态文字转义（真机 1.4.0 / 1.5.0）：# 与 $ 开头补 §r；% �
     const explicit = compileNamespace('t', { root: new Panel({ children: [new Label({ name: 'y', text: 'a', layer: 0 })] }) }).json
     assert.equal(explicit.root.controls[0].y.layer, 0, '显式写了的不动')
 })
+
+test('静态检查 text-overlap：同一容器里两个文字控件重叠（line_padding 让文字变高压住下面的说明——真机 1.20.0）；带动态显示条件的「二选一」不报', async () => {
+    const { compileNamespace, toggleState } = await import('../dist/index.js')
+    const side = new Panel({ name: 'side', size: [110, 140], anchor: 'top_left' })
+    side.add(new Label({ name: 'runtime', text: '一\n二\n三', anchor: 'top_left', offset: [0, 62] }).setLineSpacing(6))   // 高 48 → 到 110
+    side.add(new Label({ name: 'note', text: '说明', anchor: 'top_left', offset: [0, 106] }))
+    side.add(new Label({ name: 'yes', text: '是', anchor: 'top_left', visible: toggleState('t') }))
+    side.add(new Label({ name: 'no', text: '否', anchor: 'top_left', visible: toggleState('t').not() }))
+    const { issues } = compileNamespace('t', { root: new Panel({ size: [200, 200], children: [side] }) })
+    assert.deepEqual(issues.map((i) => `${i.rule}@${i.path.split('/').pop()}`), ['text-overlap@note'])
+})

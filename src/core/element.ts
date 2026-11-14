@@ -395,8 +395,8 @@ export class Label extends Element {
     /** 文字是语言键，按玩家语言显示 */
     setLocalize(on = true): this { this.props.localize = on; return this }
     /**
-     * 行与行之间额外的间距（line_padding，原版聊天栏用它调行距）。运行期文字里放 emoji 字形图标（16 高、以文字行为中心）时设 ≥ 6，
-     * 图标就不会压到上下行
+     * 行距（line_padding，原版聊天栏用它调行距）。真机 1.20.0：**每一行都多占 n**，文字在行里居中（上下各 n/2，第一行也下移 n/2），
+     * 控件高 = 行数 × (10 + n)。运行期文字里放 emoji 字形图标（16 高、以文字行为中心）时设 ≥ 6，图标就不会压到上下行
      */
     setLineSpacing(n: number): this { this.props.lineSpacing = n; return this }
     get color(): Color | undefined { return this.props.color ? Color.fromJSON(this.props.color) : undefined }

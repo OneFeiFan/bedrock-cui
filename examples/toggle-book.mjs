@@ -470,7 +470,8 @@ function buildTextPages(pages) {
     inlinePage.add(new Side('R').add(new Title('大图标 · 运行期文字'),
         new Text(`${II.SWORD_L} §l钻石剑§r 这一行有 16 高的图标，自动加高。`, 110, TITLE_STYLE).setAnchor(Anchor.TOP_LEFT).setOffset(0, 22),
         new Label({ text: `§8运行期文字（游戏折行）：§r\n${GI.DIAMOND_L} 钻石 ×3\n${GI.SWORD_L} 钻石剑 ×1`, color: BODY, size: ['100%', 'default'], anchor: 'top_left', offset: [0, 62] }).setLineSpacing(6),
-        new Body('§8上：emoji 字形 + 行距 6（line_padding），图标不压行。', 106)))
+        // 运行期文字高 = 3 行 × (10 + 6) = 48（line_padding：每行都多占 6，真机 1.20.0）→ 62–110，说明放在 114
+        new Body('§8上：emoji 字形 + 行距 6（line_padding），图标不压行。', 114)))
     // 文本页之间的箭头
     chain.forEach((key, i) => {
         const page = pages.page(key)

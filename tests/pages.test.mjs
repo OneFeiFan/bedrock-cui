@@ -160,7 +160,7 @@ test('FormButton 默认聚焦优先级：default_focus_precedence', async () => 
 test('静态检查 obfuscated-unifont：§k 出现在含汉字的文字里（真机只显示成点）', async () => {
     const { Panel, Label, compileNamespace } = await import('../dist/index.js')
     const root = new Panel({ children: [new Label({ name: 'a', text: '§k乱码abc' }), new Label({ name: 'b', text: '§kabcdef' })] })
-    assert.deepEqual(compileNamespace('t', { root }).issues.map((i) => `${i.rule}@${i.path.split('/').pop()}`), ['obfuscated-unifont@a'])
+    assert.deepEqual(compileNamespace('t', { root }).issues.filter((i) => i.rule !== 'text-overlap').map((i) => `${i.rule}@${i.path.split('/').pop()}`), ['obfuscated-unifont@a'])
 })
 
 test('服务端分页 = 路由变体：标题 <id>/<页名> → 同一界面 + 初始选中序号变量；这组开关继承、不写死；页面显示只读开关', async () => {

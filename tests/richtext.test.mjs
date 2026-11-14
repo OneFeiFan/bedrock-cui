@@ -65,10 +65,10 @@ test('运行期文字：Label.setLineSpacing → line_padding；行距 ≥ 6 时
     const wrong = new Label(`钻石 ${D}`).setName('wrong')
     const { json, issues } = compileNamespace('t', { root: new Panel().add(spaced, tight, wrong) })
     assert.equal(json.root.controls[0].spaced.line_padding, 6)
-    assert.deepEqual(issues.map((i) => `${i.rule}@${i.path.split('/').pop()}`).sort(), ['glyph-line-overlap@tight', 'inline-icon-in-label@wrong'])
-    // 排版：两行、行距 6 → 高 = 2 × 10 + 6
+    assert.deepEqual(issues.filter((i) => i.rule !== 'text-overlap').map((i) => `${i.rule}@${i.path.split('/').pop()}`).sort(), ['glyph-line-overlap@tight', 'inline-icon-in-label@wrong'])
+    // 排版（真机 1.20.0）：每一行都多占 6 → 两行高 = 2 × (10 + 6)
     const b = layout(finalize(new Panel().setSize(200, 100).add(new Label('一\n二').setName('l').setLineSpacing(6))), { viewport: [200, 100] })
-    assert.equal(findBox(b, 'l').rect.h, 26)
+    assert.equal(findBox(b, 'l').rect.h, 32)
 })
 
 test('折行：新行开头不留空格（空格放不下时不带到下一行）', () => {

@@ -48,6 +48,14 @@ export function lintLayout(roots: RNode[], options: LintOptions = {}): LintIssue
                 return // 只报最外层越界的元素，子孙不再重复报
             }
         }
+        // 同一个容器里两个文字控件互相重叠（真机 1.20.0：line_padding 让文字控件变高，压住了下面的说明）。
+        // 带动态显示条件的跳过（「是 / 否」这种同一位置二选一的写法是有意叠放）
+        const labels = b.children.filter((c) => c.node.type === 'label' && !isExpr(c.node.props.visible))
+        for (let i = 0; i < labels.length; i++) for (let j = i + 1; j < labels.length; j++) {
+            const a = labels[i].rect, c = labels[j].rect
+            const ox = Math.min(a.x + a.w, c.x + c.w) - Math.max(a.x, c.x), oy = Math.min(a.y + a.h, c.y + c.h) - Math.max(a.y, c.y)
+            if (ox > 0.5 && oy > 0.5) issues.push({ rule: 'text-overlap', level: 'warning', path: labels[j].node.path, message: `与 ${labels[i].node.path.split('/').pop()} 重叠（${Math.round(ox * 10) / 10} × ${Math.round(oy * 10) / 10} 像素）` })
+        }
         // 自己是 contain：子孙的边界 = 自己（有内边距时 = 内容面板）
         let next = bounds
         if (b.node.props.contain) {

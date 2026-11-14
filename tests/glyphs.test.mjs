@@ -37,7 +37,7 @@ test('静态检查 glyph-line-overlap：emoji 页图标（16 高）在多行文�
     const big = new GlyphSheet('E4').icon('sword', 'textures/items/diamond_sword')
     const small = new GlyphSheet('A2', { kind: 'text' }).icon('sword', 'textures/items/diamond_sword')
     const root = new Panel().add(new Label(`标题 ${big}`).setName('ok'), new Label(`第一行 ${big}\n第二行`).setName('bad'), new Label(`第一行 ${small}\n第二行`).setName('fine'))
-    assert.deepEqual(compileNamespace('t', { root }).issues.map((i) => `${i.rule}@${i.path.split('/').pop()}`), ['glyph-line-overlap@bad'])
+    assert.deepEqual(compileNamespace('t', { root }).issues.filter((i) => i.rule !== 'text-overlap').map((i) => `${i.rule}@${i.path.split('/').pop()}`), ['glyph-line-overlap@bad'])
 })
 
 test('生成字形图：两种页都原样放 16×16；墨迹与代码不符时报出正确值并改正字距；PNG 解码支持调色板', () => {
