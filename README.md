@@ -62,6 +62,8 @@ class StatRow extends Row {                         // 自定义组件 = 继承
 
 ## 命令
 
+需要 Node.js 20.19 以上或 22.12 以上（预览用的 Vite 8 的要求）。
+
 ```bash
 npm install
 npm test                                  # tsc + node:test（63 条）
