@@ -11,6 +11,8 @@ import { gameGlyphInk } from './gameGlyphs.js'
 import { UNIFONT_HALF } from './unifontWidths.js'
 
 export const LINE_HEIGHT = 10
+/** 字形（8 高）在一行（10 高）里的上缘：居中，比文字控件的顶端低 1（真机 1.24.0：同一行里放在行顶的图标比汉字高 1 像素） */
+export const GLYPH_TOP = 1
 export const GLYPH_HEIGHT = 8
 
 const ASCII: Record<string, number> = {}

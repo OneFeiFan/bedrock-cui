@@ -14,7 +14,7 @@ import { buildResponsiveDemo, RESPONSIVE_FORM } from './responsive-demo.mjs'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 const outRoot = path.resolve(process.argv[2] ?? path.join(here, '..', 'out'))
-const VERSION = [1, 24, 0]
+const VERSION = [1, 25, 0]
 const UUID = { bp: '6a3f0e2c-91d4-4b7a-8c55-0e1f7a2b9c31', bpScript: 'c2e8b7d1-4f6a-4c9e-a1b2-3d4e5f607182', rp: '1f9c3a7e-2b4d-4e6f-8a90-b1c2d3e4f5a6', rpRes: '7d8e9f0a-1b2c-4d3e-9f4a-5b6c7d8e9f01' }
 const NAME = 'cui_toggle_test'
 
@@ -68,7 +68,7 @@ write(path.join(bp, 'manifest.json'), {
     dependencies: [{ module_name: '@minecraft/server', version: '2.0.0' }, { module_name: '@minecraft/server-ui', version: '2.2.0' }, { uuid: UUID.rp, version: VERSION }],
 })
 write(path.join(bp, 'scripts', 'main.js'), `import { InputPermissionCategory, ItemStack, system, world } from '@minecraft/server'
-import { ActionFormData, CustomForm, ObservableBoolean, ObservableString } from '@minecraft/server-ui'
+import { ActionFormData, CustomForm, ObservableBoolean, ObservableString, uiManager } from '@minecraft/server-ui'
 
 // 与界面约定：标题、正文前缀 CUI;|、按钮 0–3 = 格子 s0|…s3|（运行期数据跟在 | 后面）、按钮 4 = close|
 const TITLE = ${JSON.stringify(FORM.title)}
@@ -137,6 +137,24 @@ function open(player, page = 'home', dir = 'right') {
         camera(player, true)
         player.sendMessage('§a[CUI] 服务端收到表单按钮 ' + r.selection + (r.selection === 4 ? '（右上角 ×）' : ''))
     })
+}
+
+/**
+ * 预热：本次进入地图后第一次打开书时，先开一个看不见的表单（标题 cui_ui:warmup——原版表单藏起来、CUI 的界面没有一页匹配），
+ * 2 tick 后关掉，再打开书。真机 1.24.0：进入地图后第一次服务端翻页（关表单后马上重开）界面会消失一阵子，之后不再出现，
+ * 直到重新进入地图；与贴图无关（翻回已显示过的目录页也会）。预热把这次「关了再开」挪到打开书的时候。
+ */
+const warmed = new Set()
+function openBook(player) {
+    if (warmed.has(player.id)) return open(player)
+    warmed.add(player.id)
+    const t0 = system.currentTick
+    camera(player, false)
+    new ActionFormData().title('cui_ui:warmup').body('').button('').show(player).then(() => {
+        player.sendMessage('§7[CUI] 预热完成（' + (system.currentTick - t0) + ' tick），打开书')
+        open(player)
+    })
+    system.runTimeout(() => uiManager.closeAllForms(player), 2)
 }
 
 // ── DDUI 翻页实验：CustomForm + Observable。按钮不关表单，点了只改可观察数据 ⇒「下一页」一直是同一个控件，
@@ -220,13 +238,13 @@ function openDDUI2(player) {
 world.afterEvents.itemUse.subscribe((e) => {
     if (e.source.typeId !== 'minecraft:player') return
     const id = e.itemStack.typeId
-    if (id === 'minecraft:book') open(e.source)
+    if (id === 'minecraft:book') openBook(e.source)
     else if (id === 'minecraft:paper') openResponsive(e.source)
     else if (id === 'minecraft:feather') openDDUI(e.source)
     else if (id === 'minecraft:flint') openDDUI2(e.source)
 })
 system.afterEvents.scriptEventReceive.subscribe((e) => {
-    if (e.id === 'cui:open' && e.sourceEntity?.typeId === 'minecraft:player') open(e.sourceEntity)
+    if (e.id === 'cui:open' && e.sourceEntity?.typeId === 'minecraft:player') openBook(e.sourceEntity)
     if (e.id === 'cui:ddui' && e.sourceEntity?.typeId === 'minecraft:player') openDDUI(e.sourceEntity)
     if (e.id === 'cui:ddui2' && e.sourceEntity?.typeId === 'minecraft:player') openDDUI2(e.sourceEntity)
     if (e.id === 'cui:responsive' && e.sourceEntity?.typeId === 'minecraft:player') openResponsive(e.sourceEntity)

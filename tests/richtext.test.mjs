@@ -39,10 +39,11 @@ test('编译：纯文字行合成一个文字控件；有图标的行 = 横向 s
     const [seg1, icon, seg2] = cells.map((c) => Object.values(c)[0])
     assert.equal(seg1.text, '§c红色')
     assert.deepEqual([icon.type, icon.texture, icon.size], ['image', 'textures/items/diamond', [8, 8]])
+    assert.deepEqual(icon.offset, [0, 1], '小图标下移 1，与字形齐（字形在文字控件里比顶端低 1——真机 1.24.0）')
     assert.equal(seg2.text, '§c仍是红色', '图标后面的段开头补上红色')
 })
 
-test('排版引擎：图标紧跟在文字后面；有 16 高图标的行加高到 16，文字下移 4（与图标居中）', () => {
+test('排版引擎：图标紧跟在文字后面；有 16 高图标的行加高到 16，字形与图标居中（字形在文字控件里低 1——真机 1.24.0）', () => {
     const t = new Text(`钻石${D}与${BIG}剑`).setName('rt')
     const b = layout(finalize(new Panel().setSize(300, 100).setAnchor(Anchor.TOP_LEFT).add(t)), { viewport: [300, 100] })
     const rt = findBox(b, 'rt')
@@ -52,9 +53,9 @@ test('排版引擎：图标紧跟在文字后面；有 16 高图标的行加高�
     walk(rt)
     const [l1, img, l2, big, l3] = all.sort((a, b2) => a.rect.x - b2.rect.x)
     assert.equal(img.rect.x - rt.rect.x, textWidth('钻石'), '小图标紧跟在「钻石」后面')
-    assert.equal(img.rect.y - rt.rect.y, 4, '小图标与文字一起下移 4')
+    assert.equal(img.rect.y - rt.rect.y, 4, '小图标与字形齐：字形在 3 + 1 = 4')
     assert.equal(big.rect.y - rt.rect.y, 0, '大图标占满 16')
-    assert.equal(l1.rect.y - rt.rect.y, 4)
+    assert.equal(l1.rect.y - rt.rect.y, 3, '文字控件在 3：字形 4–12，中心 8 = 大图标中心')
 })
 
 test('运行期文字：Label.setLineSpacing → line_padding；行距 ≥ 6 时 emoji 字形图标不算压行；行内图标写进普通 Label → 报错', async () => {

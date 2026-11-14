@@ -2,7 +2,7 @@
  * Text：行内排版——文字里可以夹行内图标（InlineIcon），折行、行高、样式延续都由 CUI 负责，编译成原生控件：
  *   · 没有图标的行：合成一个普通文字控件（与 Paragraph 一样，没有额外开销）
  *   · 有图标的行：一行一个横向 stack_panel，文字段用文字控件、图标用图片控件（16×16 贴图画进 8×8 或 16×16）
- *   · 行高自动：有 16 高的图标的行加高到 16，文字与 8 高的图标在行里垂直居中（与 emoji 字形同样的对齐：上下各多 4）
+ *   · 行高自动：有 16 高的图标的行加高到 16，字形与 8 高的图标在行里垂直居中（字形在文字控件里比顶端低 1，真机 1.24.0）
  *   · 样式延续：每一段开头补上当时的样式码（颜色、粗体……）
  *
  *   new Text(`合成需要 ${DIAMOND}×2，再加 ${STICK}`, 110, BODY)
@@ -14,7 +14,7 @@ import { Element, Image, Label, Panel, Stack, _snapshot } from '../core/element.
 import { InlineIcon } from '../core/inline.js'
 import type { RNode } from '../core/node.js'
 import type { TextStyle } from '../core/values.js'
-import { LINE_HEIGHT, textWidth } from '../font/metrics.js'
+import { GLYPH_TOP, LINE_HEIGHT, textWidth } from '../font/metrics.js'
 import { NO_LINE_END, NO_LINE_START, parseRich, PLAIN, styleCodes, type RunStyle } from '../font/rich.js'
 
 /** 排版单位：一段文字（单词 / 一个字 / 一个空格，前面可能带格式码）或一个图标 */
@@ -162,9 +162,11 @@ export class Text extends Element {
         for (const line of this.lines) {
             if (!line.some((p) => !isText(p))) { plain.push(line.map((p) => (p as { text: string }).text).join('')); continue }
             flushPlain()
+            // 字形在文字控件里比顶端低 GLYPH_TOP（真机 1.24.0）：8 高的小图标放在 textY + GLYPH_TOP，与字形齐；
+            // 有 16 高图标的行，文字控件放在 3——字形在 4–12，中心与大图标（0–16）重合
             const tall = line.some((p) => !isText(p) && p.icon.size === 16)
             const rowH = tall ? 16 : LINE_HEIGHT
-            const textY = tall ? 4 : 0
+            const textY = tall ? 8 - 4 - GLYPH_TOP : 0
             const row = new Stack('horizontal')
             row.props.size = ['100%c', rowH]
             row.props.anchor = 'top_left'
@@ -180,7 +182,7 @@ export class Text extends Element {
                     const cell = new Panel()
                     cell.props.size = [p.icon.advance, rowH]
                     const img = new Image(p.icon.texture).setSize(p.icon.size, p.icon.size)
-                    img.props.anchor = 'top_left'; img.props.offset = [0, p.icon.size === 16 ? 0 : textY]
+                    img.props.anchor = 'top_left'; img.props.offset = [0, p.icon.size === 16 ? 0 : textY + GLYPH_TOP]
                     cell.add(img)
                     row.add(cell)
                 }

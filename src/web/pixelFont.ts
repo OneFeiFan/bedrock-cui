@@ -7,7 +7,7 @@
  * 字体文件由 scripts/fetch-fonts.mjs 准备（Unifont：OFL；ascii.png 取自本机的 Java 版客户端，不随源码分发）。
  */
 import { GAME_GLYPHS, GAME_GLYPH_THRESHOLD } from '../font/gameGlyphs.js'
-import { boldExtra, charWidth, LINE_HEIGHT } from '../font/metrics.js'
+import { boldExtra, charWidth, GLYPH_TOP, LINE_HEIGHT } from '../font/metrics.js'
 import { BEDROCK_COLORS, PLAIN, parseRich, type RunStyle } from '../font/rich.js'
 
 export interface PixelFonts {
@@ -167,8 +167,9 @@ export function drawText(canvas: HTMLCanvasElement, fonts: PixelFonts, o: DrawTe
     o.lines.forEach((line, li) => {
         const lw = lineWidths[li]
         let x = o.align === 'center' ? (o.width - lw) / 2 : o.align === 'right' ? o.width - lw : 0
-        // line_padding：每行多占 n、文字在行里居中（第一行也下移 n/2，真机 1.20.0）
-        const y = li * pitch + padTop + (o.lineSpacing ?? 0) / 2
+        // line_padding：每行多占 n、文字在行里居中（第一行也下移 n/2，真机 1.20.0）；
+        // 字形（8 高）在 10 高的行里居中：比文字控件的顶端低 1（真机 1.24.0：行内图标在行顶、汉字墨迹低 1 像素）
+        const y = li * pitch + padTop + (o.lineSpacing ?? 0) / 2 + GLYPH_TOP
         const { runs, end } = parseRich(line, style)
         style = end
         for (const r of runs) {
