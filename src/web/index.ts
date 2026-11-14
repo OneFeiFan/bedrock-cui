@@ -174,8 +174,13 @@ export function mountPreview(el: HTMLElement, options: PreviewOptions): Preview 
         return ''
     }
 
-    // 控件的位置与尺寸取整到屏幕像素：汉字字距 8.5，行内排版拆出的文字段常从 x.5 开始——整块画布摆在小数坐标上，浏览器会再插值一次、整段发虚
-    const S = (v: number) => `${Math.round(v * scale)}px`
+    // 设备像素比（Windows 显示缩放 150% = 1.5、浏览器缩放也算）：文字按设备像素画，不让浏览器再拉伸——
+    // 先前画布按 CSS 像素画，150% 缩放下被浏览器放大 1.5 倍，文字发虚、形状走样（用户反馈）。缩放改变时重画
+    const dprNow = () => (typeof window !== 'undefined' && window.devicePixelRatio) || 1
+    const dpr = signal(dprNow())
+    if (typeof window !== 'undefined') window.addEventListener('resize', () => { if (dprNow() !== dpr.value) dpr.value = dprNow() })
+    // 控件的位置与尺寸取整到设备像素：汉字字距 8.5，行内排版拆出的文字段常从 x.5 开始——摆在小数坐标上，浏览器会再插值一次、整段发虚
+    const S = (v: number) => `${Math.round(v * scale * dpr.value) / dpr.value}px`
     const clipPath = (b: Box, area: Rect) => {
         if (!b.clip) return ''
         const c = b.clip
@@ -234,21 +239,24 @@ export function mountPreview(el: HTMLElement, options: PreviewOptions): Preview 
     const drawPixelLabel = (d: HTMLElement, b: Box, n: RNode, fonts: PixelFonts): boolean => {
         const canvas = document.createElement('canvas')
         const lines = b.lines ?? []
+        const k = dpr.value
+        // 画布按设备像素画（缩放 × 设备像素比），CSS 尺寸 = 画布像素 / 设备像素比：一个画布像素正好是一个屏幕像素
         const r = drawText(canvas, fonts, {
             lines, color: (n.props.color ?? [1, 1, 1]) as [number, number, number], shadow: !!n.props.shadow,
-            unifont: usesUnifont(lines.join('\n')), align: n.props.align ?? 'left', width: b.rect.w, scale, fontScale: n.props.fontScale ?? 1,
+            unifont: usesUnifont(lines.join('\n')), align: n.props.align ?? 'left', width: b.rect.w, scale: scale * k, fontScale: n.props.fontScale ?? 1,
             glyphImage, lineSpacing: n.props.lineSpacing,
         })
         if (!r) return false
-        Object.assign(canvas.style, { width: `${canvas.width}px`, height: `${canvas.height}px`, imageRendering: 'pixelated', display: 'block', marginTop: `${-r.padTop * scale * (n.props.fontScale ?? 1)}px` })
-        d.style.width = `${canvas.width}px`; d.style.height = `${canvas.height}px`
+        const cssW = `${canvas.width / k}px`, cssH = `${canvas.height / k}px`
+        Object.assign(canvas.style, { width: cssW, height: cssH, imageRendering: 'pixelated', display: 'block', marginTop: `${-Math.round(r.padTop * scale * k * (n.props.fontScale ?? 1)) / k}px` })
+        d.style.width = cssW; d.style.height = cssH
         d.appendChild(canvas)
         return true
     }
 
     const render = effect(() => {
         // 读信号 → 建立依赖
-        void formText.value; void formButtons.value; void title.value; void outlines.value; void groups.value; void flags.value; void pixel.value; void startOf.value; void scrolls.value; void glyphLoaded.value
+        void formText.value; void formButtons.value; void title.value; void outlines.value; void groups.value; void flags.value; void pixel.value; void startOf.value; void scrolls.value; void glyphLoaded.value; void dpr.value
         const vp = viewport.value
         screen.style.width = `${vp[0] * scale}px`; screen.style.height = `${vp[1] * scale}px`
         const st = { hover: hover.value, pressed: pressed.value }
