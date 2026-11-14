@@ -1,6 +1,6 @@
 {
   "name": "cui",
-  "version": "0.6.0",
+  "version": "0.8.0",
   "private": true,
   "type": "module",
   "description": "跨平台 UI 框架：一棵组件树 → 基岩版 JSON UI ＋ 浏览器预览（按游戏排版规则）",

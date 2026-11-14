@@ -1,5 +1,8 @@
 export * from './core/expr.js'
-export * from './core/node.js'
+// node.ts 的 Size / Anchor 是内部的 JSON 写法，对外改名（Size / Anchor 这两个名字给值类型用）
+export type { Size as SizeJson, Anchor as AnchorName, Dyn, RGB, Intrinsic, RNode } from './core/node.js'
+export { walk } from './core/node.js'
+export * from './core/values.js'
 export * from './core/element.js'
 export * from './core/reactivity.js'
 export * from './font/metrics.js'

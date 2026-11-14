@@ -4,13 +4,17 @@
  *   FormButton 绑定到第 index 个表单按钮；按钮文字包含 tag 时显示（tag 后面可带运行期数据，用 buttonPayload(tag) 读）
  */
 import { form } from '../core/expr.js'
-import { Button, CollectionItem, Panel, type LayoutOptions } from '../core/element.js'
+import { Button, CollectionItem, Panel, type LayoutOptions, isOptions } from '../core/element.js'
 
 export interface FormGateOptions extends LayoutOptions { tag: string }
 
+/** 表单正文包含 tag 时才显示的面板 */
 export class FormGate extends Panel {
-    constructor(options: FormGateOptions) {
-        const { tag, ...rest } = options
+    constructor(tag: string)
+    /** @deprecated 用 new FormGate(标记) */
+    constructor(options: FormGateOptions)
+    constructor(a: string | FormGateOptions) {
+        const { tag, ...rest } = isOptions(a) ? a as FormGateOptions : { tag: a as string }
         super({ size: ['100%', '100%'], ...rest, visible: form.text.contains(tag) })
     }
 }
@@ -36,7 +40,12 @@ export class FormButton extends CollectionItem {
     readonly button: Button
     readonly tag: string
 
-    constructor(options: FormButtonOptions) {
+    /** 第 index 个表单按钮；按钮文字含 tag 时显示；宽高是像素（编译成正方形网格需要边长） */
+    constructor(index: number, tag: string, width: number, height: number)
+    /** @deprecated 用 new FormButton(序号, 标记, 宽, 高) */
+    constructor(options: FormButtonOptions)
+    constructor(a: number | FormButtonOptions, tagArg?: string, width?: number, height?: number) {
+        const options: FormButtonOptions = isOptions(a) ? a as FormButtonOptions : { index: a as number, tag: tagArg!, size: [width!, height!] }
         const { index, tag, size, onPress, focusPrecedence, children, name, anchor, anchorFrom, anchorTo, offset, layer, gridPos } = options
         super({ name, collection: 'form_buttons', index, size, anchor, anchorFrom, anchorTo, offset, layer, gridPos })
         this.tag = tag
@@ -58,6 +67,11 @@ export class FormButton extends CollectionItem {
 
     /** 按钮文字去掉 tag 之后的运行期数据 */
     payload() { return form.buttonText.minus(this.tag) }
+
+    /** 默认聚焦优先级（服务端重开表单、鼠标没动时，点击交给默认聚焦的控件） */
+    setFocusPrecedence(n: number): this { this.button.setFocusPrecedence(n); return this }
+    /** 仅预览：点击回调 */
+    onPress(fn: () => void): this { this.button.onPress(fn); return this }
 }
 
 /** FormButton 里：按钮文字去掉 tag 之后的运行期数据 */

@@ -197,7 +197,8 @@ test('服务端页码开关：起始页条件不写双重否定（真机 1.5.3 �
     const flag = json.root.controls.find((c) => c['bk__srv_home@common.toggle'])['bk__srv_home@common.toggle']
     const expr = flag.bindings.at(-1).source_property_name
     assert.ok(!/not \(not/.test(expr), expr)
-    assert.equal(expr, '((not ((#title_text - $s0_0) = #title_text)) or ((#title_text - $s0_1) = #title_text))')
+    // 页码缺省读表单正文（标题按路由要求必须完全相同，不能再附页码）
+    assert.equal(expr, '((not ((#form_text - $s0_0) = #form_text)) or ((#form_text - $s0_1) = #form_text))')
 })
 
 test('静态检查 obfuscated-unifont：§k 出现在含汉字的文字里（真机只显示成点）', async () => {

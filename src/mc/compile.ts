@@ -67,6 +67,9 @@ class Compiler {
         if (p.alpha !== undefined) out.alpha = p.alpha
         if (p.clip) out.clips_children = true
         if (p.gridPos) out.grid_position = p.gridPos
+        // 最小 / 最大尺寸：百分比尺寸在大屏 / 小屏上的上下限（响应式）
+        if (p.minSize) out.min_size = p.minSize
+        if (p.maxSize) out.max_size = p.maxSize
         if (p.visible !== undefined && !isExpr(p.visible)) out.visible = p.visible
         if (p.enabled !== undefined && !isExpr(p.enabled)) out.enabled = p.enabled
         for (const [k, v] of Object.entries(p.variables ?? {})) vars[k.startsWith('$') ? k : `$${k}`] = v

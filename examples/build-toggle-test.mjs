@@ -9,16 +9,18 @@ import { execSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { serverForm } from 'cui'
 import { buildBook, ARROWS, FORM, T, TEXTURE_INFO } from './toggle-book.mjs'
+import { buildResponsiveDemo, RESPONSIVE_FORM } from './responsive-demo.mjs'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 const outRoot = path.resolve(process.argv[2] ?? path.join(here, '..', 'out'))
-const VERSION = [1, 8, 0]
+const VERSION = [1, 9, 0]
 const UUID = { bp: '6a3f0e2c-91d4-4b7a-8c55-0e1f7a2b9c31', bpScript: 'c2e8b7d1-4f6a-4c9e-a1b2-3d4e5f607182', rp: '1f9c3a7e-2b4d-4e6f-8a90-b1c2d3e4f5a6', rpRes: '7d8e9f0a-1b2c-4d3e-9f4a-5b6c7d8e9f01' }
 const NAME = 'cui_toggle_test'
 
 // 诊断：两个变体——无动画（重定义 third_party_server_screen）/ 有动画（原版屏幕），看目录开关失灵是不是屏幕重定义导致的
 const VARIANT = process.env.CUI_VARIANT ?? '无动画'
-const { files, issues } = serverForm({ namespace: NAME, panelId: FORM.title, content: buildBook({ variant: VARIANT }), textures: (p) => TEXTURE_INFO[p], screenAnimation: VARIANT === '有动画' })
+// 两个界面同一个命名空间，按标题路由：打开哪个只创建哪个
+const { files, issues } = serverForm({ namespace: NAME, panels: [{ panelId: FORM.title, content: buildBook({ variant: VARIANT }) }, { panelId: RESPONSIVE_FORM.title, content: buildResponsiveDemo() }], textures: (p) => TEXTURE_INFO[p], screenAnimation: VARIANT === '有动画' })
 const ROUTES = Object.fromEntries(ARROWS.map((a) => [a.index, { target: a.target, from: a.from, dir: a.dir }]))
 if (issues.some((i) => i.level === 'error')) { console.error(issues); process.exit(1) }
 
@@ -55,6 +57,7 @@ import { ActionFormData, CustomForm, ObservableBoolean, ObservableString } from 
 
 // 与界面约定：标题、正文前缀 CUI;|、按钮 0–3 = 格子 s0|…s3|（运行期数据跟在 | 后面）、按钮 4 = close|
 const TITLE = ${JSON.stringify(FORM.title)}
+const TITLE_RESPONSIVE = ${JSON.stringify(RESPONSIVE_FORM.title)}
 // 翻页箭头：表单按钮序号 → { 目标页, 所在页, 方向 }（构建期从界面生成）
 const ROUTES = ${JSON.stringify(ROUTES)}
 const SLOT_ITEMS = ['minecraft:diamond_sword', 'minecraft:diamond', 'minecraft:diamond', 'minecraft:stick']
@@ -154,14 +157,25 @@ function openDDUI(player) {
         .catch((e) => player.sendMessage('§c[CUI] DDUI 出错：' + e))
 }
 
+// ── 响应式布局演示（第二个界面：同一命名空间按标题路由，只创建这一个）
+function openResponsive(player) {
+    const form = new ActionFormData().title(TITLE_RESPONSIVE).body('')
+    for (const b of ${JSON.stringify(RESPONSIVE_FORM.buttons)}) form.button(b)
+    form.show(player).then((r) => {
+        if (r.selection === 1) player.sendMessage('§a[CUI] 查看配方：两颗钻石 + 一根木棍')
+    })
+}
+
 world.afterEvents.itemUse.subscribe((e) => {
     if (e.source.typeId !== 'minecraft:player') return
     if (e.itemStack.typeId === 'minecraft:book') open(e.source)
     else if (e.itemStack.typeId === 'minecraft:writable_book') openDDUI(e.source)
+    else if (e.itemStack.typeId === 'minecraft:paper') openResponsive(e.source)
 })
 system.afterEvents.scriptEventReceive.subscribe((e) => {
     if (e.id === 'cui:open' && e.sourceEntity?.typeId === 'minecraft:player') open(e.sourceEntity)
     if (e.id === 'cui:ddui' && e.sourceEntity?.typeId === 'minecraft:player') openDDUI(e.sourceEntity)
+    if (e.id === 'cui:responsive' && e.sourceEntity?.typeId === 'minecraft:player') openResponsive(e.sourceEntity)
 })
 `)
 

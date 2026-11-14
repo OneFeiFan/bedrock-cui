@@ -20,19 +20,20 @@ export const BEDROCK_COLORS: Record<string, string> = {
     s: '#2CBAA8', t: '#21497B', u: '#9A5CC6', v: '#EB7114',
 }
 
-export interface TextStyle {
+/** 格式码解析出的一段文字的样式（粗体 / 斜体 / 颜色 / 乱码）。面向用户的文字样式是 values.ts 的 TextStyle */
+export interface RunStyle {
     /** 颜色码（'c'、'g'…）；undefined = 控件本身的颜色 */
     color?: string
     bold: boolean
     italic: boolean
     obfuscated: boolean
 }
-export const PLAIN: TextStyle = { color: undefined, bold: false, italic: false, obfuscated: false }
+export const PLAIN: RunStyle = { color: undefined, bold: false, italic: false, obfuscated: false }
 
-export interface Run { text: string, style: TextStyle }
+export interface Run { text: string, style: RunStyle }
 
 /** 应用一个格式码（基岩版语义：颜色不清掉粗体 / 斜体，§r 全部重置）；不认识的码原样忽略 */
-export function applyCode(style: TextStyle, code: string): TextStyle {
+export function applyCode(style: RunStyle, code: string): RunStyle {
     const c = code.toLowerCase()
     if (c === 'r') return { ...PLAIN }
     if (c === 'l') return { ...style, bold: true }
@@ -43,7 +44,7 @@ export function applyCode(style: TextStyle, code: string): TextStyle {
 }
 
 /** 拆成样式段 */
-export function parseRich(text: string, start: TextStyle = PLAIN): { runs: Run[], end: TextStyle } {
+export function parseRich(text: string, start: RunStyle = PLAIN): { runs: Run[], end: RunStyle } {
     const runs: Run[] = []
     let style = start
     let buf = ''
@@ -61,12 +62,12 @@ export function parseRich(text: string, start: TextStyle = PLAIN): { runs: Run[]
 }
 
 /** 重建样式所需的格式码（行首补码用） */
-export function styleCodes(style: TextStyle): string {
+export function styleCodes(style: RunStyle): string {
     return (style.color ? `§${style.color}` : '') + (style.bold ? '§l' : '') + (style.italic ? '§o' : '') + (style.obfuscated ? '§k' : '')
 }
 
 /** 富文本宽度（像素）：§ 码不占宽度，粗体加 boldExtra；`unifont` 缺省按这段文字的内容决定 */
-export function richWidth(text: string, scale = 1, start: TextStyle = PLAIN, unifont = usesUnifont(text)): number {
+export function richWidth(text: string, scale = 1, start: RunStyle = PLAIN, unifont = usesUnifont(text)): number {
     let w = 0
     for (const r of parseRich(text, start).runs) for (const ch of r.text) w += charWidth(ch, unifont) + (r.style.bold ? boldExtra(ch, unifont) : 0)
     return w * scale
@@ -122,7 +123,7 @@ export function wrapDetailed(text: string, width: number, options: WrapOptions =
     const src = (options.autoSpace ?? true) ? autoSpace(text) : text
     // 字体由整段内容决定（含汉字 ⇒ 整段 Unifont，英文也按 Unifont 的字距）
     const uni = options.unifont ?? usesUnifont(src)
-    const rw = (s: string, st: TextStyle) => richWidth(s, scale, st, uni)
+    const rw = (s: string, st: RunStyle) => richWidth(s, scale, st, uni)
     const out: string[] = []
     let style = PLAIN
     for (const para of src.split('\n')) {

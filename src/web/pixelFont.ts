@@ -7,7 +7,7 @@
  * 字体文件由 scripts/fetch-fonts.mjs 准备（Unifont：OFL；ascii.png 取自本机的 Java 版客户端，不随源码分发）。
  */
 import { boldExtra, charWidth, LINE_HEIGHT } from '../font/metrics.js'
-import { BEDROCK_COLORS, PLAIN, parseRich, type TextStyle } from '../font/rich.js'
+import { BEDROCK_COLORS, PLAIN, parseRich, type RunStyle } from '../font/rich.js'
 
 export interface PixelFonts {
     /** Unifont：码点 → 点阵十六进制（32 位 = 8×16，64 位 = 16×16） */
@@ -112,7 +112,7 @@ export function drawText(canvas: HTMLCanvasElement, fonts: PixelFonts, o: DrawTe
     if (!fonts.unifont && !(fonts.ascii && !o.unifont)) return false
     const s = o.scale * o.fontScale
     // 行宽（样式跨行延续，粗体要算进去）
-    let st: TextStyle = PLAIN
+    let st: RunStyle = PLAIN
     const lineWidths = o.lines.map((line) => {
         const { runs, end } = parseRich(line, st)
         st = end
@@ -124,7 +124,7 @@ export function drawText(canvas: HTMLCanvasElement, fonts: PixelFonts, o: DrawTe
     canvas.width = Math.ceil(boxW * s)
     canvas.height = Math.ceil((o.lines.length * LINE_HEIGHT + 2) * s)
     const ctx = canvas.getContext('2d')!
-    let style: TextStyle = PLAIN
+    let style: RunStyle = PLAIN
     o.lines.forEach((line, li) => {
         const lw = lineWidths[li]
         let x = o.align === 'center' ? (o.width - lw) / 2 : o.align === 'right' ? o.width - lw : 0

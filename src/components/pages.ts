@@ -12,7 +12,7 @@
  * 再开一个 Pages（不同 group）就是相互独立的另一组状态（例如物品详情弹层：关掉后回到原来那页）。
  */
 import { form, toggleState, type Expr } from '../core/expr.js'
-import { Panel, Toggle, type LayoutOptions } from '../core/element.js'
+import { Panel, Toggle, type LayoutOptions, isOptions } from '../core/element.js'
 
 export interface PagesOptions extends LayoutOptions {
     /** 开关组名：同时用作开关名前缀，要在整个界面里唯一 */
@@ -33,21 +33,36 @@ interface Entry { index: number, panel: Panel, links: Toggle[] }
 export class Pages extends Panel {
     readonly group: string
     private readonly entries = new Map<string, Entry>()
-    private readonly start?: string
-    private readonly server?: { source: Expr, prefix: string, anchor: Toggle, flags: Map<string, Toggle> }
+    private start?: string
+    private server?: { source: Expr, prefix: string, anchor: Toggle, flags: Map<string, Toggle> }
 
-    constructor(options: PagesOptions) {
-        const { group, start, server, ...rest } = options
+    /** group = 开关组名（同时用作开关名前缀，要在整个界面里唯一） */
+    constructor(group: string)
+    /** @deprecated 用 new Pages(组名).startAt(...).useServerPages(...) */
+    constructor(options: PagesOptions)
+    constructor(a: string | PagesOptions) {
+        const { group, start, server, ...rest } = isOptions(a) ? a as PagesOptions : { group: a as string } as PagesOptions
         super({ size: ['100%', '100%'], ...rest })
         this.group = group
         this.start = start
-        if (server) {
-            // 服务端锚点：初始选中。序号在 finalize 时取「页数」（不与任何页冲突）——
-            // ⚠️ 不能用 -1：toggle_group_forced_index 缺省就是 -1，意思是「不强制、按顺序自动分配」（真机 1.5.0：单选组乱掉、进不了子页面）
-            const anchor = new Toggle({ name: `${group}__server`, group, index: 0, size: [0, 0] })
-            this.add(anchor)
-            this.server = { source: server.source ?? form.title, prefix: server.prefix ?? 'P:', anchor, flags: new Map() }
-        }
+        if (server) this.useServerPages(server.source, server.prefix)
+    }
+
+    /** 初始页（缺省第一页） */
+    startAt(key: string): this { this.start = key; return this }
+
+    /**
+     * 服务端页码（混合翻页）：表单重新打开时，按 source 里的 `<prefix><页名>;` 显示那一页（缺省读表单正文）。
+     * 翻页箭头用 FormButton 走服务端（鼠标不动也能连点），目录 / 书签用 link() 开关（即时）。
+     */
+    useServerPages(source: Expr = form.text, prefix = 'P:'): this {
+        if (this.server) return this
+        // 服务端锚点：初始选中。序号在 finalize 时取「页数」（不与任何页冲突）——
+        // ⚠️ 不能用 -1：toggle_group_forced_index 缺省就是 -1，意思是「不强制、按顺序自动分配」（真机 1.5.0：单选组乱掉、进不了子页面）
+        const anchor = new Toggle({ name: `${this.group}__server`, group: this.group, index: 0, size: [0, 0] })
+        this.add(anchor)
+        this.server = { source, prefix, anchor, flags: new Map() }
+        return this
     }
 
     /** 服务端打开到某页时，source 里要带的标记（例如 'P:sword;'，脚本拼进表单标题） */

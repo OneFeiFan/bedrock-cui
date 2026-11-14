@@ -12,7 +12,8 @@
  *   label  = default 尺寸取文字尺寸；宽度确定、高度 default 时按宽度折行
  */
 import { asBool, evalExpr, isExpr, type EvalEnv, type Expr, type Source, type Value } from '../core/expr.js'
-import type { Anchor, RNode } from '../core/node.js'
+import type { Anchor, RNode, Size } from '../core/node.js'
+import { Texture } from '../core/values.js'
 import { LINE_HEIGHT, measureText } from '../font/metrics.js'
 import { evalOffset, evalTerms, parseSize, usesChildren, usesSelf, type SizeSpec } from './units.js'
 
@@ -153,7 +154,7 @@ class Engine {
             const m = measureText(text, scale, fixedW ?? Infinity)
             w = fixedW ?? m.width
             h = sh.kind === 'default' ? m.height : this.axis(fill(sh), ph, 0, 0, w, 0)
-            return [w, h]
+            return this.clamp(n, w, h, pw, ph)
         }
         const def = { kind: 'expr', terms: [{ unit: '%', value: 100 }] } as SizeSpec
         const SW = sw.kind === 'default' ? def : fill(sw), SH = sh.kind === 'default' ? def : fill(sh)
@@ -174,7 +175,19 @@ class Engine {
             first(cw, ch, cmw, cmh)
         }
         void inStack
-        return [Math.max(0, w), Math.max(0, h)]
+        return this.clamp(n, Math.max(0, w), Math.max(0, h), pw, ph)
+    }
+
+    /** 最小 / 最大尺寸（min_size / max_size，相对父控件） */
+    clamp(n: RNode, w: number, h: number, pw: number, ph: number): [number, number] {
+        const lim = (v: number, i: 0 | 1, parent: number) => {
+            const mn = n.props.minSize?.[i], mx = n.props.maxSize?.[i]
+            const val = (x: unknown) => this.axis(parseSize(x as Size) as SizeSpec, parent, 0, 0, 0, 0)
+            if (mn !== undefined) v = Math.max(v, val(mn))
+            if (mx !== undefined) v = Math.min(v, val(mx))
+            return v
+        }
+        return [lim(w, 0, pw), lim(h, 1, ph)]
     }
 
     private axis(s: SizeSpec, parent: number, children: number, childrenMax: number, selfX: number, selfY: number): number {
@@ -216,7 +229,7 @@ class Engine {
         const s = this.childScope(n, scope)
         if (n.type === 'image') {
             const tex = String(this.value(n.props.texture, scope, ''))
-            const info = this.env.textures?.(tex)
+            const info = this.env.textures?.(tex) ?? Texture.info(tex)
             box.texture = tex
             const nine = n.props.nineslice ?? info?.nineslice
             if (nine !== undefined) {
@@ -254,7 +267,8 @@ class Engine {
                 let sz = sizes[i]
                 if (!sz) {
                     const other = this.size(c, rect.w, rect.h, s)
-                    sz = vertical ? [other[0], share] : [share, other[1]]
+                    // fill 平分到的份额也受 min / max 约束
+                    sz = this.clamp(c, vertical ? other[0] : share, vertical ? share : other[1], rect.w, rect.h)
                 }
                 // 交叉方向按锚点，排列方向按游标
                 // 交叉方向的锚点缺省 center（与其它控件一致）；排列方向由游标决定，锚点不起作用

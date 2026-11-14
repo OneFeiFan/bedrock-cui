@@ -32,11 +32,39 @@ const { files, issues } = serverForm({ namespace: 'my_book', panelId: 'cui_ui:my
 - **编译器 + 静态检查**；`serverForm()` 生成挂到原版服务端表单所需的全部文件（`panels` 可放多个按标题区分的界面）。
 - **`cui/node`**：`textureInfoFrom([资源包目录])` 读贴图真实信息（PNG 宽高、`.json` 的九宫格与 base_size），给预览、排版与 lint 用。
 
+## 写法一览（面向对象）
+
+```js
+import { Align, Anchor, Color, Column, Image, Insets, Justify, Label, Length, Panel, Row, Size, Texture, TextStyle } from 'cui'
+
+const ICON = Texture.of('textures/items/diamond_sword').withSize(16, 16)
+const TITLE = TextStyle.of(Color.WHITE).withShadow()
+
+const card = new Panel()
+    .setSize(Length.pct(92), Length.pct(88))      // 随屏幕大小
+    .setMinSize(220, 140).setMaxSize(400, 250)     // 上下限
+    .setAnchor(Anchor.CENTER)
+
+const header = new Row().setHeight(22).setGap(6).setAlign(Align.CENTER)
+header.add(new Image(ICON).setSize(16, 16), new Label('钻石剑', TITLE).setGrow(), new Label('稀有'))
+
+const content = new Column().setSize(Size.full()).setPadding(Insets.all(7)).setGap(4)
+content.add(header, new Label('说明文字会按列宽自动折行……'))
+card.add(content)
+
+class StatRow extends Row {                         // 自定义组件 = 继承
+    constructor(name, value) {
+        super()
+        this.setHeight(10).add(new Label(name).setGrow(), new Label(value))
+    }
+}
+```
+
 ## 命令
 
 ```bash
 npm install
-npm test                                  # tsc + node:test（36 条）
+npm test                                  # tsc + node:test（49 条）
 node scripts/fetch-fonts.mjs              # 预览用像素字体（Unifont + 本机 Java 版的 ascii.png）
 npx vite                                  # 浏览器预览：开关翻页测试书
 node examples/build-toggle-test.mjs out   # 真机测试包 out/cui_toggle_test.mcaddon

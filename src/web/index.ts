@@ -14,7 +14,7 @@ import { drawOrder, layout, type Box, type Rect, type TextureInfo } from '../lay
 import { compileNamespace } from '../mc/compile.js'
 import type { LintIssue } from '../mc/lint.js'
 import { GLYPH_HEIGHT, LINE_HEIGHT, boldExtra, charWidth, usesUnifont } from '../font/metrics.js'
-import { BEDROCK_COLORS, PLAIN, parseRich, type TextStyle } from '../font/rich.js'
+import { BEDROCK_COLORS, PLAIN, parseRich, type RunStyle } from '../font/rich.js'
 import { drawText, loadPixelFonts, type PixelFonts } from './pixelFont.js'
 
 export { loadPixelFonts, drawText, type PixelFonts } from './pixelFont.js'
@@ -57,6 +57,9 @@ export interface Preview {
     compiled(namespace?: string): Record<string, unknown>
     /** 清空开关状态（模拟服务端重新打开表单：开关回到初始状态） */
     resetToggles(): void
+    /** 改屏幕大小（界面像素）：看响应式布局在手机 / 平板 / 电脑上的样子 */
+    resize(width: number, height: number): void
+    readonly viewport: Signal<[number, number]>
     dispose(): void
 }
 
@@ -81,7 +84,7 @@ const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;')
  * **逐字定位**：每个字占的宽度严格按字宽表（与排版引擎一致），字形居中放在自己的格子里——
  * 系统字体的字形宽度与游戏不同（等宽字体里 i 和 W 一样宽），不逐字定位的话预览里的折行位置会对不上。
  */
-function lineHtml(line: string, base: string, start: TextStyle, px: number, unifont: boolean): { html: string, end: TextStyle } {
+function lineHtml(line: string, base: string, start: RunStyle, px: number, unifont: boolean): { html: string, end: RunStyle } {
     const { runs, end } = parseRich(line, start)
     let html = ''
     for (const r of runs) {
@@ -98,7 +101,8 @@ function lineHtml(line: string, base: string, start: TextStyle, px: number, unif
 }
 
 export function mountPreview(el: HTMLElement, options: PreviewOptions): Preview {
-    const viewport = options.viewport ?? [320, 210]
+    // 视口是信号：resize() 改屏幕大小，排版重算（响应式布局在不同屏幕上的样子）
+    const viewport = signal<[number, number]>(options.viewport ?? [320, 210])
     const scale = options.scale ?? 3
     const formText = options.formText ?? signal('')
     const formButtons = options.formButtons ?? signal<string[]>([])
@@ -135,7 +139,7 @@ export function mountPreview(el: HTMLElement, options: PreviewOptions): Preview 
 
     const screen = document.createElement('div')
     Object.assign(screen.style, {
-        position: 'relative', width: `${viewport[0] * scale}px`, height: `${viewport[1] * scale}px`, overflow: 'hidden',
+        position: 'relative', width: `${viewport.value[0] * scale}px`, height: `${viewport.value[1] * scale}px`, overflow: 'hidden',
         background: 'repeating-conic-gradient(#3a3a3a 0% 25%, #333 0% 50%) 0 0 / 24px 24px', imageRendering: 'pixelated', userSelect: 'none',
         fontFamily: '"Minecraft", "Unifont", "Zpix", monospace',
     })
@@ -208,7 +212,7 @@ export function mountPreview(el: HTMLElement, options: PreviewOptions): Preview 
                 textShadow: n.props.shadow ? `${fs}px ${fs}px 0 rgba(0,0,0,0.75)` : 'none', overflow: 'visible',
             })
             // 样式延续到下一行（与游戏里一段文字被折成多行时一致；预折行的每行开头也补了样式码）
-            let st: TextStyle = PLAIN
+            let st: RunStyle = PLAIN
             const uni = usesUnifont((b.lines ?? []).join('\n'))
             d.innerHTML = (b.lines ?? []).map((l) => { const r = lineHtml(l, rgb(n.props.color), st, fs, uni); st = r.end; return `<div>${r.html}</div>` }).join('')
         } else if (!outlines.value) {
@@ -221,9 +225,11 @@ export function mountPreview(el: HTMLElement, options: PreviewOptions): Preview 
     const render = effect(() => {
         // 读信号 → 建立依赖
         void formText.value; void formButtons.value; void title.value; void outlines.value; void groups.value; void flags.value; void pixel.value
+        const vp = viewport.value
+        screen.style.width = `${vp[0] * scale}px`; screen.style.height = `${vp[1] * scale}px`
         const st = { hover: hover.value, pressed: pressed.value }
         current = layout(tree(), {
-            viewport, data: data as never, translate: options.translate,
+            viewport: vp, data: data as never, translate: options.translate,
             textures: (p) => textures[p],
             buttonState: (path) => (st.pressed === path ? 'pressed' : st.hover === path ? 'hover' : 'default'),
             toggleChecked: checked,
@@ -270,6 +276,8 @@ export function mountPreview(el: HTMLElement, options: PreviewOptions): Preview 
         issues: () => compileNamespace('preview', { root: rootEl() }, { textures: (p) => textures[p] }).issues,
         compiled: (ns = 'preview') => compileNamespace(ns, { root: rootEl() }, { textures: (p) => textures[p] }).json,
         resetToggles: () => { groups.value = {}; flags.value = {} },
+        resize: (w: number, h: number) => { viewport.value = [w, h] },
+        viewport,
         dispose: () => { render.stop(); screen.remove() },
     }
 }

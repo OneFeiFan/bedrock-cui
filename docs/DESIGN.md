@@ -1,4 +1,4 @@
-# CUI 设计说明（v0.6）
+# CUI 设计说明（v0.8）
 
 ## 1. 要解决的问题
 
@@ -137,6 +137,41 @@ CUI 的核心是「**对象模型 + 按游戏规则的预览 + 规则可测试**
   不写 `not (not …)`——真机 1.5.3：带双重否定时，翻回目录（`P:home;`）一片空白。
 - 书打开期间锁视角（表单之间的空档）；serverForm 缺省去掉屏幕进出场动画（1.5.2 两个变体对照：与目录失灵无关）。
 
+### 面向对象的 API（v0.8）
+
+构造函数只收必要参数，其余属性用有类型的读写属性或链式方法设置；值是有类型的不可变对象（`src/core/values.ts`）：
+
+| 值类型 | 用途 | 例子 |
+|---|---|---|
+| `Length` | 一个方向上的长度，可加减 | `Length.pct(100).minus(6)`、`Length.children().plus(8)`、`Length.fill()` |
+| `Size` / `Vec2` | 尺寸 / 偏移 | `Size.of(Length.pct(90), 40)`、`Size.full()`、`Size.fitContent(4)` |
+| `Anchor` | 锚点 | `Anchor.CENTER_LEFT`；`setPlacement(Anchor.TOP_RIGHT, Anchor.TOP_LEFT)` = 贴在父控件右边外侧 |
+| `Color` / `Insets` | 颜色 / 内边距 | `Color.hex('#3d2108')`、`Insets.symmetric(3, 0)` |
+| `Texture` | 贴图 + 尺寸 / 九宫格信息（跟着贴图走，静态检查与预览直接查，不再另维护信息表） | `Texture.of('textures/ui/cell_image').withSize(10, 10).withBaseSize(5, 5).withNineslice(1)` |
+| `TextStyle` | 文字样式，不可变、可共用 | `TextStyle.of(Color.WHITE).withShadow().withScale(0.8)` |
+
+元素：`new Label(文字, 样式)`、`new Image(贴图)`、`new Toggle(组, 序号)`、`new FormButton(序号, 标记, 宽, 高)`、`new Pages(组).startAt('home').useServerPages()`、
+`new Paragraph(文字, 宽, 样式)`；属性 `el.size`、`el.offset`、`el.layer`、`el.visible`、`el.padding`… 读出来是值对象；链式 `setSize / setOffset / setAnchor /
+setPlacement / setLayer / setVisible / setPadding / setMinSize / setMaxSize / setGrow …`。自定义组件 = 继承（`class StatRow extends Row`）。
+旧写法（构造函数传一个参数对象）仍能编译，但已标 `@deprecated`；内部表示（props → RNode → 编译器 / 排版引擎）不变，新旧写法编译结果逐字节相同（测试）。
+
+### 弹性布局与响应式（Row / Column）
+
+`Row`（横排）/ `Column`（竖排）：`setGap`、`setJustify(START | CENTER | END | SPACE_BETWEEN)`、`setAlign(START | CENTER | END | STRETCH)`；子控件 `setGrow()` 平分剩余空间、
+`setMinSize / setMaxSize` 上下限。快照时展开成 JSON UI 原生结构：`stack_panel` + 每个子控件一个**槽位**面板（主轴尺寸取子控件的：伸展 = fill、按内容 = 100%c、像素原样）+ 间距 / 分布用的占位面板（fill）。
+交叉轴 STRETCH 只拉伸**没写尺寸**的子控件（同 CSS），文字因此按列宽折行。容器按内容定尺寸时：主轴 100%c、交叉轴 100%cm（stack 的 %c 两个方向都是求和——真机）。
+
+**响应式 = 运行时自适应**：尺寸写百分比 / fill，再用 `min_size / max_size` 给上下限，游戏按实际屏幕算——不是在固定画布上预先算死坐标（@bedrock-core 的 flexbox 是 320×210 固定画布）。
+预览 `preview.resize(w, h)` 切换屏幕尺寸（`?demo=responsive`：小屏手机 320×180、手机 480×216、电脑 640×360）。⏳ 1.9.0 测试包「响应式演示」（手持纸右键）待真机确认 min_size / max_size 与这套结构。
+JSON UI 没有可靠的屏幕尺寸信号，「断点」（窄屏换一种布局）目前做不到；能做的是流式布局 + 上下限。
+
+### 只创建需要的界面（标题路由）
+
+serverForm：根面板（按前缀显示）里一个带工厂的 `collection_panel`，属性包 `#route_<标题>` = [界面 id]；绑定 `('#route_' + #title_text)` 求出属性名，引擎读它的值写进
+`#collection_length`，工厂只实例化那一个界面（与 @bedrock-core/ui 的表单路由同一机制）。每个界面是命名空间里的独立元素 `screen_<n>`。
+**标题必须与 panelId 完全相同**：页码等放进表单正文（`Pages.useServerPages()` 缺省读正文）。所有绑定都带 `binding_condition: 'always'`（工厂创建控件后数据才到）。
+⏳ 1.8.0 / 1.9.0 测试包待真机确认。
+
 ### 为什么原生界面能连点、JSON UI 客户端翻页不能；DDUI
 
 原生界面（书与笔的翻页箭头）里，箭头**始终是同一个控件**，翻页时由游戏的界面控制器（C++）改写内容。JSON UI 附加包没有逻辑能改写
@@ -183,6 +218,7 @@ stack_panel 的 `%c` 在**两个方向上都是子控件之和**——交叉方�
 | `toggle-index`：开关序号必须是非负整数 | 错误 | 1.5.0（-1 = 自动分配，撞号） |
 | `mixed-sources`：一条表达式同时读开关状态与全局绑定 | 警告 | 1.5.2（开关变化不触发重算） |
 | `obfuscated-unifont`：§k 出现在含汉字的文字里 | 警告 | 1.5.3（只显示成点） |
+| `grow-outside-flex`：setGrow() 写在非 Row / Column 的子元素上 | 警告 | 不起作用 |
 | `text-overflow`：固定高度的文字框放不下 | 警告 | — |
 | `stack-cross-c`：stack 交叉方向写 %c | 警告 | 1.1.0 提示框过宽 |
 | `out-of-bounds`：contain 元素里越出安全区（按排版结果，所有页面都排出来检查；overflow: true 的跳过） | 警告 | 1.2.0 刻度尺伸出书页 |
