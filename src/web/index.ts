@@ -122,7 +122,7 @@ export function mountPreview(el: HTMLElement, options: PreviewOptions): Preview 
         if (!g || !url) return undefined
         let img = glyphImgs.get(url)
         if (!img) { img = new Image(); img.onload = () => { glyphLoaded.value++ }; img.src = url; glyphImgs.set(url, img) }
-        return img.complete && img.naturalWidth ? { img, ink: g.ink, size: g.size } : undefined
+        return img.complete && img.naturalWidth ? { img, ink: g.ink, kind: g.kind } : undefined
     }
     if (options.fonts) void loadPixelFonts(options.fonts).then((f) => { if (f.unifont || f.ascii) pixel.value = f })
     const rootEl = (): Element => (typeof options.root === 'function' ? (options.root as () => Element)() : options.root)
@@ -210,20 +210,8 @@ export function mountPreview(el: HTMLElement, options: PreviewOptions): Preview 
                 const ins = dir === 'left' ? `0 0 0 ${k * 100}%` : dir === 'right' ? `0 ${k * 100}% 0 0` : dir === 'up' ? `${k * 100}% 0 0 0` : dir === 'down' ? `0 0 ${k * 100}% 0` : `${k * 50}%`
                 d.style.clipPath = `inset(${ins})`
             }
-        } else if (n.type === 'label' && pixel.value) {
-            // 像素字体：照游戏画（画布按文字实际宽度，可能比控件宽——与游戏一样不裁剪）
-            const canvas = document.createElement('canvas')
-            const lines = b.lines ?? []
-            const ok = drawText(canvas, pixel.value, {
-                lines, color: (n.props.color ?? [1, 1, 1]) as [number, number, number], shadow: !!n.props.shadow,
-                unifont: usesUnifont(lines.join('\n')), align: n.props.align ?? 'left', width: b.rect.w, scale, fontScale: n.props.fontScale ?? 1,
-                glyphImage,
-            })
-            if (ok) {
-                Object.assign(canvas.style, { width: `${canvas.width}px`, height: `${canvas.height}px`, imageRendering: 'pixelated', display: 'block' })
-                d.style.width = `${canvas.width}px`; d.style.height = `${canvas.height}px`
-                d.appendChild(canvas)
-            }
+        } else if (n.type === 'label' && pixel.value && drawPixelLabel(d, b, n, pixel.value)) {
+            // 像素字体画好了（画不出来——例如 Unifont 没加载——就走下面的系统字体画法，文字不会消失）
         } else if (n.type === 'label') {
             const fs = (n.props.fontScale ?? 1) * scale
             Object.assign(d.style, {
@@ -239,6 +227,22 @@ export function mountPreview(el: HTMLElement, options: PreviewOptions): Preview 
         }
         if (outlines.value) d.style.outline = `1px solid ${n.type === 'button' ? '#ff0' : n.type === 'toggle' ? '#f0f' : n.type === 'collection_item' ? '#0ff' : 'rgba(255,80,80,0.7)'}`
         return d
+    }
+
+    /** 像素字体画一个文字控件：画布按文字实际宽度（可能比控件宽，与游戏一样不裁剪）；大字形图标上下留余量、画布往上挪 */
+    const drawPixelLabel = (d: HTMLElement, b: Box, n: RNode, fonts: PixelFonts): boolean => {
+        const canvas = document.createElement('canvas')
+        const lines = b.lines ?? []
+        const r = drawText(canvas, fonts, {
+            lines, color: (n.props.color ?? [1, 1, 1]) as [number, number, number], shadow: !!n.props.shadow,
+            unifont: usesUnifont(lines.join('\n')), align: n.props.align ?? 'left', width: b.rect.w, scale, fontScale: n.props.fontScale ?? 1,
+            glyphImage,
+        })
+        if (!r) return false
+        Object.assign(canvas.style, { width: `${canvas.width}px`, height: `${canvas.height}px`, imageRendering: 'pixelated', display: 'block', marginTop: `${-r.padTop * scale * (n.props.fontScale ?? 1)}px` })
+        d.style.width = `${canvas.width}px`; d.style.height = `${canvas.height}px`
+        d.appendChild(canvas)
+        return true
     }
 
     const render = effect(() => {

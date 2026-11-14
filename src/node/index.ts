@@ -155,27 +155,25 @@ export function downscaleIcon(cell16: Uint8Array): Uint8Array {
 }
 
 /**
- * 生成字形图（256×256、16×16 格）：每个图标放进它的格子——large 原样 16×16；small 缩成 8×8、放在格子的第 4–11 行
- * （真机 1.17.0：16 像素的格子以 8 像素高的文字为中心，上下各多 4）。按画出来的像素算墨迹，与 GlyphSheet.icon() 写的不符时
- * 改正字距并报出（把正确值写回代码，预览才一致）。resolve：贴图路径（不带扩展名）→ PNG 文件路径。
+ * 生成字形图（256×256、16×16 格）：每个图标原样放进它的格子（emoji 页 1:1 画 16 高；文字页按一半画 8 高——都用 16×16 的图）。
+ * 按贴图算墨迹，与 GlyphSheet.icon() 写的不符时改正字距并报出（把正确值写回代码，预览才一致）。
+ * resolve：贴图路径（不带扩展名）→ PNG 文件路径。
  */
 export function renderGlyphSheet(sheet: GlyphSheet, resolve: (texturePath: string) => string): { file: string, png: Buffer, issues: string[] } {
     const W = 256, px = new Uint8Array(W * W * 4), issues: string[] = []
     for (const g of [...sheet.glyphs]) {
         const img = decodePng(fs.readFileSync(resolve(g.texture.path)))
         const cx = (g.cell % 16) * 16, cy = Math.floor(g.cell / 16) * 16
-        // 先取成 16×16（更大的贴图按最近邻缩）
+        // 取成 16×16（更大的贴图按最近邻缩）
         const cell16 = new Uint8Array(16 * 16 * 4)
         for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
             const sx = Math.floor((x * img.width) / 16), sy = Math.floor((y * img.height) / 16), so = (sy * img.width + sx) * 4
             cell16.set(img.data.subarray(so, so + 4), (y * 16 + x) * 4)
+            px.set(img.data.subarray(so, so + 4), ((cy + y) * W + cx + x) * 4)
         }
-        const n = g.size === 'large' ? 16 : 8, top = g.size === 'large' ? 0 : 4
-        const art = g.size === 'large' ? cell16 : downscaleIcon(cell16)
-        for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) px.set(art.subarray((y * n + x) * 4, (y * n + x) * 4 + 4), ((cy + top + y) * W + cx + x) * 4)
-        const ink = inkOf({ width: n, height: n, data: art })
+        const ink = inkOf({ width: 16, height: 16, data: cell16 })
         if (ink[0] !== g.ink[0] || ink[1] !== g.ink[1]) {
-            issues.push(`字形图标 ${g.name}（${g.size}）的墨迹实际是 [${ink[0]}, ${ink[1]}]（代码里写的是 [${g.ink[0]}, ${g.ink[1]}]）：写成 icon('${g.name}', …, { ${g.size === 'large' ? "size: 'large', " : ''}ink: [${ink[0]}, ${ink[1]}] })，预览的字距才一致`)
+            issues.push(`字形图标 ${g.name} 的墨迹实际是 [${ink[0]}, ${ink[1]}]（代码里写的是 [${g.ink[0]}, ${g.ink[1]}]）：写成 icon('${g.name}', …, { ink: [${ink[0]}, ${ink[1]}] })，预览的字距才一致`)
             sheet._setInk(g, ink)
         }
     }

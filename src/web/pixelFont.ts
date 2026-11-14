@@ -22,17 +22,22 @@ export async function loadPixelFonts(urls: { unifont?: string, ascii?: string })
     if (urls.unifont) {
         try {
             const res = await fetch(urls.unifont)
+            if (!res.ok) throw new Error(`HTTP ${res.status}`)
+            // 按文件头判断是否 gzip（1F 8B），不看扩展名：有的开发服务器（Vite 8）给 .gz 加了 Content-Encoding: gzip，
+            // 浏览器已经解压过一次，再解压就失败
+            const bytes = new Uint8Array(await res.arrayBuffer())
             let text: string
-            if (urls.unifont.endsWith('.gz') && 'DecompressionStream' in globalThis) {
-                text = await new Response(res.body!.pipeThrough(new DecompressionStream('gzip'))).text()
-            } else text = await res.text()
+            if (bytes[0] === 0x1f && bytes[1] === 0x8b) {
+                if (!('DecompressionStream' in globalThis)) throw new Error('浏览器不支持 DecompressionStream，无法解压 gzip')
+                text = await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))).text()
+            } else text = new TextDecoder().decode(bytes)
             const map = new Map<number, string>()
             for (const line of text.split('\n')) {
                 const i = line.indexOf(':')
                 if (i > 0) map.set(parseInt(line.slice(0, i), 16), line.slice(i + 1).trim())
             }
             fonts.unifont = map
-        } catch { /* 没有就算了 */ }
+        } catch (e) { console.warn('[cui] Unifont 像素字体加载失败，含汉字的文字改用系统字体：', e) }
     }
     if (urls.ascii) {
         try {
@@ -106,11 +111,11 @@ export interface DrawTextOptions {
     scale: number
     fontScale: number
     /** 字形图标的图片（字符 → 已加载的图片；没有 / 没加载完就跳过） */
-    glyphImage?: (ch: string) => { img: CanvasImageSource, ink: [number, number], size: 'small' | 'large' } | undefined
+    glyphImage?: (ch: string) => { img: CanvasImageSource, ink: [number, number], kind: 'emoji' | 'text' } | undefined
 }
 
-/** 在画布上画多行富文本；返回 false 表示字体不够（调用方退回 DOM 画法） */
-export function drawText(canvas: HTMLCanvasElement, fonts: PixelFonts, o: DrawTextOptions): boolean {
+/** 在画布上画多行富文本；返回 false 表示字体不够（调用方退回 DOM 画法），否则返回画布上方的余量（界面像素，大字形图标用） */
+export function drawText(canvas: HTMLCanvasElement, fonts: PixelFonts, o: DrawTextOptions): false | { padTop: number } {
     if (!fonts.unifont && !(fonts.ascii && !o.unifont)) return false
     const s = o.scale * o.fontScale
     // 行宽（样式跨行延续，粗体要算进去）
@@ -123,33 +128,30 @@ export function drawText(canvas: HTMLCanvasElement, fonts: PixelFonts, o: DrawTe
         return w
     })
     const boxW = Math.max(o.width, ...lineWidths) + 2
+    // 大字形图标（16 高、以文字行为中心）上下各超出 4：画布上下留余量，返回 padTop 让调用方把画布往上挪
+    const padTop = o.lines.some((l) => [...l].some((ch) => o.glyphImage?.(ch)?.kind === 'emoji')) ? 4 : 0
     canvas.width = Math.ceil(boxW * s)
-    canvas.height = Math.ceil((o.lines.length * LINE_HEIGHT + 2) * s)
+    canvas.height = Math.ceil((o.lines.length * LINE_HEIGHT + 2 + padTop * 2) * s)
     const ctx = canvas.getContext('2d')!
     let style: RunStyle = PLAIN
     o.lines.forEach((line, li) => {
         const lw = lineWidths[li]
         let x = o.align === 'center' ? (o.width - lw) / 2 : o.align === 'right' ? o.width - lw : 0
-        const y = li * LINE_HEIGHT
+        const y = li * LINE_HEIGHT + padTop
         const { runs, end } = parseRich(line, style)
         style = end
         for (const r of runs) {
             const rgb = r.style.color ? hexToRgb(BEDROCK_COLORS[r.style.color]) : o.color.map((v) => Math.round(v * 255)) as [number, number, number]
             for (const ch of r.text) {
                 const adv = charWidth(ch, o.unifont) + (r.style.bold ? boldExtra(ch, o.unifont) : 0)
-                // 字形图标（真机 1.17.0）：1:1；large = 16 高、以 8 高的文字行为中心（上下各多 4）；small = 缩成 8 高、与文字齐；
-                // 裁掉左侧透明列；不染色。small 的墨迹是 8×8 里的，取贴图时换回 16 像素
+                // 字形图标：裁掉左侧透明列。emoji 页 1:1、16 高、以 8 高的文字行为中心（上下各多 4，真机 1.17.0）、不染色；
+                // 文字页按一半画（16×16 → 8 高，与 Unifont 汉字同）——字符包在 §f…§r 里，按白色 = 原色画
                 const gi = o.glyphImage?.(ch)
                 if (gi) {
                     const [left, w] = gi.ink
-                    if (gi.size === 'large') {
-                        ctx.imageSmoothingEnabled = false
-                        ctx.drawImage(gi.img, left, 0, w, 16, x * s, (y - 4) * s, w * s, 16 * s)
-                    } else {
-                        ctx.imageSmoothingEnabled = true
-                        ctx.drawImage(gi.img, left * 2, 0, w * 2, 16, x * s, y * s, w * s, 8 * s)
-                        ctx.imageSmoothingEnabled = false
-                    }
+                    ctx.imageSmoothingEnabled = false
+                    if (gi.kind === 'emoji') ctx.drawImage(gi.img, left, 0, w, 16, x * s, (y - 4) * s, w * s, 16 * s)
+                    else ctx.drawImage(gi.img, left, 0, w, 16, x * s, y * s, (w / 2) * s, 8 * s)
                     x += adv
                     continue
                 }
@@ -169,5 +171,5 @@ export function drawText(canvas: HTMLCanvasElement, fonts: PixelFonts, o: DrawTe
             }
         }
     })
-    return true
+    return { padTop }
 }
