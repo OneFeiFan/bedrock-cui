@@ -73,6 +73,16 @@ function unifontGlyph(fonts: PixelFonts, cp: number) {
 const hexToRgb = (hex: string): [number, number, number] => [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)]
 const OBF_POOL = 'abcdefghjkmnopqrsuvwxyzABCDEFGHJKLMNOPQRSUVWXYZ0123456789#$%&+=?'
 
+/**
+ * 画一个对齐到屏幕像素的方块（x, y, w, h 为屏幕像素，可以是小数）：四条边各自四舍五入——与游戏一样不做抗锯齿。
+ * 否则 Unifont 的半像素在 3 倍缩放下是 1.5 个屏幕像素，画布会把边缘画成半透明的灰色，标点这种只有几个像素的字形看起来就「样子不一样」
+ * （真机 1.20.1 对比：位置一致，只是预览发虚）
+ */
+function px(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number): void {
+    const x0 = Math.round(x), y0 = Math.round(y), x1 = Math.round(x + w), y1 = Math.round(y + h)
+    if (x1 > x0 && y1 > y0) ctx.fillRect(x0, y0, x1 - x0, y1 - y0)
+}
+
 /** 画一个字形（左上角 x, y，界面像素）；返回是否画了 */
 function drawGlyph(ctx: CanvasRenderingContext2D, fonts: PixelFonts, ch: string, x: number, y: number, s: number, unifont: boolean, italic: boolean): boolean {
     const cp = ch.codePointAt(0)!
@@ -82,7 +92,7 @@ function drawGlyph(ctx: CanvasRenderingContext2D, fonts: PixelFonts, ch: string,
         const cx = (cp % 16) * 8, cy = Math.floor(cp / 16) * 8
         const w = charWidth(ch, false) - 1
         for (let r = 0; r < 8; r++) for (let c = 0; c < Math.max(w, 1); c++) {
-            if (data[((cy + r) * width + cx + c) * 4 + 3] > 0) ctx.fillRect((x + c + skew(r)) * s, (y + r) * s, s, s)
+            if (data[((cy + r) * width + cx + c) * 4 + 3] > 0) px(ctx, (x + c + skew(r)) * s, (y + r) * s, s, s)
         }
         return true
     }
@@ -90,7 +100,7 @@ function drawGlyph(ctx: CanvasRenderingContext2D, fonts: PixelFonts, ch: string,
     if (!g || g.lo < 0) return !!g
     const h = s / 2
     for (let r = 0; r < 16; r++) for (let c = g.lo; c <= g.hi; c++) {
-        if ((g.rows[r] >> (g.w - 1 - c)) & 1) ctx.fillRect((x + (c - g.lo) / 2 + skew(r / 2)) * s, (y + r / 2) * s, h, h)
+        if ((g.rows[r] >> (g.w - 1 - c)) & 1) px(ctx, (x + (c - g.lo) / 2 + skew(r / 2)) * s, (y + r / 2) * s, h, h)
     }
     return true
 }
@@ -155,8 +165,10 @@ export function drawText(canvas: HTMLCanvasElement, fonts: PixelFonts, o: DrawTe
                 if (gi) {
                     const [left, w] = gi.ink
                     ctx.imageSmoothingEnabled = false
-                    if (gi.kind === 'emoji') ctx.drawImage(gi.img, left, 0, w, 16, x * s, (y - 4) * s, w * s, 16 * s)
-                    else ctx.drawImage(gi.img, left, 0, w, 16, x * s, y * s, (w / 2) * s, 8 * s)
+                    // 目标位置取整到屏幕像素（同字形方块）
+                    const R = Math.round
+                    if (gi.kind === 'emoji') ctx.drawImage(gi.img, left, 0, w, 16, R(x * s), R((y - 4) * s), R(w * s), R(16 * s))
+                    else ctx.drawImage(gi.img, left, 0, w, 16, R(x * s), R(y * s), R((w / 2) * s), R(8 * s))
                     x += adv
                     continue
                 }

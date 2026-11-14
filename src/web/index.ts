@@ -174,7 +174,8 @@ export function mountPreview(el: HTMLElement, options: PreviewOptions): Preview 
         return ''
     }
 
-    const S = (v: number) => `${v * scale}px`
+    // 控件的位置与尺寸取整到屏幕像素：汉字字距 8.5，行内排版拆出的文字段常从 x.5 开始——整块画布摆在小数坐标上，浏览器会再插值一次、整段发虚
+    const S = (v: number) => `${Math.round(v * scale)}px`
     const clipPath = (b: Box, area: Rect) => {
         if (!b.clip) return ''
         const c = b.clip
