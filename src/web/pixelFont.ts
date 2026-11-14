@@ -110,6 +110,8 @@ export interface DrawTextOptions {
     /** 屏幕像素 / 界面像素 */
     scale: number
     fontScale: number
+    /** 行与行之间额外的间距（line_padding） */
+    lineSpacing?: number
     /** 字形图标的图片（字符 → 已加载的图片；没有 / 没加载完就跳过） */
     glyphImage?: (ch: string) => { img: CanvasImageSource, ink: [number, number], kind: 'emoji' | 'text' } | undefined
 }
@@ -131,13 +133,14 @@ export function drawText(canvas: HTMLCanvasElement, fonts: PixelFonts, o: DrawTe
     // 大字形图标（16 高、以文字行为中心）上下各超出 4：画布上下留余量，返回 padTop 让调用方把画布往上挪
     const padTop = o.lines.some((l) => [...l].some((ch) => o.glyphImage?.(ch)?.kind === 'emoji')) ? 4 : 0
     canvas.width = Math.ceil(boxW * s)
-    canvas.height = Math.ceil((o.lines.length * LINE_HEIGHT + 2 + padTop * 2) * s)
+    const pitch = LINE_HEIGHT + (o.lineSpacing ?? 0)
+    canvas.height = Math.ceil((o.lines.length * pitch + 2 + padTop * 2) * s)
     const ctx = canvas.getContext('2d')!
     let style: RunStyle = PLAIN
     o.lines.forEach((line, li) => {
         const lw = lineWidths[li]
         let x = o.align === 'center' ? (o.width - lw) / 2 : o.align === 'right' ? o.width - lw : 0
-        const y = li * LINE_HEIGHT + padTop
+        const y = li * pitch + padTop
         const { runs, end } = parseRich(line, style)
         style = end
         for (const r of runs) {

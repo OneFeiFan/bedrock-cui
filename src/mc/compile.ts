@@ -142,6 +142,7 @@ class Compiler {
                 break
             case 'label':
                 out.type = 'label'
+                if (p.lineSpacing !== undefined) out.line_padding = p.lineSpacing
                 if (!isExpr(p.text)) out.text = escapeText(p.text, p.localize)
                 if (p.color) out.color = p.color
                 if (p.shadow !== undefined) out.shadow = p.shadow

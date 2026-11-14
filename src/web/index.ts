@@ -236,7 +236,7 @@ export function mountPreview(el: HTMLElement, options: PreviewOptions): Preview 
         const r = drawText(canvas, fonts, {
             lines, color: (n.props.color ?? [1, 1, 1]) as [number, number, number], shadow: !!n.props.shadow,
             unifont: usesUnifont(lines.join('\n')), align: n.props.align ?? 'left', width: b.rect.w, scale, fontScale: n.props.fontScale ?? 1,
-            glyphImage,
+            glyphImage, lineSpacing: n.props.lineSpacing,
         })
         if (!r) return false
         Object.assign(canvas.style, { width: `${canvas.width}px`, height: `${canvas.height}px`, imageRendering: 'pixelated', display: 'block', marginTop: `${-r.padTop * scale * (n.props.fontScale ?? 1)}px` })

@@ -157,7 +157,9 @@ class Engine {
             const fixedW = sw.kind === 'default' ? undefined : this.axis(fill(sw), pw, 0, 0, 0, 0)
             const m = measureText(text, scale, fixedW ?? Infinity)
             w = fixedW ?? m.width
-            h = sh.kind === 'default' ? m.height : this.axis(fill(sh), ph, 0, 0, w, 0)
+            // 行距（line_padding）：每两行之间多 n
+            const gap = (n.props.lineSpacing ?? 0) * Math.max(0, m.lines.length - 1)
+            h = sh.kind === 'default' ? m.height + gap : this.axis(fill(sh), ph, 0, 0, w, 0)
             return this.clamp(n, w, h, pw, ph)
         }
         const def = { kind: 'expr', terms: [{ unit: '%', value: 100 }] } as SizeSpec

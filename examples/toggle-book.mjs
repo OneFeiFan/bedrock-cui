@@ -9,7 +9,7 @@
  *   4. 与表单数据混用：物品格子是开关，提示框里的运行期数据来自表单按钮文字；弹层里的数据来自表单正文
  *   5. 诊断：最后一页列出每个开关的选中状态（同序号的开关会不会一起选中）
  */
-import { CollectionItem, FormButton, GlyphSheet, Image, Label, Pages, Panel, Paragraph, Stack, Toggle, form, paginate, textWidth, toggleState } from 'cui'
+import { Anchor, CollectionItem, Color, FormButton, GlyphSheet, Image, InlineIcon, Label, Pages, Panel, Paragraph, Stack, Text, TextStyle, Toggle, form, paginate, textWidth, toggleState } from 'cui'
 
 export const T = {
     book: 'textures/cui_test/book', line: 'textures/cui_test/line', rowHover: 'textures/cui_test/row_hover',
@@ -206,7 +206,7 @@ export function buildBook(options = {}) {
         new RowLink(pages, 'diamond', { icon: T.diamond, text: '钻石', y: 38 }),
         new RowLink(pages, 'about', { icon: T.book_item, text: '检查清单', y: 56 }),
         new RowLink(pages, 'tlayer', { icon: T.paper, text: '叠放顺序', y: 74 }),
-        new RowLink(pages, 'tfocus', { icon: T.sword, text: '实验 E（客户端聚焦）', y: 92 }),
+        new RowLink(pages, 'tinline', { icon: T.emerald, text: '行内图标（Text）', y: 92 }),
         new RowLink(pages, 'tglyph', { icon: T.diamond, text: '字形图标', y: 110 })))
     home.add(new ServerArrow('home', 'sword', 'right'))
 
@@ -235,11 +235,6 @@ export function buildBook(options = {}) {
 
     buildTextPages(pages)
 
-    // 实验 E：客户端翻页 + 聚焦优先级（不在文本章节的翻页链里，用书签回目录）
-    const focusPage = pages.page('tfocus')
-    const fl = new Side('L'), fr = new Side('R')
-    buildFocusTest(fl, fr)
-    focusPage.add(fl, fr)
 
     // 「原地不动」：透明的表单按钮（序号 9），聚焦优先级 50——介于聚焦版箭头（100）与普通箭头（10）之间。
     // 当前方向没有箭头时（例如最后一页再点「下一页」），鼠标没动的点击交给它：服务端原样重开当前页（真机 1.5.3：否则落到反方向的箭头，来回循环）
@@ -300,6 +295,11 @@ export const GI = {
     DIAMOND_L: BIG_ICONS.icon('diamond', T.diamond, { ink: [2, 12] }),
 }
 const { SWORD: GS, DIAMOND: GD, STICK: GK, BOOK: GB, SWORD_L: GSL } = GI
+/** 行内图标（Text 用）：真正的图片控件，8×8 与文字同高；SWORD_L 16×16 */
+export const II = {
+    SWORD: InlineIcon.of(T.sword), DIAMOND: InlineIcon.of(T.diamond), STICK: InlineIcon.of(T.stick), BOOK: InlineIcon.of(T.book_item),
+    SWORD_L: InlineIcon.of(T.sword, 16),
+}
 /**
  * 字形图标的字宽标尺（文字页，预测与汉字同一规则：墨迹宽 / 2 + 1 → 钻石剑 / 书 9、钻石 7、木棍 7.5）。
  * 第 7 行加粗；第 8 行故意不包白色颜色码（直接写字符）——看文字页图标会不会被正文的深棕色染暗（说明文字里不能写 §，会被当成格式码）
@@ -460,6 +460,17 @@ function buildTextPages(pages) {
         new Paragraph({ text: `合成钻石剑：工作台中间一列放 ${GD}${GD}，下面放 ${GK}，得到 ${GS}。附魔台旁放满 ${GB} 书架能提高附魔等级；耐久快用尽时，在铁砧上用 ${GD} 修复。`, width: 110, color: BODY, anchor: 'top_left', offset: [0, 22] }),
         new Label({ text: `${GSL} §l钻石剑`, color: TITLE, anchor: 'top_left', offset: [0, 90] }),
         new Body('§8上：emoji 页大图标配标题（单独一行）。正文里是文字页图标，与汉字同高。', 106)))
+    // 行内图标（Text）：图标是真正的图片控件，与文字同高、清晰、颜色正确；折行 / 行高 / 样式延续由 CUI 排版
+    chain.push('tinline')
+    const inlinePage = pages.page('tinline')
+    const BODY_STYLE = TextStyle.of(Color.fromJSON(BODY)), TITLE_STYLE = TextStyle.of(Color.fromJSON(TITLE))
+    inlinePage.add(new Side('L').add(new Title('行内图标'),
+        new Text(`合成钻石剑：工作台中间一列放 ${II.DIAMOND}${II.DIAMOND}，下面放 ${II.STICK}，得到 ${II.SWORD}。附魔台旁放满 ${II.BOOK} 书架能提高附魔等级；耐久快用尽时，在铁砧上用 ${II.DIAMOND} 修复。`, 110, BODY_STYLE).setAnchor(Anchor.TOP_LEFT).setOffset(0, 22),
+        new Text(`§c红色 ${II.DIAMOND} 仍是红色§r，§l粗体 ${II.STICK} 仍是粗体§r，普通 abc ${II.SWORD} xyz`, 110, BODY_STYLE).setAnchor(Anchor.TOP_LEFT).setOffset(0, 96)))
+    inlinePage.add(new Side('R').add(new Title('大图标 · 运行期文字'),
+        new Text(`${II.SWORD_L} §l钻石剑§r 这一行有 16 高的图标，自动加高。`, 110, TITLE_STYLE).setAnchor(Anchor.TOP_LEFT).setOffset(0, 22),
+        new Label({ text: `§8运行期文字（游戏折行）：§r\n${GI.DIAMOND_L} 钻石 ×3\n${GI.SWORD_L} 钻石剑 ×1`, color: BODY, size: ['100%', 'default'], anchor: 'top_left', offset: [0, 62] }).setLineSpacing(6),
+        new Body('§8上：emoji 字形 + 行距 6（line_padding），图标不压行。', 106)))
     // 文本页之间的箭头
     chain.forEach((key, i) => {
         const page = pages.page(key)

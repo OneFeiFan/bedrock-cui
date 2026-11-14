@@ -394,6 +394,11 @@ export class Label extends Element {
     setAlign(a: TextAlign): this { this.props.align = a; return this }
     /** 文字是语言键，按玩家语言显示 */
     setLocalize(on = true): this { this.props.localize = on; return this }
+    /**
+     * 行与行之间额外的间距（line_padding，原版聊天栏用它调行距）。运行期文字里放 emoji 字形图标（16 高、以文字行为中心）时设 ≥ 6，
+     * 图标就不会压到上下行
+     */
+    setLineSpacing(n: number): this { this.props.lineSpacing = n; return this }
     get color(): Color | undefined { return this.props.color ? Color.fromJSON(this.props.color) : undefined }
 }
 
@@ -575,7 +580,9 @@ function snapshot(list: Element[], parentPath: string): RNode[] {
         // 只有文字层级更高才显示 ⇒ 文字缺省 layer 1（图片仍是 0）；显式写了 layer 的不动
         if (el.type === 'label' && props.layer === undefined) props.layer = 1
         const inner = padding !== undefined ? `${path}/content` : path
-        let children = el instanceof Flex ? el._expand(inner) : snapshot(el.children, inner)
+        // 自己展开子树的元素（Row / Column / Scroll、Text）：快照时生成原生结构，不改对象树
+        const expand = (el as { _expand?: (path: string) => RNode[] })._expand
+        let children = typeof expand === 'function' ? expand.call(el, inner) : snapshot(el.children, inner)
         if (padding !== undefined) {
             // 内边距 → 内层内容面板：尺寸 = 100% − 左右 / 上下，偏移 = [左, 上]
             const [l, t, r2, b] = typeof padding === 'number' ? [padding, padding, padding, padding] : padding
@@ -587,6 +594,9 @@ function snapshot(list: Element[], parentPath: string): RNode[] {
         return r
     })
 }
+
+/** @internal 给自己展开子树的组件（Text）用 */
+export const _snapshot = (list: Element[], parentPath: string): RNode[] => snapshot(list, parentPath)
 
 /** 对象树 → 快照（编译与预览用）。根可以是一个元素或元素数组 */
 export function finalize(root: Element | Element[], parentPath = ''): RNode[] {
