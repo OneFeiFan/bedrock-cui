@@ -9,7 +9,7 @@
  *   4. 与表单数据混用：物品格子是开关，提示框里的运行期数据来自表单按钮文字；弹层里的数据来自表单正文
  *   5. 诊断：最后一页列出每个开关的选中状态（同序号的开关会不会一起选中）
  */
-import { CollectionItem, FormButton, Image, Label, Pages, Panel, Paragraph, Stack, Toggle, form, paginate, textWidth, toggleState } from 'cui'
+import { CollectionItem, FormButton, GlyphSheet, Image, Label, Pages, Panel, Paragraph, Stack, Toggle, form, paginate, textWidth, toggleState } from 'cui'
 
 export const T = {
     book: 'textures/cui_test/book', line: 'textures/cui_test/line', rowHover: 'textures/cui_test/row_hover',
@@ -206,7 +206,8 @@ export function buildBook(options = {}) {
         new RowLink(pages, 'diamond', { icon: T.diamond, text: '钻石', y: 38 }),
         new RowLink(pages, 'about', { icon: T.book_item, text: '检查清单', y: 56 }),
         new RowLink(pages, 'tlayer', { icon: T.paper, text: '叠放顺序', y: 74 }),
-        new RowLink(pages, 'tfocus', { icon: T.sword, text: '实验 E（客户端聚焦）', y: 92 })))
+        new RowLink(pages, 'tfocus', { icon: T.sword, text: '实验 E（客户端聚焦）', y: 92 }),
+        new RowLink(pages, 'tglyph', { icon: T.diamond, text: '字形图标', y: 110 })))
     home.add(new ServerArrow('home', 'sword', 'right'))
 
     // 钻石剑
@@ -285,6 +286,18 @@ export const LONG = [
 /** 字宽标尺：每行一串字符 + 下面一把刻度尺（每 10 像素一根长刻度）；右边灰字是 CUI 的估计宽度 */
 // 左页纯 ASCII（Minecraft 字体），右页含汉字（整段 Unifont）；右边灰字是 CUI 按规则算的宽度
 const RULER_ROWS_L = ['Il!.,;:|', 'kfkf<><>', '[](){}"*', '~~~~~~~~', 'Hello World', '§lBold Text', 'mmmmmmmmmm', '#$%&+=?/']
+// ───────────── 字形图标（font/glyph_E2.png，构建时自动生成）：文字里写字符就显示物品图标 ─────────────
+export const ICONS = new GlyphSheet('E2')
+export const GI = {
+    SWORD: ICONS.icon('diamond_sword', T.sword, [0, 16]),
+    DIAMOND: ICONS.icon('diamond', T.diamond, [2, 12]),
+    STICK: ICONS.icon('stick', T.stick, [2, 13]),
+    BOOK: ICONS.icon('book', T.book_item, [0, 16]),
+}
+const { SWORD: GS, DIAMOND: GD, STICK: GK, BOOK: GB } = GI
+/** 字形图标的字宽标尺：预测 = 墨迹宽 / 2 + 1（钻石剑、书 9，钻石 7，木棍 7.5），与 Unifont 同一规则——待真机核对 */
+const GLYPH_ROWS = [`${GS}${GS}${GS}`, `${GD}${GD}${GD}${GD}`, `${GK}${GK}${GK}${GK}`, `${GB}${GB}${GB}`, `a${GD}b${GK}c`, `钻石${GD}×2`, `§l${GS}${GD}${GK}`, `§c${GD}${GK}§r 染色？`]
+
 const RULER_ROWS_R = ['钻石剑钻石剑钻石剑钻', 'abc 中文 xyz', '中一二三十口日', '，。、；：！？', '「引号」（括号）', '§l粗体钻石剑', '背包里有 12 个', '§oitalic 斜体']
 
 class RulerRow extends Panel {
@@ -430,6 +443,13 @@ function buildTextPages(pages) {
     const ll = new Side('L'), lr = new Side('R')
     buildLayerTest(ll, lr)
     layerPage.add(ll, lr)
+    // 字形图标：左页字宽标尺，右页带图标的段落（看折行）
+    chain.push('tglyph')
+    const glyphPage = pages.page('tglyph')
+    glyphPage.add(new Side('L').add(new Title('字形图标'), ...GLYPH_ROWS.map((t, i) => new RulerRow(t, 20 + i * 15))))
+    glyphPage.add(new Side('R').add(new Title('图标与折行'),
+        new Paragraph({ text: `合成钻石剑：工作台中间一列放 ${GD}${GD}，下面放 ${GK}，得到 ${GS}。附魔台旁放满 ${GB} 书架能提高附魔等级；耐久快用尽时，在铁砧上用 ${GD} 修复。`, width: 110, color: BODY, anchor: 'top_left', offset: [0, 22] }),
+        new Body('§8看：图标是否参与折行；有没有阴影；左页最后一行的红色颜色码会不会把图标染红。', 98)))
     // 文本页之间的箭头
     chain.forEach((key, i) => {
         const page = pages.page(key)

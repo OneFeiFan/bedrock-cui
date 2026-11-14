@@ -26,8 +26,15 @@ export const isAscii = (ch: string) => { const c = ch.codePointAt(0)!; return c 
 /** 一段文字会不会用 Unifont 画（含任何非 ASCII 可见字符；§ 码与换行不算） */
 export const usesUnifont = (text: string) => /[^\x20-\x7e\n]/.test(text.replace(/§./g, ''))
 
-/** Unifont 字距（界面像素） */
+/** 字形图标（资源包 font/glyph_XX.png）的字距：GlyphSheet.icon() 登记 */
+const GLYPH_WIDTH = new Map<string, number>()
+export function registerGlyphWidth(ch: string, width: number): void { GLYPH_WIDTH.set(ch, width) }
+export function unregisterGlyph(ch: string): void { GLYPH_WIDTH.delete(ch) }
+
+/** Unifont 字距（界面像素）；登记过的字形图标按登记的字距 */
 export function unifontWidth(ch: string): number {
+    const g = GLYPH_WIDTH.get(ch)
+    if (g !== undefined) return g
     const cp = ch.codePointAt(0)!
     if (cp >= 0x20 && cp < 0x10000) {
         const half = parseInt(UNIFONT_HALF[cp - 0x20], 36)

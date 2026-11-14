@@ -206,6 +206,15 @@ setPlacement / setLayer / setVisible / setPadding / setMinSize / setMaxSize / se
 预览 `preview.resize(w, h)` 切换屏幕尺寸（`?demo=responsive`：小屏手机 320×180、手机 480×216、电脑 640×360）。⏳ 1.9.0 测试包「响应式演示」（手持纸右键）待真机确认 min_size / max_size 与这套结构。
 JSON UI 没有可靠的屏幕尺寸信号，「断点」（窄屏换一种布局）目前做不到；能做的是流式布局 + 上下限。
 
+### 字形图标（JSON UI 正文内嵌物品图标）
+
+`new GlyphSheet('E2')` + `sheet.icon(名字, 贴图, [墨迹左, 墨迹宽])` → `Glyph`（`toString()` 就是字符，直接写进模板字符串）。字形页只许 E2–F8（原版只用 E0 / E1）；
+第 n 格 = U+XX00 + n。字距登记进字体度量（`registerGlyphWidth`），排版、折行、静态检查自动认识图标；一行里有图标 = 非 ASCII，整行按 Unifont 的规则。
+**字距 = 墨迹宽 / 2 + 1**（按 Unifont 的真机规则推断：16 像素的图标画成 8 界面像素高）——⏳ 1.17.0「字形图标」页标尺待真机核对（钻石剑、书 9，钻石 7，木棍 7.5）。
+构建：`renderGlyphSheet(sheet, 解析贴图文件)`（cui/node）生成 256×256 字形图——自带 PNG 解码（调色板 1/2/4/8 位 + 透明表、RGBA、RGB、灰度；与 PIL 逐像素一致），
+按贴图算墨迹，与代码里写的不符时报出正确值（预览的字距才一致）。预览：逐字画时遇到图标字符画贴图的墨迹段（半比例，不染色）。
+DDUI 不支持（Ore UI 不认任何字形页）。
+
 ### 滚动区域（Scroll）与「放不下」检查
 
 `new Scroll()`：子控件竖排（同 Column），内容高度按子控件之和，超出部分滚动。编译成原版 `common.scrolling_panel`：内容提升为命名空间顶层元素，

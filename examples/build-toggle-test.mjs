@@ -8,12 +8,13 @@ import path from 'node:path'
 import { execSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { serverForm } from 'cui'
-import { buildBook, ARROWS, BOOK_PAGES, FORM, T, TEXTURE_INFO } from './toggle-book.mjs'
+import { renderGlyphSheet } from 'cui/node'
+import { buildBook, ARROWS, BOOK_PAGES, FORM, ICONS, T, TEXTURE_INFO } from './toggle-book.mjs'
 import { buildResponsiveDemo, RESPONSIVE_FORM } from './responsive-demo.mjs'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 const outRoot = path.resolve(process.argv[2] ?? path.join(here, '..', 'out'))
-const VERSION = [1, 16, 2]
+const VERSION = [1, 17, 0]
 const UUID = { bp: '6a3f0e2c-91d4-4b7a-8c55-0e1f7a2b9c31', bpScript: 'c2e8b7d1-4f6a-4c9e-a1b2-3d4e5f607182', rp: '1f9c3a7e-2b4d-4e6f-8a90-b1c2d3e4f5a6', rpRes: '7d8e9f0a-1b2c-4d3e-9f4a-5b6c7d8e9f01' }
 const NAME = 'cui_toggle_test'
 
@@ -47,9 +48,14 @@ for (const [tex, file] of Object.entries(FILE)) {
     fs.mkdirSync(path.join(rp, path.dirname(tex)), { recursive: true })
     fs.copyFileSync(path.join(src, `${file}.png`), path.join(rp, `${tex}.png`))
 }
-// 字形实验：font/glyph_E2.png（原版只用 E0 / E1，E2–F8 空着）——16×16 格，U+E200 起依次是钻石剑、钻石、木棍、书
-fs.mkdirSync(path.join(rp, 'font'), { recursive: true })
-fs.copyFileSync(path.join(here, 'assets', 'glyph_E2.png'), path.join(rp, 'font', 'glyph_E2.png'))
+// 字形图标：框架按 ICONS 生成 font/glyph_E2.png（读物品贴图、算墨迹）；墨迹与代码不符就停下（预览的字距要一致）
+{
+    // 物品图标用原版贴图：文件名 = 路径最后一段（预览素材目录里有同名文件）
+    const glyphs = renderGlyphSheet(ICONS, (p) => path.join(src, `${FILE[p] ?? path.basename(p)}.png`))
+    if (glyphs.issues.length) { console.error(glyphs.issues.join('\n')); process.exit(1) }
+    fs.mkdirSync(path.join(rp, 'font'), { recursive: true })
+    fs.writeFileSync(path.join(rp, glyphs.file), glyphs.png)
+}
 // DDUI 实验：CustomForm.image(src, pack) 只能引用指定资源包里的图片 ⇒ 物品图标复制进本包
 fs.mkdirSync(path.join(rp, 'textures/cui_test/items'), { recursive: true })
 for (const f of ['diamond_sword', 'diamond', 'stick', 'book_normal']) fs.copyFileSync(path.join(src, `${f}.png`), path.join(rp, `textures/cui_test/items/${f}.png`))

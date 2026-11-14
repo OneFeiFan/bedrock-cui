@@ -16,6 +16,7 @@ import type { LintIssue } from '../mc/lint.js'
 import { GLYPH_HEIGHT, LINE_HEIGHT, boldExtra, charWidth, usesUnifont } from '../font/metrics.js'
 import { BEDROCK_COLORS, PLAIN, parseRich, type RunStyle } from '../font/rich.js'
 import { drawText, loadPixelFonts, type PixelFonts } from './pixelFont.js'
+import { GlyphSheet } from '../core/glyphs.js'
 
 export { loadPixelFonts, drawText, type PixelFonts } from './pixelFont.js'
 
@@ -112,6 +113,17 @@ export function mountPreview(el: HTMLElement, options: PreviewOptions): Preview 
     const pressed = signal<string | undefined>(undefined)
     const textures = options.textures ?? {}
     const pixel = signal<PixelFonts | undefined>(undefined)
+    // 字形图标的图片：按需加载，加载完重画
+    const glyphLoaded = signal(0)
+    const glyphImgs = new Map<string, HTMLImageElement>()
+    const glyphImage = (ch: string) => {
+        const g = GlyphSheet.lookup(ch)
+        const url = g && textures[g.texture.path]?.url
+        if (!g || !url) return undefined
+        let img = glyphImgs.get(url)
+        if (!img) { img = new Image(); img.onload = () => { glyphLoaded.value++ }; img.src = url; glyphImgs.set(url, img) }
+        return img.complete && img.naturalWidth ? { img, ink: g.ink } : undefined
+    }
     if (options.fonts) void loadPixelFonts(options.fonts).then((f) => { if (f.unifont || f.ascii) pixel.value = f })
     const rootEl = (): Element => (typeof options.root === 'function' ? (options.root as () => Element)() : options.root)
     let nodes: RNode[] = []
@@ -205,6 +217,7 @@ export function mountPreview(el: HTMLElement, options: PreviewOptions): Preview 
             const ok = drawText(canvas, pixel.value, {
                 lines, color: (n.props.color ?? [1, 1, 1]) as [number, number, number], shadow: !!n.props.shadow,
                 unifont: usesUnifont(lines.join('\n')), align: n.props.align ?? 'left', width: b.rect.w, scale, fontScale: n.props.fontScale ?? 1,
+                glyphImage,
             })
             if (ok) {
                 Object.assign(canvas.style, { width: `${canvas.width}px`, height: `${canvas.height}px`, imageRendering: 'pixelated', display: 'block' })
@@ -230,7 +243,7 @@ export function mountPreview(el: HTMLElement, options: PreviewOptions): Preview 
 
     const render = effect(() => {
         // 读信号 → 建立依赖
-        void formText.value; void formButtons.value; void title.value; void outlines.value; void groups.value; void flags.value; void pixel.value; void startOf.value; void scrolls.value
+        void formText.value; void formButtons.value; void title.value; void outlines.value; void groups.value; void flags.value; void pixel.value; void startOf.value; void scrolls.value; void glyphLoaded.value
         const vp = viewport.value
         screen.style.width = `${vp[0] * scale}px`; screen.style.height = `${vp[1] * scale}px`
         const st = { hover: hover.value, pressed: pressed.value }

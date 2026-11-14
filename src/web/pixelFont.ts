@@ -105,6 +105,8 @@ export interface DrawTextOptions {
     /** 屏幕像素 / 界面像素 */
     scale: number
     fontScale: number
+    /** 字形图标的图片（字符 → 已加载的图片；没有 / 没加载完就跳过） */
+    glyphImage?: (ch: string) => { img: CanvasImageSource, ink: [number, number] } | undefined
 }
 
 /** 在画布上画多行富文本；返回 false 表示字体不够（调用方退回 DOM 画法） */
@@ -135,6 +137,15 @@ export function drawText(canvas: HTMLCanvasElement, fonts: PixelFonts, o: DrawTe
             const rgb = r.style.color ? hexToRgb(BEDROCK_COLORS[r.style.color]) : o.color.map((v) => Math.round(v * 255)) as [number, number, number]
             for (const ch of r.text) {
                 const adv = charWidth(ch, o.unifont) + (r.style.bold ? boldExtra(ch, o.unifont) : 0)
+                // 字形图标：画贴图里墨迹的那一段，按 Unifont 的半比例（16 像素 → 8 界面像素高），不染色
+                const gi = o.glyphImage?.(ch)
+                if (gi) {
+                    const [left, w] = gi.ink
+                    ctx.imageSmoothingEnabled = false
+                    ctx.drawImage(gi.img, left, 0, w, 16, x * s, y * s, (w / 2) * s, 8 * s)
+                    x += adv
+                    continue
+                }
                 // §k：Minecraft 字体换成同宽的随机字形；Unifont 文字里真机只显示成点（1.5.3）
                 const shown = r.style.obfuscated && ch !== ' '
                     ? (o.unifont ? '.' : [...OBF_POOL].filter((c) => charWidth(c, false) === charWidth(ch, false))[Math.floor(Math.random() * 10)] ?? ch)
