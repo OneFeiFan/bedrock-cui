@@ -1,4 +1,4 @@
-# CUI 设计说明（v0.8）
+# CUI 设计说明（v0.9）
 
 ## 1. 要解决的问题
 
@@ -117,7 +117,15 @@ CUI 的核心是「**对象模型 + 按游戏规则的预览 + 规则可测试**
   「中」6.5；中文逗号 2、句号 3、空格 4；粗体每字 +0.5。逐字位置与真机误差 < 0.5 像素。宽度表由 `scripts/gen-unifont-widths.mjs` 生成。
 - 更正：早先的「汉字 8、窄标点 3」是从截图粗估的，对大多数汉字偏小 0.5、对窄字偏大。
 
-### 混合翻页（Pages 的 server 模式）
+### 服务端分页 = 路由变体（v0.9）
+
+真机 1.9.0：改成按标题路由后，旧的「服务端锚点 + 读正文的页码开关」不生效——书打开一片空白、翻页箭头也进空白页（目录 / 书签这些客户端开关正常）。
+新做法完全不需要锚点与页码开关：**每一页一个路由**。标题 `<界面 id>/<页名>`（`serverTitle()`）路由到「同一个界面 + 一个变量」的派生元素
+（`screen_0_sword@ns.screen_0: { $toggle_group_default_selected: 1 }`）；这组开关不写死初始选中序号（原版 common.toggle 用 `|default` 声明，
+会继承祖先设的值），所以表单打开时那一页的开关**本来就是选中的**，页面显示条件只读开关状态（1.4.0 起真机一直正常的写法）。
+`new Pages('gbp').useServerPages()` + `serverForm({ panels: [{ panelId, content, routes: pages.serverRoutes() }] })`。⏳ 1.10.0 待真机确认。
+
+### 混合翻页（Pages 的 server 模式，v0.6–v0.8 的旧做法，已废弃）
 
 真机结论：开关翻页（客户端）切换即时，但游戏只在鼠标移动时重判光标下的控件——鼠标不动连点翻页箭头没反应（A / B / C 三种开关方案都不行）；
 服务端翻页（关表单、服务端重开下一页）鼠标不动也能连点。所以：
@@ -165,6 +173,16 @@ setPlacement / setLayer / setVisible / setPadding / setMinSize / setMaxSize / se
 预览 `preview.resize(w, h)` 切换屏幕尺寸（`?demo=responsive`：小屏手机 320×180、手机 480×216、电脑 640×360）。⏳ 1.9.0 测试包「响应式演示」（手持纸右键）待真机确认 min_size / max_size 与这套结构。
 JSON UI 没有可靠的屏幕尺寸信号，「断点」（窄屏换一种布局）目前做不到；能做的是流式布局 + 上下限。
 
+### 滚动区域（Scroll）与「放不下」检查
+
+`new Scroll()`：子控件竖排（同 Column），内容高度按子控件之和，超出部分滚动。编译成原版 `common.scrolling_panel`：内容提升为命名空间顶层元素，
+`$scrolling_content` 引用；滚动条在区域内侧（宽 8）。预览：鼠标滚轮滚动、画滚动条。
+真机 1.9.0 响应式演示：窗口很小时卡片被最小尺寸托住，右栏文字折成 7 行，合成材料压到了底栏按钮上 ⇒ 会变长的内容放进 Scroll。
+lint `flex-overflow`：在 400×300 与极小的 240×135 两种屏幕上排一遍，Row / Column 里的内容沿主轴放不下就警告（复现了 1.9.0 的重叠：超出 29 像素）。
+
+**在游戏里看响应式**：界面像素 = 窗口像素 ÷ 界面缩放。调大「视频设置 → 界面缩放」或把窗口缩小，界面像素就变少（相当于小屏）；
+卡片按百分比变化，到 setMinSize / setMaxSize 处停住。整体变小是正常的——界面缩放本来就缩放整个 UI。
+
 ### 只创建需要的界面（标题路由）
 
 serverForm：根面板（按前缀显示）里一个带工厂的 `collection_panel`，属性包 `#route_<标题>` = [界面 id]；绑定 `('#route_' + #title_text)` 求出属性名，引擎读它的值写进
@@ -182,7 +200,7 @@ A / B / C / E 五种客户端方案都不行；服务端重开表单（新屏幕
 按钮 `button(文字, onClick, { disabled, tooltip, visible })` **不关表单**，回调里改可观察数据，界面即时更新——「下一页」一直是同一个控件，
 与原生界面同一个道理。另有 header / label / image（可点击、带提示框）/ toggle / slider / dropdown / textField / divider / spacer。
 限制：由 Ore UI 画，**不能用 JSON UI 改造**；布局是从上到下的一列；外观（颜色、九宫格底图、边距的 styleId）要到 1.26.60 预览版才开始支持。
-测试包 1.7.0 有「DDUI 翻页实验」（书与笔右键或 /scriptevent cui:ddui）。CUI 的组件树与后端解耦，DDUI 可作为第二个后端（路线图）。
+测试包有「DDUI 翻页实验」（1.10.0 起羽毛右键 / scriptevent cui:ddui；1.9.0 用书与笔触发时原版书写界面会先打开）。真机 1.9.0：外观不错、翻页可用，但翻页瞬间内容闪一下（一次翻页改 6 个可观察数据，换图片要重新加载）⇒ 1.10.0「对照版」（燧石 / cui:ddui2）：每页的标题 / 图片 / 正文预先建好，翻页只切换显示。CUI 的组件树与后端解耦，DDUI 可作为第二个后端（路线图）。
 
 ### 安全区（padding / contain）
 
@@ -219,6 +237,8 @@ stack_panel 的 `%c` 在**两个方向上都是子控件之和**——交叉方�
 | `mixed-sources`：一条表达式同时读开关状态与全局绑定 | 警告 | 1.5.2（开关变化不触发重算） |
 | `obfuscated-unifont`：§k 出现在含汉字的文字里 | 警告 | 1.5.3（只显示成点） |
 | `grow-outside-flex`：setGrow() 写在非 Row / Column 的子元素上 | 警告 | 不起作用 |
+| `flex-overflow`：Row / Column 的内容在某种屏幕尺寸下放不下 | 警告 | 1.9.0 响应式演示重叠 |
+| `scroll-in-collection`：Scroll 放在集合项里（内容提升到顶层，读不到集合数据） | 警告 | 结构限制 |
 | `text-overflow`：固定高度的文字框放不下 | 警告 | — |
 | `stack-cross-c`：stack 交叉方向写 %c | 警告 | 1.1.0 提示框过宽 |
 | `out-of-bounds`：contain 元素里越出安全区（按排版结果，所有页面都排出来检查；overflow: true 的跳过） | 警告 | 1.2.0 刻度尺伸出书页 |

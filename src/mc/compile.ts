@@ -49,6 +49,10 @@ const DYNAMIC: Record<string, { target: string, prop?: string }> = {
 
 class Compiler {
     issues: LintIssue[] = []
+    /** 提升到命名空间顶层的元素（Scroll 的内容） */
+    readonly hoisted: Json = {}
+    private scrolls = 0
+    constructor(private readonly namespace = '') { }
 
     control(n: RNode, inCollection: string | undefined): Json {
         const p = n.props
@@ -150,7 +154,8 @@ class Compiler {
                 vars.$toggle_name = p.group
                 vars.$radio_toggle_group = p.radio ?? true
                 vars.$toggle_group_forced_index = p.index
-                vars.$toggle_group_default_selected = p.defaultSelected ?? 0
+                // 服务端分页的开关不写死初始选中序号：继承路由设在祖先上的变量（原版用 |default 声明）
+                if (!p.inheritDefaultSelected) vars.$toggle_group_default_selected = p.defaultSelected ?? 0
                 vars.$toggle_default_state = p.defaultState ?? false
                 // 纯界面开关：不从全局绑定读初始状态（原版 light_template_toggle 同样设为 none）
                 vars.$toggle_binding_type = 'none'
@@ -166,6 +171,18 @@ class Compiler {
                 ]
                 break
             }
+            case 'scroll': {
+                // 原版 common.scrolling_panel：内容提升为顶层元素，用 $scrolling_content 引用
+                key = `${n.name}@common.scrolling_panel`
+                const content = `${n.name}_scroll_content_${this.scrolls++}`
+                this.hoisted[content] = { type: 'panel', size: ['100%', '100%c'], controls: n.children.map((c) => this.entry(c, undefined)) }
+                vars.$scrolling_content = `${this.namespace}.${content}`
+                vars.$show_background = false
+                vars.$scroll_bar_contained = true
+                vars.$scroll_bar_contained_touch = true
+                if (inCollection) this.issues.push({ rule: 'scroll-in-collection', level: 'warning', path: n.path, message: 'Scroll 的内容提升为顶层元素，读不到外层集合项的数据；集合项请放在 Scroll 里面' })
+                break
+            }
             case 'collection_item':
                 return this.collectionItem(n)
             case 'raw':
@@ -176,7 +193,7 @@ class Compiler {
         if (bindings.length) out.bindings = bindings
         Object.assign(out, vars)
         if (p.raw) Object.assign(out, p.raw)
-        const kids = n.children.map((c) => this.entry(c, inCollection))
+        const kids = n.type === 'scroll' ? [] : n.children.map((c) => this.entry(c, inCollection))
         if (kids.length) out.controls = [...((out.controls as Json[]) ?? []), ...kids]
         return { [key]: out }
     }
@@ -230,7 +247,7 @@ export interface CompileResult {
  * 编译一个命名空间：`roots` 的每个键是一个顶层元素（可被 `@命名空间.键` 引用）。
  */
 export function compileNamespace(namespace: string, roots: Record<string, Element>, options: LintOptions = {}): CompileResult {
-    const c = new Compiler()
+    const c = new Compiler(namespace)
     const json: Json = { namespace }
     const all: RNode[] = []
     for (const [name, el] of Object.entries(roots)) {
@@ -241,5 +258,6 @@ export function compileNamespace(namespace: string, roots: Record<string, Elemen
         Object.assign(json, c.control(n, undefined))
         all.push(n)
     }
+    Object.assign(json, c.hoisted)
     return { json, issues: [...lint(all, options), ...lintLayout(all, options), ...c.issues] }
 }

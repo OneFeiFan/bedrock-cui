@@ -479,8 +479,10 @@ export class CollectionItem extends Element {
  * STRETCH（缺省）只拉伸交叉方向**没写尺寸**的子控件（同 CSS）：文字拉满宽度后按宽度折行；写了尺寸的图标不变。
  */
 export abstract class Flex extends Element {
-    readonly type = 'panel' as const
+    readonly type: 'panel' | 'scroll' = 'panel'
     abstract readonly direction: 'row' | 'column'
+    /** @internal 主轴按内容决定（Scroll 的内容：高度 = 子控件之和，超出部分滚动） */
+    protected contentMain = false
     gap = 0
     justify: Justify = Justify.START
     align: Align = Align.STRETCH
@@ -494,7 +496,7 @@ export abstract class Flex extends Element {
         const M = row ? 0 : 1, X = 1 - M
         const own = this.props.size as [Size, Size] | undefined
         const byContent = (v: Size | undefined) => typeof v === 'string' && /%c/.test(v)
-        const mainContent = byContent(own?.[M]), crossContent = byContent(own?.[X])
+        const mainContent = this.contentMain || byContent(own?.[M]), crossContent = !this.contentMain && byContent(own?.[X])
         const stackPath = `${path}/flex`
         const pair = (main: Size | undefined, cross: Size | undefined): [Size, Size] => (row ? [main ?? 'default', cross ?? 'default'] : [cross ?? 'default', main ?? 'default'])
         const spacer = (name: string, main: Size): RNode => ({ type: 'panel', name, path: `${stackPath}/${name}`, props: { size: pair(main, crossContent ? 0 : '100%') }, children: [] })
@@ -544,8 +546,19 @@ export class Row extends Flex { readonly direction = 'row' as const }
 /** 竖排的弹性容器 */
 export class Column extends Flex { readonly direction = 'column' as const }
 
+/**
+ * 滚动区域：子控件竖排（同 Column：间距、拉伸），内容高度按子控件之和，超出部分滚动。
+ * 编译成原版 common.scrolling_panel：内容提升为命名空间里的独立元素，用 $scrolling_content 引用；滚动条在区域内侧（宽 8：边距 2 + 条 4 + 边距 2）。
+ * 响应式布局里放会变长的内容（说明文字、列表）：屏幕变小时不溢出、不重叠，而是可以滚动。
+ */
+export class Scroll extends Flex {
+    override readonly type = 'scroll' as const
+    readonly direction = 'column' as const
+    protected override contentMain = true
+}
+
 const PREFIX: Record<Intrinsic, string> = {
-    panel: 'panel', stack: 'stack', grid: 'grid', image: 'image', label: 'label', button: 'button', toggle: 'toggle', collection_item: 'item', raw: 'raw',
+    panel: 'panel', stack: 'stack', grid: 'grid', image: 'image', label: 'label', button: 'button', toggle: 'toggle', collection_item: 'item', raw: 'raw', scroll: 'scroll',
 }
 
 function snapshot(list: Element[], parentPath: string): RNode[] {

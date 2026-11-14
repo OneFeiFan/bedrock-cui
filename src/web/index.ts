@@ -55,8 +55,8 @@ export interface Preview {
     boxes(): Box[]
     issues(): LintIssue[]
     compiled(namespace?: string): Record<string, unknown>
-    /** 清空开关状态（模拟服务端重新打开表单：开关回到初始状态） */
-    resetToggles(): void
+    /** 清空开关状态（模拟服务端重新打开表单：开关回到初始状态）；start = 服务端分页按路由打开到的页（组 → 序号） */
+    resetToggles(start?: Record<string, number>): void
     /** 改屏幕大小（界面像素）：看响应式布局在手机 / 平板 / 电脑上的样子 */
     resize(width: number, height: number): void
     readonly viewport: Signal<[number, number]>
@@ -121,6 +121,10 @@ export function mountPreview(el: HTMLElement, options: PreviewOptions): Preview 
      * 还没点过时，序号 = 初始选中序号的开关算选中。非单选开关单独记状态。
      */
     const groups = signal<Record<string, string>>({})
+    /** 服务端分页：模拟按路由打开到某页（组 → 初始选中序号） */
+    const startOf = signal<Record<string, number>>({})
+    /** 滚动区域的滚动量（路径 → 像素） */
+    const scrolls = signal<Record<string, number>>({})
     const flags = signal<Record<string, boolean>>({})
     const tree = (): RNode[] => {
         nodes = finalize(rootEl())
@@ -133,7 +137,9 @@ export function mountPreview(el: HTMLElement, options: PreviewOptions): Preview 
         if (n.props.stateFrom) return asBool(evalExpr(n.props.stateFrom, { ref: (name, src) => data(name, src as never, {}) as never }))
         if (n.props.radio === false) return flags.value[n.name] ?? Boolean(n.props.defaultState)
         const picked = groups.value[n.props.group]
-        return picked !== undefined ? picked === n.name : (n.props.defaultSelected ?? 0) === n.props.index
+        // 服务端分页的开关继承路由变量：预览里由 resetToggles({ 组: 序号 }) 模拟，缺省是初始页
+        const def = n.props.defaultSelected ?? startOf.value[n.props.group] ?? n.props.serverDefault ?? 0
+        return picked !== undefined ? picked === n.name : def === n.props.index
     }
     let current: Box[] = []
 
@@ -224,7 +230,7 @@ export function mountPreview(el: HTMLElement, options: PreviewOptions): Preview 
 
     const render = effect(() => {
         // 读信号 → 建立依赖
-        void formText.value; void formButtons.value; void title.value; void outlines.value; void groups.value; void flags.value; void pixel.value
+        void formText.value; void formButtons.value; void title.value; void outlines.value; void groups.value; void flags.value; void pixel.value; void startOf.value; void scrolls.value
         const vp = viewport.value
         screen.style.width = `${vp[0] * scale}px`; screen.style.height = `${vp[1] * scale}px`
         const st = { hover: hover.value, pressed: pressed.value }
@@ -233,9 +239,24 @@ export function mountPreview(el: HTMLElement, options: PreviewOptions): Preview 
             textures: (p) => textures[p],
             buttonState: (path) => (st.pressed === path ? 'pressed' : st.hover === path ? 'hover' : 'default'),
             toggleChecked: checked,
+            scrollOffset: (path) => scrolls.value[path] ?? 0,
         })
         screen.replaceChildren()
-        for (const b of drawOrder(current)) { const d = draw(b); if (d) screen.appendChild(d) }
+        for (const b of drawOrder(current)) {
+            const d = draw(b); if (d) screen.appendChild(d)
+            // 滚动区域：内容超出视口时画滚动条（区域内侧，宽 4，左边距 2）
+            if (b.scroll && b.scroll.content > b.scroll.view + 0.5) {
+                const { view, content, offset } = b.scroll
+                const track = { x: b.rect.x + b.rect.w - 6, y: b.rect.y, w: 4, h: view }
+                const thumbH = Math.max(6, (view / content) * view)
+                const thumbY = track.y + (offset / (content - view)) * (view - thumbH)
+                for (const [r, color] of [[track, 'rgba(0,0,0,0.35)'], [{ ...track, y: thumbY, h: thumbH }, 'rgba(200,200,200,0.8)']] as const) {
+                    const bar = document.createElement('div')
+                    Object.assign(bar.style, { position: 'absolute', left: S(r.x), top: S(r.y), width: S(r.w), height: S(r.h), background: color, zIndex: String(1000 + b.z + 1), pointerEvents: 'none' })
+                    screen.appendChild(bar)
+                }
+            }
+        }
     })
 
     /** 最上层、可见、包含该点的按钮 / 开关 */
@@ -254,6 +275,18 @@ export function mountPreview(el: HTMLElement, options: PreviewOptions): Preview 
     }
     const pos = (e: MouseEvent) => { const r = screen.getBoundingClientRect(); return [(e.clientX - r.left) / scale, (e.clientY - r.top) / scale] as const }
     screen.addEventListener('mousemove', (e) => { hover.value = hit(...pos(e))?.node.path })
+    // 鼠标滚轮：滚动光标下最上层的滚动区域
+    screen.addEventListener('wheel', (e) => {
+        const [x, y] = pos(e)
+        let target: Box | undefined
+        const visit = (b: Box) => { const r = b.rect; if (b.scroll && x >= r.x && y >= r.y && x < r.x + r.w && y < r.y + r.h) target = b; b.children.forEach(visit) }
+        current.forEach(visit)
+        if (!target?.scroll) return
+        e.preventDefault()
+        const max = Math.max(0, target.scroll.content - target.scroll.view)
+        const next = Math.min(max, Math.max(0, target.scroll.offset + Math.sign(e.deltaY) * 10))
+        scrolls.value = { ...scrolls.value, [target.node.path]: next }
+    }, { passive: false })
     screen.addEventListener('mouseleave', () => { hover.value = undefined; pressed.value = undefined })
     screen.addEventListener('mousedown', (e) => { pressed.value = hit(...pos(e))?.node.path })
     screen.addEventListener('mouseup', (e) => {
@@ -275,7 +308,7 @@ export function mountPreview(el: HTMLElement, options: PreviewOptions): Preview 
         boxes: () => current,
         issues: () => compileNamespace('preview', { root: rootEl() }, { textures: (p) => textures[p] }).issues,
         compiled: (ns = 'preview') => compileNamespace(ns, { root: rootEl() }, { textures: (p) => textures[p] }).json,
-        resetToggles: () => { groups.value = {}; flags.value = {} },
+        resetToggles: (start?: Record<string, number>) => { groups.value = {}; flags.value = {}; startOf.value = start ?? {} },
         resize: (w: number, h: number) => { viewport.value = [w, h] },
         viewport,
         dispose: () => { render.stop(); screen.remove() },

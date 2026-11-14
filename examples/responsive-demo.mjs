@@ -6,7 +6,7 @@
  *     标题栏、正文（setGrow 占满剩余高度）、底栏（按钮靠右）。编译成 JSON UI 原生的百分比 / fill，
  *     **游戏里随屏幕大小自适应**；浏览器预览里切换屏幕尺寸看效果。
  */
-import { Align, Anchor, Color, Column, FormButton, Image, Insets, Justify, Label, Length, Panel, Row, Size, Texture, TextStyle } from 'cui'
+import { Align, Anchor, Color, Column, FormButton, Image, Insets, Justify, Label, Length, Panel, Row, Scroll, Size, Texture, TextStyle } from 'cui'
 
 // ───────────── 贴图（尺寸、九宫格信息跟着贴图走） ─────────────
 export const Textures = {
@@ -79,10 +79,10 @@ const DESCRIPTION = '钻石剑是钻石制成的近战武器，攻击伤害与�
 export function buildResponsiveDemo() {
     const root = new Panel().setSize(Size.full())
 
-    // 卡片：宽 92%、高 88%，上下限 220×140 ～ 400×250，居中
+    // 卡片：宽 92%、高 88%，上下限 220×128 ～ 400×250，居中（最小高度要放得进 135 高的极小屏幕）
     const card = new Panel().setName('card')
         .setSize(Length.pct(92), Length.pct(88))
-        .setMinSize(220, 140).setMaxSize(400, 250)
+        .setMinSize(220, 128).setMaxSize(400, 250)
         .setAnchor(Anchor.CENTER)
     card.add(new Image(Textures.FRAME).setSize(Size.full()))
 
@@ -92,11 +92,12 @@ export function buildResponsiveDemo() {
     const header = new Row().setName('header').setHeight(22).setGap(6).setAlign(Align.CENTER)
     header.add(new ItemSlot(Textures.SWORD), new Label('钻石剑', Styles.TITLE).setGrow(), new Label('§7稀有度 §b稀有', Styles.MUTED))
 
-    // 正文：左栏属性（定宽 84）| 右栏说明 + 合成材料（伸展）
+    // 正文：左栏属性（定宽 84）| 右栏说明 + 合成材料（伸展）。右栏是 Scroll：屏幕小、文字折成很多行时可以滚动，
+    // 而不是溢出去压住底栏（真机 1.9.0：卡片被最小尺寸托住时，合成材料压到了按钮上）
     const body = new Row().setName('body').setGap(8).setGrow()
     const stats = new Column().setName('stats').setWidth(84).setGap(2)
     stats.add(new StatRow('攻击伤害', '7'), new StatRow('攻击速度', '1.6'), new StatRow('耐久', '1561'), new StatRow('附魔能力', '10'))
-    const detail = new Column().setName('detail').setGap(4).setGrow()
+    const detail = new Scroll().setName('detail').setGap(4).setGrow()
     const recipe = new Row().setName('recipe').setHeight(22).setGap(2)
     recipe.add(new ItemSlot(Textures.DIAMOND), new ItemSlot(Textures.DIAMOND), new ItemSlot(Textures.STICK))
     detail.add(new Label(DESCRIPTION, Styles.BODY).setName('desc'), new Label('合成材料', Styles.MUTED), recipe)
@@ -117,6 +118,7 @@ export const RESPONSIVE_FORM = { title: 'cui_ui:responsive', buttons: ['cancel|'
 
 /** 预览里切换的屏幕尺寸（界面像素） */
 export const SCREENS = [
+    { name: '极小（带鱼屏窗口 / 大缩放）', size: [240, 135] },
     { name: '小屏手机', size: [320, 180] },
     { name: '手机', size: [480, 216] },
     { name: '电脑', size: [640, 360] },

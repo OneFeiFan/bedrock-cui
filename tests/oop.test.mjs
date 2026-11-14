@@ -120,3 +120,37 @@ test('Row 里的 FormButton 保留像素尺寸（编译成正方形网格要边�
     const xs = rowBox.children[0].children.filter((c) => c.node.name.startsWith('slot')).map((c) => Math.round(c.rect.x - rowBox.rect.x))
     assert.deepEqual(xs, [98, 144], '相对 Row 左边：靠右，200 − 56 − 4 − 42 = 98')
 })
+
+test('Scroll：编译成原版 scrolling_panel、内容提升为顶层元素；排版扣掉滚动条宽度、按滚动量上移（不超出范围）', async () => {
+    const { Scroll, SCROLLBAR } = await import('../dist/index.js')
+    const sc = new Scroll().setName('list').setSize(100, 40).setAnchor(Anchor.TOP_LEFT).setGap(2)
+    for (let i = 0; i < 5; i++) sc.add(new Panel().setName(`row${i}`).setHeight(18))
+    const { json, issues } = compileNamespace('ns', { root: new Panel().add(sc) })
+    assert.deepEqual(issues, [])
+    const scroll = json.root.controls[0]['list@common.scrolling_panel']
+    assert.equal(scroll.$scrolling_content, 'ns.list_scroll_content_0')
+    assert.equal(json.list_scroll_content_0.size[1], '100%c', '内容高度按子控件')
+    const at = (offset) => layout(finalize(new Panel().setSize(400, 300).setAnchor(Anchor.TOP_LEFT).add(sc.clone())), { viewport: [400, 300], scrollOffset: () => offset })
+    let b = at(0)
+    const box = findBox(b, 'list')
+    assert.deepEqual(box.scroll, { view: 40, content: 5 * 18 + 4 * 2, offset: 0 })
+    assert.equal(findBox(b, 'row0').rect.w, 100 - SCROLLBAR, '内容宽 = 区域宽 − 滚动条')
+    b = at(30)
+    assert.equal(findBox(b, 'row0').rect.y, -30, '按滚动量上移')
+    b = at(999)
+    assert.equal(findBox(b, 'list').scroll.offset, 98 - 40, '滚动量夹在 [0, 内容 − 视口]')
+})
+
+test('静态检查 flex-overflow：Column 的内容在小屏上放不下 → 警告；放进 Scroll 后不再警告', async () => {
+    const { Scroll } = await import('../dist/index.js')
+    const make = (Container) => {
+        const card = new Panel().setName('card').setSize(Length.pct(90), Length.pct(80)).setAnchor(Anchor.CENTER)
+        const c = new Container().setName('box').setSize(Size.full())
+        for (let i = 0; i < 6; i++) c.add(new Panel().setName(`r${i}`).setHeight(20))
+        return new Panel().setSize(Size.full()).add(card.add(c))
+    }
+    const bad = compileNamespace('t', { root: make(Column) }).issues
+    assert.deepEqual(bad.map((i) => i.rule), ['flex-overflow'])
+    assert.match(bad[0].message, /240×135/)
+    assert.deepEqual(compileNamespace('t', { root: make(Scroll) }).issues, [])
+})

@@ -8,19 +8,20 @@ import path from 'node:path'
 import { execSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { serverForm } from 'cui'
-import { buildBook, ARROWS, FORM, T, TEXTURE_INFO } from './toggle-book.mjs'
+import { buildBook, ARROWS, BOOK_PAGES, FORM, T, TEXTURE_INFO } from './toggle-book.mjs'
 import { buildResponsiveDemo, RESPONSIVE_FORM } from './responsive-demo.mjs'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 const outRoot = path.resolve(process.argv[2] ?? path.join(here, '..', 'out'))
-const VERSION = [1, 9, 0]
+const VERSION = [1, 10, 0]
 const UUID = { bp: '6a3f0e2c-91d4-4b7a-8c55-0e1f7a2b9c31', bpScript: 'c2e8b7d1-4f6a-4c9e-a1b2-3d4e5f607182', rp: '1f9c3a7e-2b4d-4e6f-8a90-b1c2d3e4f5a6', rpRes: '7d8e9f0a-1b2c-4d3e-9f4a-5b6c7d8e9f01' }
 const NAME = 'cui_toggle_test'
 
 // 诊断：两个变体——无动画（重定义 third_party_server_screen）/ 有动画（原版屏幕），看目录开关失灵是不是屏幕重定义导致的
 const VARIANT = process.env.CUI_VARIANT ?? '无动画'
 // 两个界面同一个命名空间，按标题路由：打开哪个只创建哪个
-const { files, issues } = serverForm({ namespace: NAME, panels: [{ panelId: FORM.title, content: buildBook({ variant: VARIANT }) }, { panelId: RESPONSIVE_FORM.title, content: buildResponsiveDemo() }], textures: (p) => TEXTURE_INFO[p], screenAnimation: VARIANT === '有动画' })
+const book = buildBook({ variant: VARIANT })
+const { files, issues } = serverForm({ namespace: NAME, panels: [{ panelId: FORM.title, content: book, routes: BOOK_PAGES.serverRoutes() }, { panelId: RESPONSIVE_FORM.title, content: buildResponsiveDemo() }], textures: (p) => TEXTURE_INFO[p], screenAnimation: VARIANT === '有动画' })
 const ROUTES = Object.fromEntries(ARROWS.map((a) => [a.index, { target: a.target, from: a.from, dir: a.dir }]))
 if (issues.some((i) => i.level === 'error')) { console.error(issues); process.exit(1) }
 
@@ -99,8 +100,8 @@ system.run(() => { for (const p of world.getAllPlayers()) camera(p, true) })
  */
 function open(player, page = 'home', dir = 'right') {
     camera(player, false)
-    // 标题必须与路由键完全相同（只创建这一个界面）；页码放正文
-    const form = new ActionFormData().title(TITLE).body('P:' + page + ';')
+    // 标题 = 路由：<界面 id>/<页名> → 那一页的开关本来就是选中的（serverTitle）
+    const form = new ActionFormData().title(TITLE + '/' + page).body('')
     SLOT_ITEMS.forEach((id, i) => form.button('s' + i + '|' + info(player, id)))
     form.button('close|')
     form.button('txt|' + inventoryText(player))
@@ -166,15 +167,47 @@ function openResponsive(player) {
     })
 }
 
+// ── DDUI 对照版：每页的标题 / 图片 / 正文都预先建好，翻页只切换显示（不改写内容、不重新加载图片），看闪烁是否减轻
+function openDDUI2(player) {
+    let k = 0
+    const shown = DD_PAGES.map((_, i) => new ObservableBoolean(i === 0))
+    const noPrev = new ObservableBoolean(true), noNext = new ObservableBoolean(false)
+    const go = (d) => {
+        const next = Math.max(0, Math.min(DD_PAGES.length - 1, k + d))
+        if (next === k) return
+        // 先显示新页、再隐藏旧页（中间不会出现「两页都没有」的空档）
+        shown[next].setData(true); shown[k].setData(false)
+        k = next
+        noPrev.setData(k === 0); noNext.setData(k === DD_PAGES.length - 1)
+    }
+    const form = new CustomForm(player, 'CUI · DDUI 对照版（切换显示）')
+        .button('下一页 →', () => go(1), { disabled: noNext })
+        .button('← 上一页', () => go(-1), { disabled: noPrev })
+        .divider()
+    DD_PAGES.forEach((p, i) => {
+        form.header(p.title, { visible: shown[i] })
+            .image(p.img, RP_UUID, { tooltip: p.tip, width: 32, visible: shown[i] })
+            .label(p.body, { visible: shown[i] })
+    })
+    form.closeButton().show()
+        .then((reason) => player.sendMessage('§7[CUI] DDUI 对照版关闭：' + reason))
+        .catch((e) => player.sendMessage('§c[CUI] DDUI 出错：' + e))
+}
+
+// 触发物品：书 = 测试书；纸 = 响应式演示；羽毛 = DDUI 翻页实验；燧石 = DDUI 对照版
+// （1.9.0 用书与笔触发 DDUI：原版书写界面会先打开，关掉后 DDUI 才「有概率」出现——换成没有原版界面的物品）
 world.afterEvents.itemUse.subscribe((e) => {
     if (e.source.typeId !== 'minecraft:player') return
-    if (e.itemStack.typeId === 'minecraft:book') open(e.source)
-    else if (e.itemStack.typeId === 'minecraft:writable_book') openDDUI(e.source)
-    else if (e.itemStack.typeId === 'minecraft:paper') openResponsive(e.source)
+    const id = e.itemStack.typeId
+    if (id === 'minecraft:book') open(e.source)
+    else if (id === 'minecraft:paper') openResponsive(e.source)
+    else if (id === 'minecraft:feather') openDDUI(e.source)
+    else if (id === 'minecraft:flint') openDDUI2(e.source)
 })
 system.afterEvents.scriptEventReceive.subscribe((e) => {
     if (e.id === 'cui:open' && e.sourceEntity?.typeId === 'minecraft:player') open(e.sourceEntity)
     if (e.id === 'cui:ddui' && e.sourceEntity?.typeId === 'minecraft:player') openDDUI(e.sourceEntity)
+    if (e.id === 'cui:ddui2' && e.sourceEntity?.typeId === 'minecraft:player') openDDUI2(e.sourceEntity)
     if (e.id === 'cui:responsive' && e.sourceEntity?.typeId === 'minecraft:player') openResponsive(e.sourceEntity)
 })
 `)

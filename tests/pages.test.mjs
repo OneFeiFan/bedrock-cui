@@ -127,49 +127,6 @@ test('serverForm 多个界面：按标题路由，只创建标题完全相同的
     assert.throws(() => serverForm({ namespace: 'x', panels: [{ panelId: 'cui_ui:a', content: new Panel() }, { panelId: 'cui_ui:a', content: new Panel() }] }), /同一个标题/)
 })
 
-test('混合翻页：Pages 服务端页码——刚打开时按标题里的页码显示（没有页码 = 初始页）；点了开关就由开关接管', async () => {
-    const { Pages, Label, Panel, finalize, layout, findBox, compileNamespace, serverForm } = await import('../dist/index.js')
-    const make = () => {
-        const p = new Pages({ group: 'bk', start: 'home', server: {}, size: [200, 100], anchor: 'top_left' })
-        p.page('home').add(new Label({ name: 'home_t', text: '目录' }))
-        p.page('sword').add(new Label({ name: 'sword_t', text: '剑' }))
-        p.page('home').add(p.link('sword', { name: 'row_sword', size: [10, 10] }))
-        return p
-    }
-    assert.equal(make().serverTag('sword'), 'P:sword;')
-    // clicked：哪个开关被点了（undefined = 刚打开表单，服务端锚点选中）；页码开关 bk__srv_<页> 只读标题
-    const flag = (key, title) => (key === 'home' ? title.includes('P:home;') || !title.includes('P:') : title.includes(`P:${key};`))
-    const run = (title, clicked) => layout(finalize(make()), {
-        viewport: [200, 100],
-        toggleChecked: (n) => (clicked ? n.name === clicked : n.name === 'bk__server'),
-        data: (name, src) => (src.kind === 'control'
-            ? (src.control.startsWith('bk__srv_') ? flag(src.control.slice(8), title) : clicked ? src.control === clicked : src.control === 'bk__server')
-            : name === '#title_text' ? title : ''),
-    })
-    assert.ok(findBox(run('cui_ui:book', undefined), 'home_t'), '没有页码 → 初始页')
-    assert.equal(findBox(run('cui_ui:book', undefined), 'sword_t'), undefined)
-    assert.ok(findBox(run('cui_ui:book|P:sword;', undefined), 'sword_t'), '标题带 P:sword; → 剑那一页')
-    assert.equal(findBox(run('cui_ui:book|P:sword;', undefined), 'home_t'), undefined)
-    assert.ok(findBox(run('cui_ui:book|P:sword;', 'bk__home'), 'home_t'), '点了开关（例如书签回目录）→ 开关接管，忽略标题里的页码')
-    const { json, issues } = compileNamespace('t', { root: make() })
-    assert.deepEqual(issues, [], '页面显示条件只读开关状态（没有 mixed-sources 警告）')
-    const flagJson = json.root.controls.find((c) => c['bk__srv_sword@common.toggle'])['bk__srv_sword@common.toggle']
-    assert.equal(flagJson.$radio_toggle_group, false)
-    assert.equal(flagJson.bindings.at(-1).target_property_name, '#toggle_state', '页码开关：只读标题，写进自己的开关状态')
-    assert.ok(flagJson.bindings.every((b) => !b.source_control_name), '页码开关不读别的开关')
-    const swordPage = json.root.controls.find((c) => c.bk_sword).bk_sword
-    assert.ok(swordPage.bindings.every((b) => b.binding_name !== '#title_text'), '页面不再直接读标题')
-    const anchor = json.root.controls.find((c) => c['bk__server@common.toggle'])['bk__server@common.toggle']
-    assert.deepEqual([anchor.$toggle_group_forced_index, anchor.$toggle_group_default_selected], [2, 2], '服务端锚点：序号 = 页数（不能用 -1），初始选中')
-    const row = json.root.controls.find((c) => c.bk_home).bk_home.controls.find((c) => c['row_sword@common.toggle'])['row_sword@common.toggle']
-    assert.equal(row.$toggle_group_default_selected, 2, '同组所有开关的初始选中都是服务端锚点')
-    // 去掉屏幕进出场动画（缺省）
-    const { files } = serverForm({ namespace: 'x', panelId: 'cui_ui:x', content: new Panel() })
-    const screen = files['ui/server_form.json']['third_party_server_screen@common.base_screen']
-    assert.deepEqual(screen.$screen_animations, ['@server_form.screen_exit_animation_pop_wait'])
-    assert.equal(serverForm({ namespace: 'x', panelId: 'cui_ui:x', content: new Panel(), screenAnimation: true }).files['ui/server_form.json']['third_party_server_screen@common.base_screen'], undefined)
-})
-
 test('静态检查：开关序号必须是非负整数（-1 = 不强制、自动分配，会撞号）', async () => {
     const { Toggle, Panel, compileNamespace } = await import('../dist/index.js')
     const root = new Panel({ children: [new Toggle({ name: 'a', group: 'g', index: -1 }), new Toggle({ name: 'b', group: 'g', index: 1.5 })] })
@@ -189,20 +146,30 @@ test('FormButton 默认聚焦优先级：default_focus_precedence', async () => 
     assert.equal(btn.default_focus_precedence, 100)
 })
 
-test('服务端页码开关：起始页条件不写双重否定（真机 1.5.3 翻回目录空白）', async () => {
-    const { Pages, Label, compileNamespace } = await import('../dist/index.js')
-    const p = new Pages({ group: 'bk', start: 'home', server: {}, size: [200, 100] })
-    p.page('home').add(new Label({ text: '目录' })); p.page('sword').add(new Label({ text: '剑' }))
-    const { json } = compileNamespace('t', { root: p })
-    const flag = json.root.controls.find((c) => c['bk__srv_home@common.toggle'])['bk__srv_home@common.toggle']
-    const expr = flag.bindings.at(-1).source_property_name
-    assert.ok(!/not \(not/.test(expr), expr)
-    // 页码缺省读表单正文（标题按路由要求必须完全相同，不能再附页码）
-    assert.equal(expr, '((not ((#form_text - $s0_0) = #form_text)) or ((#form_text - $s0_1) = #form_text))')
-})
-
 test('静态检查 obfuscated-unifont：§k 出现在含汉字的文字里（真机只显示成点）', async () => {
     const { Panel, Label, compileNamespace } = await import('../dist/index.js')
     const root = new Panel({ children: [new Label({ name: 'a', text: '§k乱码abc' }), new Label({ name: 'b', text: '§kabcdef' })] })
     assert.deepEqual(compileNamespace('t', { root }).issues.map((i) => `${i.rule}@${i.path.split('/').pop()}`), ['obfuscated-unifont@a'])
+})
+
+test('服务端分页 = 路由变体：标题 <id>/<页名> → 同一界面 + 初始选中序号变量；这组开关继承、不写死；页面显示只读开关', async () => {
+    const { Pages, Label, Panel, serverForm, serverTitle } = await import('../dist/index.js')
+    const pages = new Pages('bk').startAt('home').useServerPages()
+    pages.page('home').add(new Label('目录'))
+    pages.page('sword').add(new Label('剑'))
+    pages.page('home').add(pages.link('sword', { name: 'row_sword', size: [10, 10] }))
+    const book = new Panel().add(pages)
+    const { files, issues } = serverForm({ namespace: 'ns', panels: [{ panelId: 'cui_ui:book', content: book, routes: pages.serverRoutes() }] })
+    assert.deepEqual(issues, [])
+    const json = files['ui/ns.json']
+    const router = json.root.controls[0].router
+    assert.deepEqual(Object.keys(router.property_bag), ['#route_', '#route_cui_ui:book', '#route_cui_ui:book/home', '#route_cui_ui:book/sword'])
+    assert.equal(serverTitle('cui_ui:book', 'sword'), 'cui_ui:book/sword')
+    assert.deepEqual(router.factory.control_ids['screen_0_sword'], '@ns.screen_0_sword')
+    assert.deepEqual(json['screen_0_sword@ns.screen_0'], { $toggle_group_default_selected: 1 }, '派生元素：剑那一页的序号')
+    assert.equal(json.screen_0['$toggle_group_default_selected|default'], 0, '基础路由：初始页（|default，派生元素的值优先）')
+    const text = JSON.stringify(json.screen_0)
+    assert.ok(!text.includes('"$toggle_group_default_selected":'), '这组开关不写死初始选中序号（继承路由变量）')
+    assert.ok(!/#title_text|#form_text/.test(text), '页面显示条件不读标题 / 正文，只读开关状态')
+    assert.ok(text.includes('"$toggle_group_forced_index":1'), '剑那一页的开关序号 1')
 })

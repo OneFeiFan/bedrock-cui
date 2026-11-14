@@ -5,7 +5,7 @@
 import { signal } from 'cui'
 import { mountDevtools, mountPreview, type PreviewTexture } from 'cui/web'
 // @ts-ignore 示例是纯 JS
-import { buildBook, ARROWS, FORM, T, TEXTURE_INFO } from '../examples/toggle-book.mjs'
+import { buildBook, ARROWS, BOOK_PAGES, FORM, T, TEXTURE_INFO } from '../examples/toggle-book.mjs'
 import { mountResponsive } from './responsive'
 
 // ?demo=responsive：响应式布局演示；否则：开关翻页测试书
@@ -34,8 +34,8 @@ function mountBook(): void {
         return b
     }
     const routes = Object.fromEntries(arrows.map((a) => [a.index, a]))
-    // 标题固定（路由按完整标题）；页码在正文
-    const title = signal(FORM.title)
+    // 标题 = 路由：<界面 id>/<页名>
+    const title = signal(`${FORM.title}/home`)
     const formText = signal(FORM.body)
     const formButtons = signal(buttonsFor('home', 'right'))
     const preview = mountPreview(document.getElementById('app')!, {
@@ -44,14 +44,15 @@ function mountBook(): void {
         // 模拟服务端：翻页箭头 → 重新打开表单（标题带 P:<页>;、开关回到初始状态）
         onFormButton: (i) => {
             const a = routes[i]
-            if (a) { formText.value = `P:${a.target};`; formButtons.value = buttonsFor(a.target, a.dir); preview.resetToggles() }
+            // 模拟服务端按路由重开：标题换成那一页，这组开关的初始选中 = 那一页的序号
+            if (a) { title.value = `${FORM.title}/${a.target}`; formButtons.value = buttonsFor(a.target, a.dir); preview.resetToggles({ gbp: BOOK_PAGES.indexOf(a.target) }) }
             else console.log('表单按钮', i, '（真机里这会关掉表单，服务端收到选择）')
         },
         // 像素字体（scripts/fetch-fonts.mjs 准备）：照游戏画文字
         fonts: { unifont: './font/unifont.hex.gz', ascii: './font/ascii.png' },
     })
     mountDevtools(document.getElementById('devtools')!, preview)
-    ;(window as any).__cui = { preview, formText }
+    ;(window as any).__cui = { preview, formText, title }
 }
 
 if (DEMO === 'responsive') mountResponsive(document.getElementById('app')!, document.getElementById('devtools')!)

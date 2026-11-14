@@ -20,6 +20,8 @@ export interface LintOptions {
     textures?: (path: string) => TextureInfo | undefined
     /** 按排版结果检查越界时用的视口（缺省 [400, 300]） */
     viewport?: [number, number]
+    /** 检查弹性布局「内容放不下」时试的屏幕尺寸（缺省 400×300 与极小的 240×135） */
+    viewports?: [number, number][]
 }
 
 /**
@@ -51,6 +53,35 @@ export function lintLayout(roots: RNode[], options: LintOptions = {}): LintIssue
         for (const c of b.children) visit(c, next)
     }
     boxes.forEach((b) => visit(b, undefined))
+    issues.push(...lintFlexOverflow(roots, options))
+    return issues
+}
+
+/**
+ * 弹性布局在几种屏幕尺寸下排一遍：Row / Column 里的内容沿主轴放不下 → 警告（屏幕变小时会和后面的内容重叠——真机 1.9.0 响应式演示）。
+ * 会变长的内容放进 Scroll，或调大 setMinSize。
+ */
+function lintFlexOverflow(roots: RNode[], options: LintOptions): LintIssue[] {
+    const issues: LintIssue[] = []
+    const seen = new Set<string>()
+    for (const vp of options.viewports ?? [[400, 300], [240, 135]]) {
+        let boxes: Box[]
+        try { boxes = layout(roots, { viewport: vp, textures: options.textures, forceVisible: true }) } catch { continue }
+        const visit = (b: Box) => {
+            if (b.node.type === 'stack' && b.node.name === 'flex' && !seen.has(b.node.path)) {
+                const vertical = b.node.props.orientation !== 'horizontal'
+                const own = vertical ? b.rect.h : b.rect.w
+                const used = b.children.reduce((a, c) => a + (vertical ? c.rect.h : c.rect.w), 0)
+                if (used - own > 0.5) {
+                    seen.add(b.node.path)
+                    const owner = b.node.path.split('/').slice(0, -1).filter((x) => x !== 'content').pop()
+                    issues.push({ rule: 'flex-overflow', level: 'warning', path: b.node.path, message: `${owner} 的内容在 ${vp[0]}×${vp[1]} 屏幕上放不下（超出 ${Math.round(used - own)} 像素）：会变长的内容放进 Scroll，或调大 setMinSize` })
+                }
+            }
+            if (b.node.type !== 'scroll') b.children.forEach(visit)
+        }
+        boxes.forEach(visit)
+    }
     return issues
 }
 

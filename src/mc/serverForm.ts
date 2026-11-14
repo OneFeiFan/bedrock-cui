@@ -13,6 +13,16 @@ export interface ServerFormPanel {
     /** 表单标题（脚本里 ActionFormData.title 用它）；必须以 prefix 开头 */
     panelId: string
     content: Element
+    /**
+     * 路由变量：base 设在界面根上（通常带 |default）；variants 的每一项生成一个路由 `<panelId>/<名字>` →
+     * 「同一个界面 + 这些变量」的派生元素。服务端分页：`routes: pages.serverRoutes()`，标题用 serverTitle(panelId, 页名)。
+     */
+    routes?: { base?: Record<string, unknown>, variants?: Record<string, Record<string, unknown>> }
+}
+
+/** 服务端分页的表单标题：`<panelId>/<页名>`（与 serverForm 的路由一致） */
+export function serverTitle(panelId: string, variant?: string): string {
+    return variant ? `${panelId}/${variant}` : panelId
 }
 
 export interface ServerFormOptions extends LintOptions {
@@ -54,12 +64,24 @@ export function serverForm(options: ServerFormOptions): ServerFormFiles {
     // 「#route_<标题>」= [界面 id]；('#route_' + #title_text) 求出的是一个属性名，引擎再读它的值（界面 id 列表）写进
     // #collection_length，工厂只实例化列表里的那一个——其它界面根本不创建。标题必须与 panelId 完全相同。
     const routeId = (i: number) => `screen_${i}`
+    // 路由表：标题 → 界面 id。界面带 routes.variants 时，每个变体一条路由（派生元素 = 同一界面 + 变量）
+    const routes: { title: string, id: string }[] = []
+    const derived: Record<string, Record<string, unknown>> = {}
+    panels.forEach((p, i) => {
+        routes.push({ title: p.panelId, id: routeId(i) })
+        for (const [v, vars] of Object.entries(p.routes?.variants ?? {})) {
+            if (!/^[A-Za-z0-9_-]+$/.test(v)) throw new Error(`路由名只能用字母、数字、_ 与 -：${v}`)
+            const id = `${routeId(i)}_${v}`
+            routes.push({ title: serverTitle(p.panelId, v), id })
+            derived[`${id}@${options.namespace}.${routeId(i)}`] = { ...vars }
+        }
+    })
     const router = new Raw({
         name: 'router', size: ['100%', '100%'], anchor: 'top_left',
         json: {
             type: 'collection_panel',
-            property_bag: { '#route_': [], ...Object.fromEntries(panels.map((p, i) => [`#route_${p.panelId}`, [routeId(i)]])) },
-            factory: { name: `${options.namespace}_title_screen`, control_ids: Object.fromEntries(panels.map((_, i) => [routeId(i), `@${options.namespace}.${routeId(i)}`])) },
+            property_bag: { '#route_': [], ...Object.fromEntries(routes.map((r) => [`#route_${r.title}`, [r.id]])) },
+            factory: { name: `${options.namespace}_title_screen`, control_ids: Object.fromEntries(routes.map((r) => [r.id, `@${options.namespace}.${r.id}`])) },
             bindings: [
                 { binding_name: '#title_text', binding_condition: 'always' },
                 { binding_type: 'view', source_property_name: "('#route_' + #title_text)", target_property_name: '#collection_length', binding_condition: 'always' },
@@ -67,8 +89,13 @@ export function serverForm(options: ServerFormOptions): ServerFormFiles {
         },
     })
     const screens: Record<string, Element> = { root: new Panel({ size: ['100%', '100%'], visible: form.title.contains(prefix), children: [router] }) }
-    panels.forEach((p, i) => { screens[routeId(i)] = new Panel({ size: ['100%', '100%'], children: [p.content] }) })
+    panels.forEach((p, i) => {
+        const screen = new Panel({ size: ['100%', '100%'], children: [p.content] })
+        for (const [k, v] of Object.entries(p.routes?.base ?? {})) screen.setVariable(k, v)
+        screens[routeId(i)] = screen
+    })
     const { json, issues } = compileNamespace(options.namespace, screens, options)
+    Object.assign(json, derived)
     const hook = {
         namespace: 'server_form',
         main_screen_content: {

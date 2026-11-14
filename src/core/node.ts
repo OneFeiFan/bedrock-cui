@@ -10,7 +10,7 @@ export type Anchor = 'top_left' | 'top_middle' | 'top_right' | 'left_middle' | '
 export type Dyn<T> = T | Expr
 export type RGB = [number, number, number]
 
-export type Intrinsic = 'panel' | 'stack' | 'grid' | 'image' | 'label' | 'button' | 'toggle' | 'collection_item' | 'raw'
+export type Intrinsic = 'panel' | 'stack' | 'grid' | 'image' | 'label' | 'button' | 'toggle' | 'collection_item' | 'raw' | 'scroll'
 
 /** 快照节点：名字确定、只有内置控件 */
 export interface RNode {

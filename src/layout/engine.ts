@@ -41,6 +41,8 @@ export interface Scope { collection?: { name: string, index: number } }
 export interface LayoutEnv {
     viewport: [number, number]
     textures?: (path: string) => TextureInfo | undefined
+    /** 滚动区域的滚动量（预览里接鼠标滚轮） */
+    scrollOffset?: (path: string) => number
     /** 读数据来源（预览里接信号；单测里给固定值） */
     data?: (name: string, source: Source, scope: Scope) => Value
     /** 按钮 / 开关当前的鼠标状态（预览里由鼠标决定） */
@@ -60,6 +62,8 @@ export interface Box {
     clip?: Rect
     /** 按钮 / 开关状态子树里的控件（状态名） */
     state?: string
+    /** 滚动区域：视口高、内容高、当前滚动量 */
+    scroll?: { view: number, content: number, offset: number }
     /** 能否交互（按钮 / 开关；禁用的不参与鼠标判定） */
     enabled?: boolean
     scope: Scope
@@ -225,7 +229,7 @@ class Engine {
         const myZ = z + (n.props.layer ?? 0)
         const box: Box = { node: n, rect, z: myZ, order: this.order++, clip, scope, children: [] }
         if (n.type === 'button' || n.type === 'toggle') box.enabled = this.enabled(n)
-        const childClip = n.props.clip ? intersect(clip, rect) : clip
+        const childClip = n.props.clip || n.type === 'scroll' ? intersect(clip, rect) : clip
         const s = this.childScope(n, scope)
         if (n.type === 'image') {
             const tex = String(this.value(n.props.texture, scope, ''))
@@ -296,6 +300,19 @@ class Engine {
             })
             return box
         }
+        if (n.type === 'scroll') {
+            // 内容宽 = 区域宽 − 滚动条（8：边距 2 + 条 4 + 边距 2，原版缺省）；高度按内容；按滚动量上移
+            const cw = Math.max(0, rect.w - SCROLLBAR)
+            const content = kids.filter((c) => this.visible(c, s)).reduce((h, c) => Math.max(h, this.size(c, cw, rect.h, s)[1]), 0)
+            const offset = Math.min(Math.max(0, this.env.scrollOffset?.(n.path) ?? 0), Math.max(0, content - rect.h))
+            box.scroll = { view: rect.h, content, offset }
+            const inner = { x: rect.x, y: rect.y - offset, w: cw, h: Math.max(rect.h, content) }
+            for (const c of kids) {
+                const b = this.place(c, inner, s, myZ, childClip)
+                if (b) box.children.push(b)
+            }
+            return box
+        }
         for (const c of kids) {
             const b = this.place(c, rect, s, myZ, childClip)
             if (b) { b.state = stateOf(c); box.children.push(b) }
@@ -303,6 +320,9 @@ class Engine {
         return box
     }
 }
+
+/** 滚动条占的宽度（原版 scrolling_panel 缺省：左边距 2 + 条 4 + 右边距 2） */
+export const SCROLLBAR = 8
 
 function intersect(a: Rect | undefined, b: Rect): Rect {
     if (!a) return b
