@@ -4,9 +4,8 @@
  *   命名空间文件：root = 全屏面板，标题包含 panelId 时显示
  * 脚本里 `new ActionFormData().title(panelId)` 打开。
  */
-import { form, toggleState } from '../core/expr.js'
-import { Button, Panel, Raw, Toggle, type Element } from '../core/element.js'
-import { Anchor } from '../core/values.js'
+import { form } from '../core/expr.js'
+import { Panel, Raw, type Element } from '../core/element.js'
 import { compileNamespace, type CompileResult } from './compile.js'
 import type { LintOptions } from './lint.js'
 
@@ -21,20 +20,11 @@ export interface ServerFormPanel {
     routes?: { base?: Record<string, unknown>, variants?: Record<string, Record<string, unknown>> }
     /**
      * 是否走标题路由（只在打开它时才创建；缺省 true）。false = 静态界面：表单打开时就创建，按「标题包含 panelId」显示——
-     * 要靠默认聚焦连点翻页的界面用静态（真机 1.10.0：路由界面由工厂在打开之后才创建，默认聚焦不可靠；1.5.4 的静态写法可靠）。
+     * 要靠默认聚焦连点翻页的界面用静态（真机 1.10.0 / 1.12.0：路由界面由工厂在打开之后才创建，默认聚焦不可靠、翻页乱跳；
+     * 静态写法可靠。试过「焦点交接」——静态部分放透明缓冲按钮、界面建好后隐藏它——游戏不会重选焦点，无效）。
      */
     routed?: boolean
-    /**
-     * 焦点交接（路由界面用）：静态部分放一个 1×1 透明的「焦点缓冲」按钮（聚焦优先级 1000），表单一打开焦点先落在它身上；
-     * 路由界面里放一个「已加载」标记（默认选中的隐藏开关），界面创建好之后缓冲按钮隐藏——游戏若按优先级重选焦点，就会落到界面里
-     * 优先级最高的按钮（例如聚焦版翻页箭头）。缓冲按钮发的是空事件，被点到也不会关表单。
-     * 背景：真机 1.10.0 路由界面由工厂在打开之后才创建，默认聚焦不可靠（翻页乱跳）。⏳ 待真机确认。
-     */
-    focusHandoff?: boolean
 }
-
-/** 焦点交接：路由界面 i 的「已加载」标记开关名 */
-const readyMarker = (i: number) => `cui_ready_${i}`
 
 /** 服务端分页的表单标题：`<panelId>/<页名>`（与 serverForm 的路由一致） */
 export function serverTitle(panelId: string, variant?: string): string {
@@ -107,23 +97,10 @@ export function serverForm(options: ServerFormOptions): ServerFormFiles {
     })
     // 静态界面：直接放在根下，按「标题包含 panelId」显示（与 1.5.4 相同）
     const statics: Element[] = panels.filter((p) => p.routed === false).map((p) => new Panel({ size: ['100%', '100%'], visible: form.title.contains(p.panelId), children: [p.content] }))
-    // 焦点交接：静态部分的缓冲按钮（按标题包含 panelId 显示；路由界面里的「已加载」标记出现后隐藏）
-    panels.forEach((p, i) => {
-        if (!p.focusHandoff || p.routed === false) return
-        const clash = panels.find((q) => q !== p && q.panelId.includes(p.panelId))
-        if (clash) throw new Error(`焦点交接按「标题包含 ${p.panelId}」显示缓冲按钮，但 ${clash.panelId} 也包含它`)
-        const gate = new Panel({ name: `focus_gate_${i}`, size: ['100%', '100%'], visible: form.title.contains(p.panelId) })
-        gate.add(new Button().setName(`focus_sink_${i}`).setSize(1, 1).setAnchor(Anchor.TOP_LEFT)
-            .setFocusPrecedence(1000).setPressedName('button.cui_focus_sink')
-            .setVisible(toggleState(readyMarker(i)).not()).setBindingAlways())
-        statics.push(gate)
-    })
     const screens: Record<string, Element> = { root: new Panel({ size: ['100%', '100%'], visible: form.title.contains(prefix), children: [...statics, router] }) }
     panels.forEach((p, i) => {
         if (p.routed === false) return
         const screen = new Panel({ size: ['100%', '100%'], children: [p.content] })
-        // 焦点交接：「已加载」标记（默认选中的隐藏开关；静态部分的缓冲按钮读它）
-        if (p.focusHandoff) screen.add(new Toggle(readyMarker(i), 0).setName(readyMarker(i)).setRadio(false).setDefaultState(true).setSize(0, 0))
         for (const [k, v] of Object.entries(p.routes?.base ?? {})) screen.setVariable(k, v)
         screens[routeId(i)] = screen
     })

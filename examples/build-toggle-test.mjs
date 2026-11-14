@@ -10,11 +10,10 @@ import { fileURLToPath } from 'node:url'
 import { serverForm } from 'cui'
 import { buildBook, ARROWS, BOOK_PAGES, FORM, T, TEXTURE_INFO } from './toggle-book.mjs'
 import { buildResponsiveDemo, RESPONSIVE_FORM } from './responsive-demo.mjs'
-import { buildFocusRouted, FOCUS_ROUTED, FOCUS_SINK, FOCUS_STAY } from './focus-routed.mjs'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 const outRoot = path.resolve(process.argv[2] ?? path.join(here, '..', 'out'))
-const VERSION = [1, 12, 0]
+const VERSION = [1, 13, 0]
 const UUID = { bp: '6a3f0e2c-91d4-4b7a-8c55-0e1f7a2b9c31', bpScript: 'c2e8b7d1-4f6a-4c9e-a1b2-3d4e5f607182', rp: '1f9c3a7e-2b4d-4e6f-8a90-b1c2d3e4f5a6', rpRes: '7d8e9f0a-1b2c-4d3e-9f4a-5b6c7d8e9f01' }
 const NAME = 'cui_toggle_test'
 
@@ -22,15 +21,11 @@ const NAME = 'cui_toggle_test'
 const VARIANT = process.env.CUI_VARIANT ?? '无动画'
 // 两个界面同一个命名空间，按标题路由：打开哪个只创建哪个
 const book = buildBook({ variant: VARIANT })
-const focusPlain = buildFocusRouted(FOCUS_ROUTED), focusSink = buildFocusRouted(FOCUS_SINK)
 const { files, issues } = serverForm({ namespace: NAME, panels: [
     // 测试书：静态界面（默认聚焦可靠）
     { panelId: FORM.title, content: book, routed: false },
     // 响应式演示：路由界面（只在打开它时创建）
     { panelId: RESPONSIVE_FORM.title, content: buildResponsiveDemo() },
-    // 实验：路由界面上的服务端翻页 + 默认聚焦（与测试书对照）；无焦点交接 / 有焦点交接
-    { panelId: FOCUS_ROUTED.title, content: focusPlain.content, routes: focusPlain.pages.serverRoutes() },
-    { panelId: FOCUS_SINK.title, content: focusSink.content, routes: focusSink.pages.serverRoutes(), focusHandoff: true },
 ], textures: (p) => TEXTURE_INFO[p], screenAnimation: VARIANT === '有动画' })
 const ROUTES = Object.fromEntries(ARROWS.map((a) => [a.index, { target: a.target, from: a.from, dir: a.dir }]))
 if (issues.some((i) => i.level === 'error')) { console.error(issues); process.exit(1) }
@@ -163,35 +158,13 @@ function openDDUI(player) {
         .header(title)
         .image(img, RP_UUID, { tooltip: tip, width: 32 })
         .label(body)
-    // 预加载：三张图都以宽 1 显示一次，贴图提前进缓存（真机 1.11.0 描述：翻页时有概率缩一下，多翻几次就不再出现——像是图片第一次加载）
-    for (const p of DD_PAGES) form.image(p.img, RP_UUID, { width: 1 })
+    // 预加载（方案 A：一开始就隐藏）——看隐藏着的图片会不会也把贴图载入缓存。
+    // 真机 1.12.0：以宽 1 显示的预加载让「缩一下」消失了（确认是图片第一次加载），但 width 没把图缩小，图整个显示了出来
+    for (const p of DD_PAGES) form.image(p.img, RP_UUID, { visible: false })
     form.closeButton()
         .show()
         .then((reason) => player.sendMessage('§7[CUI] DDUI 表单关闭：' + reason))
         .catch((e) => player.sendMessage('§c[CUI] DDUI 出错：' + e))
-}
-
-// ── 实验：路由界面上的服务端翻页 + 默认聚焦（箭头写法与测试书相同，只差在「路由界面」）；指南针 = 无焦点交接，时钟 = 有焦点交接
-const FR = {
-    plain: { title: ${JSON.stringify(FOCUS_ROUTED.title)}, name: '路由版', routes: ${JSON.stringify(Object.fromEntries(focusPlain.routes.map((a) => [a.index, a])))} },
-    sink: { title: ${JSON.stringify(FOCUS_SINK.title)}, name: '路由版+交接', routes: ${JSON.stringify(Object.fromEntries(focusSink.routes.map((a) => [a.index, a])))} },
-}
-const FR_STAY = ${FOCUS_STAY}
-function openFocusRouted(player, cfg, page = 'p1', dir = 'right') {
-    camera(player, false)
-    const form = new ActionFormData().title(cfg.title + '/' + page).body('')
-    for (let i = 0; i <= FR_STAY; i++) {
-        const a = cfg.routes[i]
-        form.button(i === FR_STAY ? 'stay|' : a ? 'go' + i + '|' + (a.from === page && a.dir === dir ? 'F' : '') : '')
-    }
-    form.show(player).then((r) => {
-        if (r.canceled) { camera(player, true); return }
-        const a = cfg.routes[r.selection]
-        player.sendMessage('§7[CUI·' + cfg.name + '] 在「' + page + '」收到按钮 ' + r.selection + (a ? ' → 翻到「' + a.target + '」' : r.selection === FR_STAY ? '（原地不动）' : '（不是翻页按钮）'))
-        if (a) return openFocusRouted(player, cfg, a.target, a.dir)
-        if (r.selection === FR_STAY) return openFocusRouted(player, cfg, page, dir)
-        camera(player, true)
-    })
 }
 
 // ── 响应式布局演示（第二个界面：同一命名空间按标题路由，只创建这一个）
@@ -225,14 +198,16 @@ function openDDUI2(player) {
             .image(p.img, RP_UUID, { tooltip: p.tip, width: 32, visible: shown[i] })
             .label(p.body, { visible: shown[i] })
     })
-    // 预加载：三张图都以宽 1 一直显示（贴图提前进缓存；隐藏着的图片可能不加载）
-    for (const p of DD_PAGES) form.image(p.img, RP_UUID, { width: 1 })
+    // 预加载（方案 B：先显示、半秒后隐藏）——保底：打开时底部会闪一下，但贴图一定载入过
+    const preload = new ObservableBoolean(true)
+    for (const p of DD_PAGES) form.image(p.img, RP_UUID, { visible: preload })
+    system.runTimeout(() => preload.setData(false), 10)
     form.closeButton().show()
         .then((reason) => player.sendMessage('§7[CUI] DDUI 对照版关闭：' + reason))
         .catch((e) => player.sendMessage('§c[CUI] DDUI 出错：' + e))
 }
 
-// 触发物品：书 = 测试书；纸 = 响应式演示；羽毛 = DDUI 翻页实验；燧石 = DDUI 对照版；指南针 = 路由版翻页实验；时钟 = 路由版 + 焦点交接
+// 触发物品：书 = 测试书；纸 = 响应式演示；羽毛 = DDUI（预加载图片一开始就隐藏）；燧石 = DDUI 对照版（预加载图片先显示、半秒后隐藏）
 // （1.9.0 用书与笔触发 DDUI：原版书写界面会先打开，关掉后 DDUI 才「有概率」出现——换成没有原版界面的物品）
 world.afterEvents.itemUse.subscribe((e) => {
     if (e.source.typeId !== 'minecraft:player') return
@@ -241,15 +216,11 @@ world.afterEvents.itemUse.subscribe((e) => {
     else if (id === 'minecraft:paper') openResponsive(e.source)
     else if (id === 'minecraft:feather') openDDUI(e.source)
     else if (id === 'minecraft:flint') openDDUI2(e.source)
-    else if (id === 'minecraft:compass') openFocusRouted(e.source, FR.plain)
-    else if (id === 'minecraft:clock') openFocusRouted(e.source, FR.sink)
 })
 system.afterEvents.scriptEventReceive.subscribe((e) => {
     if (e.id === 'cui:open' && e.sourceEntity?.typeId === 'minecraft:player') open(e.sourceEntity)
     if (e.id === 'cui:ddui' && e.sourceEntity?.typeId === 'minecraft:player') openDDUI(e.sourceEntity)
     if (e.id === 'cui:ddui2' && e.sourceEntity?.typeId === 'minecraft:player') openDDUI2(e.sourceEntity)
-    if (e.id === 'cui:focusr' && e.sourceEntity?.typeId === 'minecraft:player') openFocusRouted(e.sourceEntity, FR.plain)
-    if (e.id === 'cui:focuss' && e.sourceEntity?.typeId === 'minecraft:player') openFocusRouted(e.sourceEntity, FR.sink)
     if (e.id === 'cui:responsive' && e.sourceEntity?.typeId === 'minecraft:player') openResponsive(e.sourceEntity)
 })
 `)

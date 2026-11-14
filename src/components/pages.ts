@@ -76,7 +76,7 @@ export class Pages extends Panel {
     /**
      * 服务端分页（**路由界面**用）：每一页一个路由——标题 `<界面 id>/<页名>`（serverTitle）路由到「同一个界面 + 一个变量」，
      * 变量是这组开关的初始选中序号（原版 common.toggle 用 |default 声明，会继承祖先设的值）。配合 serverForm 的 routes: pages.serverRoutes()。
-     * ⚠️ 真机 1.10.0：路由界面由工厂在表单打开之后才创建，默认聚焦不可靠（翻页箭头鼠标不动连点会乱跳）——要连点翻页请用静态界面 + useServerPages()。
+     * ⚠️ 真机 1.10.0 / 1.12.0：路由界面由工厂在表单打开之后才创建，默认聚焦不可靠（翻页箭头鼠标不动连点会乱跳；焦点交接也无效）——要连点翻页请用静态界面 + useServerPages()。
      */
     useRoutePages(): this { if (!this.serverMode) this.serverMode = { kind: 'routes' }; return this }
 
