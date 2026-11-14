@@ -6,6 +6,7 @@
  *   · 阴影：右下各偏 1 界面像素、颜色 ×0.25；粗体：右移 1（Minecraft）/ 0.5（Unifont）再画一遍；斜体：按行斜切；§k：同宽随机字形。
  * 字体文件由 scripts/fetch-fonts.mjs 准备（Unifont：OFL；ascii.png 取自本机的 Java 版客户端，不随源码分发）。
  */
+import { GAME_GLYPHS, GAME_GLYPH_THRESHOLD } from '../font/gameGlyphs.js'
 import { boldExtra, charWidth, LINE_HEIGHT } from '../font/metrics.js'
 import { BEDROCK_COLORS, PLAIN, parseRich, type RunStyle } from '../font/rich.js'
 
@@ -58,7 +59,8 @@ const glyphCache = new Map<number, { w: number, rows: number[], lo: number, hi: 
 function unifontGlyph(fonts: PixelFonts, cp: number) {
     const hit = glyphCache.get(cp)
     if (hit) return hit
-    const bits = fonts.unifont?.get(cp)
+    // 游戏改过的字形优先（从真机截图反推，见 gameGlyphs.ts）
+    const bits = GAME_GLYPHS[cp] ?? fonts.unifont?.get(cp)
     if (!bits) return undefined
     const w = bits.length === 64 ? 16 : 8
     const rows: number[] = []
@@ -99,9 +101,22 @@ function drawGlyph(ctx: CanvasRenderingContext2D, fonts: PixelFonts, ch: string,
     }
     const g = unifontGlyph(fonts, cp)
     if (!g || g.lo < 0) return !!g
-    const h = s / 2
-    for (let r = 0; r < 16; r++) for (let c = g.lo; c <= g.hi; c++) {
-        if ((g.rows[r] >> (g.w - 1 - c)) & 1) px(ctx, (x + (c - g.lo) / 2 + skew(r / 2)) * s, (y + r / 2) * s, h, h)
+    // 与游戏同样的画法（真机 1.20.1 逐像素验证）：点阵按双线性插值放大，透明度 > 0.35 的屏幕像素上色——
+    // 所以「。」是圆环、「，」是圆点，笔画也比半像素略粗。T = 一个点阵格子（半个界面像素）占的屏幕像素
+    const T = s / 2
+    const bit = (c: number, r: number) => (c >= g.lo && c <= g.hi && r >= 0 && r < 16 ? (g.rows[r] >> (g.w - 1 - c)) & 1 : 0)
+    // 字形原点偏半个屏幕像素（像素中心对齐）：真机 1.20.1 的「，」「。」只有在相位 (0.5, 0.5) 时尺寸与游戏一致（6×11、11×11）
+    const ox = x * s + 0.5, oy = y * s + 0.5
+    const X0 = Math.floor(ox - T), X1 = Math.ceil(ox + (g.hi - g.lo + 2) * T + (italic ? s : 0)), Y0 = Math.floor(oy - T), Y1 = Math.ceil(oy + 17 * T)
+    for (let Y = Y0; Y < Y1; Y++) {
+        const v = (Y + 0.5 - oy) / T - 0.5
+        const sk = italic ? skew(Math.max(0, Math.min(8, v / 2))) * s : 0
+        for (let X = X0; X < X1; X++) {
+            const u = (X + 0.5 - ox - sk) / T - 0.5 + g.lo
+            const c0 = Math.floor(u), r0 = Math.floor(v), fu = u - c0, fv = v - r0
+            const val = bit(c0, r0) * (1 - fu) * (1 - fv) + bit(c0 + 1, r0) * fu * (1 - fv) + bit(c0, r0 + 1) * (1 - fu) * fv + bit(c0 + 1, r0 + 1) * fu * fv
+            if (val > GAME_GLYPH_THRESHOLD) ctx.fillRect(X, Y, 1, 1)
+        }
     }
     return true
 }
