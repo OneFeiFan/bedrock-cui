@@ -295,6 +295,10 @@ export const GI = {
     DIAMOND_L: BIG_ICONS.icon('diamond', T.diamond, { ink: [2, 12] }),
 }
 const { SWORD: GS, DIAMOND: GD, STICK: GK, BOOK: GB, SWORD_L: GSL } = GI
+/** 字形采样（60 个）：常用中文标点、括号、引号、全角符号 / 数字 / 字母，再加几个常见汉字对照 */
+export const SAMPLE_CHARS = [...'，。、；：？！…—～·「」『』（）《》〈〉【】“”‘’％＋－＝×÷＃＆＊＠／０１２３４５６ＡＢＣａｂｃ一二三中国人口日月']
+if (SAMPLE_CHARS.length < 60) throw new Error(`字形采样不足 60 个：${SAMPLE_CHARS.length}`)
+
 /** 行内图标（Text 用）：真正的图片控件，8×8 与文字同高；SWORD_L 16×16 */
 export const II = {
     SWORD: InlineIcon.of(T.sword), DIAMOND: InlineIcon.of(T.diamond), STICK: InlineIcon.of(T.stick), BOOK: InlineIcon.of(T.book_item),
@@ -472,6 +476,12 @@ function buildTextPages(pages) {
         new Label({ text: `§8运行期文字（游戏折行）：§r\n${GI.DIAMOND_L} 钻石 ×3\n${GI.SWORD_L} 钻石剑 ×1`, color: BODY, size: ['100%', 'default'], anchor: 'top_left', offset: [0, 62] }).setLineSpacing(6),
         // 运行期文字高 = 3 行 × (10 + 6) = 48（line_padding：每行都多占 6，真机 1.20.0）→ 62–110，说明放在 114
         new Body('§8上：emoji 字形 + 行距 6（line_padding），图标不压行。', 114)))
+    // 字形采样：常用标点 / 符号按 2 倍字号排成网格（每个点阵格子 = 1 界面像素），截图后逐格还原游戏的点阵、与 Unifont 比较
+    chain.push('tsample')
+    const samplePage = pages.page('tsample')
+    const grid = (chars) => chars.map((ch, i) => new Label({ text: ch, color: BODY, fontScale: 2, anchor: 'top_left', offset: [(i % 5) * 22, 20 + Math.floor(i / 5) * 20] }))
+    samplePage.add(new Side('L').add(new Title('字形采样 1'), ...grid(SAMPLE_CHARS.slice(0, 30))))
+    samplePage.add(new Side('R').add(new Title('字形采样 2'), ...grid(SAMPLE_CHARS.slice(30, 60))))
     // 文本页之间的箭头
     chain.forEach((key, i) => {
         const page = pages.page(key)
