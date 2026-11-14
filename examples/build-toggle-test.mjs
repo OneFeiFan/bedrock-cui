@@ -13,7 +13,7 @@ import { buildResponsiveDemo, RESPONSIVE_FORM } from './responsive-demo.mjs'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 const outRoot = path.resolve(process.argv[2] ?? path.join(here, '..', 'out'))
-const VERSION = [1, 16, 0]
+const VERSION = [1, 16, 1]
 const UUID = { bp: '6a3f0e2c-91d4-4b7a-8c55-0e1f7a2b9c31', bpScript: 'c2e8b7d1-4f6a-4c9e-a1b2-3d4e5f607182', rp: '1f9c3a7e-2b4d-4e6f-8a90-b1c2d3e4f5a6', rpRes: '7d8e9f0a-1b2c-4d3e-9f4a-5b6c7d8e9f01' }
 const NAME = 'cui_toggle_test'
 
@@ -150,9 +150,13 @@ const GLYPH_PAGES = [
     { title: G.DIAMOND + ' 第 2 页 · 钻石', body: '字形和文字同一行：' + G.DIAMOND + ' 钻石 ×3\\n大小跟着字号走（标题里更大）。\\n原版只用 E0 / E1 两张字形图，\\n这里用 E2（U+E200 起），不覆盖原版。\\n（这一行用来补齐行数）' },
     { title: G.STICK + ' 第 3 页 · 木棍', body: '最后一页：「下一页」变成禁用。\\n' + G.STICK + ' 木棍 ×12　' + G.BOOK + ' 书 ×1\\n同样的字形在聊天栏（JSON UI）里也能用。\\n对比燧石：图片组件 + 预加载小点。\\n（这一行用来补齐行数）' },
 ]
+// 对照行：原版 E0 页、原版 E1 页（手柄 / 键盘按键之类的原版图标）、我们的 E2 页——
+// 真机 1.16.0：聊天栏（JSON UI）显示 E2 图标，DDUI 里是方框 ⇒ 看 DDUI 认不认原版自带的 E0 / E1
+const run = (base, n) => Array.from({ length: n }, (_, i) => String.fromCodePoint(base + i)).join('')
+const GLYPH_PROBE = 'E0：' + run(0xE000, 8) + '　E1：' + run(0xE100, 8) + '　E2：' + run(0xE200, 4)
 function openDDUI(player) {
-    // 聊天栏是 JSON UI 画的：先确认字形图本身有没有被游戏读到
-    player.sendMessage('§7[CUI] 字形测试（聊天栏 = JSON UI）：' + G.SWORD + ' ' + G.DIAMOND + ' ' + G.STICK + ' ' + G.BOOK)
+    // 聊天栏是 JSON UI 画的：参照
+    player.sendMessage('§7[CUI] 字形对照（聊天栏 = JSON UI）：' + GLYPH_PROBE)
     let k = 0
     const p0 = GLYPH_PAGES[0]
     const title = new ObservableString(p0.title), body = new ObservableString(p0.body)
@@ -163,6 +167,7 @@ function openDDUI(player) {
         noPrev.setData(k === 0); noNext.setData(k === GLYPH_PAGES.length - 1)
     }
     new CustomForm(player, 'CUI · DDUI 字形版')
+        .label('字形对照（DDUI）：' + GLYPH_PROBE)
         .button('下一页 →', () => go(1), { disabled: noNext })
         .button('← 上一页', () => go(-1), { disabled: noPrev })
         .divider()
