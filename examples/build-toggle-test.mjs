@@ -14,7 +14,7 @@ import { buildResponsiveDemo, RESPONSIVE_FORM } from './responsive-demo.mjs'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 const outRoot = path.resolve(process.argv[2] ?? path.join(here, '..', 'out'))
-const VERSION = [1, 25, 1]
+const VERSION = [1, 26, 0]
 const UUID = { bp: '6a3f0e2c-91d4-4b7a-8c55-0e1f7a2b9c31', bpScript: 'c2e8b7d1-4f6a-4c9e-a1b2-3d4e5f607182', rp: '1f9c3a7e-2b4d-4e6f-8a90-b1c2d3e4f5a6', rpRes: '7d8e9f0a-1b2c-4d3e-9f4a-5b6c7d8e9f01' }
 const NAME = 'cui_toggle_test'
 
@@ -68,7 +68,7 @@ write(path.join(bp, 'manifest.json'), {
     dependencies: [{ module_name: '@minecraft/server', version: '2.0.0' }, { module_name: '@minecraft/server-ui', version: '2.2.0' }, { uuid: UUID.rp, version: VERSION }],
 })
 write(path.join(bp, 'scripts', 'main.js'), `import { InputPermissionCategory, ItemStack, system, world } from '@minecraft/server'
-import { ActionFormData, CustomForm, ObservableBoolean, ObservableString, uiManager } from '@minecraft/server-ui'
+import { ActionFormData, CustomForm, ObservableBoolean, ObservableString } from '@minecraft/server-ui'
 
 // 与界面约定：标题、正文前缀 CUI;|、按钮 0–3 = 格子 s0|…s3|（运行期数据跟在 | 后面）、按钮 4 = close|
 const TITLE = ${JSON.stringify(FORM.title)}
@@ -104,8 +104,22 @@ function inventoryText(player) {
     return '§6' + player.name + '§r 的背包（' + counts.size + ' 种物品）：\\n' + (list || '§8背包是空的') + '\\n§2这段文字由脚本在运行期生成，长度不固定，由引擎负责折行。'
 }
 
-// 书打开期间锁视角：混合翻页每次翻页都会关表单、再打开（表单之间的空档不让视角偏转）
-const camera = (player, on) => { try { player.inputPermissions.setPermissionCategory(InputPermissionCategory.Camera, on) } catch {} }
+// 书打开期间锁视角：混合翻页每次翻页都会关表单、再打开（表单之间的空档不让视角偏转）。
+// 与 sapdon 的指导书一样：没锁才锁（翻页时不重复设置），关书时解开
+const camera = (player, on) => {
+    try {
+        const perms = player.inputPermissions
+        if (perms.isPermissionCategoryEnabled(InputPermissionCategory.Camera) !== on) perms.setPermissionCategory(InputPermissionCategory.Camera, on)
+    } catch {}
+}
+/**
+ * 诊断消息（聊天栏回报收到的按钮）缺省关闭：/scriptevent cui:diag on 打开。
+ * 真机 1.24.0：进入地图后第一次服务端翻页界面会消失一阵子；sapdon 的指导书同样「关了再开」却没有——差别之一是测试包每次翻页都往聊天栏发消息
+ * （进入地图后的第一条消息要初始化聊天栏）。1.25.0 的预热「治好了」它，也正好因为预热发了一条消息。
+ */
+let diag = false
+/** 给玩家发消息（scriptevent 的来源实体类型是 Entity，这里由调用处保证是玩家） */
+const say = (player, text) => player.sendMessage(text)
 system.run(() => { for (const p of world.getAllPlayers()) camera(p, true) })
 
 /**
@@ -128,10 +142,10 @@ function open(player, page = 'home', dir = 'right') {
         form.button(i === 8 ? 'od|' + info(player, 'minecraft:diamond_sword') + '\\n§8（这段来自 8 号表单按钮）' : i === 9 ? 'stay|' : a ? 'go' + i + '|' + (a.from === here && a.dir === dir ? 'F' : '') : '')
     }
     form.show(player).then((r) => {
-        if (r.canceled) { camera(player, true); player.sendMessage('§7[CUI] 表单关闭（Esc）：' + (r.cancelationReason ?? '')); return }
+        if (r.canceled) { camera(player, true); if (diag) player.sendMessage('§7[CUI] 表单关闭（Esc）：' + (r.cancelationReason ?? '')); return }
         const a = ROUTES[r.selection]
         // 诊断：每次点击都回报收到的按钮序号与当时所在的页
-        player.sendMessage('§7[CUI] 在「' + here + '」收到按钮 ' + r.selection + (a ? ' → 翻到「' + a.target + '」' : r.selection === 9 ? '（原地不动）' : r.selection === 4 ? '（右上角 ×）' : '（不是翻页按钮）'))
+        if (diag) player.sendMessage('§7[CUI] 在「' + here + '」收到按钮 ' + r.selection + (a ? ' → 翻到「' + a.target + '」' : r.selection === 9 ? '（原地不动）' : r.selection === 4 ? '（右上角 ×）' : '（不是翻页按钮）'))
         if (a) return open(player, a.target, a.dir)
         if (r.selection === 9) return open(player, here, dir)
         camera(player, true)
@@ -139,23 +153,8 @@ function open(player, page = 'home', dir = 'right') {
     })
 }
 
-/**
- * 预热：本次进入地图后第一次打开书时，先开一个看不见的表单（标题 cui_ui:warmup——原版表单藏起来、CUI 的界面没有一页匹配），
- * 2 tick 后关掉，再打开书。真机 1.24.0：进入地图后第一次服务端翻页（关表单后马上重开）界面会消失一阵子，之后不再出现，
- * 直到重新进入地图；与贴图无关（翻回已显示过的目录页也会）。预热把这次「关了再开」挪到打开书的时候。
- */
-const warmed = new Set()
-function openBook(player) {
-    if (warmed.has(player.id)) return open(player)
-    warmed.add(player.id)
-    const t0 = system.currentTick
-    camera(player, false)
-    new ActionFormData().title('cui_ui:warmup').body('').button('').show(player).then(() => {
-        player.sendMessage('§7[CUI] 预热完成（' + (system.currentTick - t0) + ' tick），打开书')
-        open(player)
-    })
-    system.runTimeout(() => uiManager.closeAllForms(player), 2)
-}
+/** 打开书（1.25.0 的预热已去掉：空档的原因多半是翻页时的诊断消息，见 diag） */
+const openBook = (player) => open(player)
 
 // ── DDUI 翻页实验：CustomForm + Observable。按钮不关表单，点了只改可观察数据 ⇒「下一页」一直是同一个控件，
 //    鼠标不动也能连点（与原生界面同一个道理）。外观由 Ore UI 画，不能用 JSON UI 改。
@@ -245,6 +244,7 @@ world.afterEvents.itemUse.subscribe((e) => {
 })
 system.afterEvents.scriptEventReceive.subscribe((e) => {
     if (e.id === 'cui:open' && e.sourceEntity?.typeId === 'minecraft:player') openBook(e.sourceEntity)
+    if (e.id === 'cui:diag' && e.sourceEntity?.typeId === 'minecraft:player') { diag = e.message.trim() !== 'off'; say(e.sourceEntity, '§7[CUI] 诊断消息：' + (diag ? '开' : '关')) }
     if (e.id === 'cui:ddui' && e.sourceEntity?.typeId === 'minecraft:player') openDDUI(e.sourceEntity)
     if (e.id === 'cui:ddui2' && e.sourceEntity?.typeId === 'minecraft:player') openDDUI2(e.sourceEntity)
     if (e.id === 'cui:responsive' && e.sourceEntity?.typeId === 'minecraft:player') openResponsive(e.sourceEntity)
