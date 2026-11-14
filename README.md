@@ -65,9 +65,22 @@ class StatRow extends Row {                         // 自定义组件 = 继承
 ```bash
 npm install
 npm test                                  # tsc + node:test（63 条）
-node scripts/fetch-fonts.mjs              # 预览用像素字体（Unifont + 本机 Java 版的 ascii.png）
+node scripts/fetch-fonts.mjs              # 预览用像素字体（见下）
 npx vite                                  # 浏览器预览：开关翻页测试书
 node examples/build-toggle-test.mjs out   # 真机测试包 out/cui_toggle_test.mcaddon
 ```
+
+### 浏览器预览需要的字体（不随源码分发）
+
+`node scripts/fetch-fonts.mjs` 一条命令准备好，放在 `preview-src/public/font/`（Windows / macOS / Linux 都只需要 Node.js）：
+
+| 文件 | 用途 | 来源 |
+|---|---|---|
+| `unifont.hex.gz` | 汉字等非 ASCII 字符 | GNU Unifont 16.0.04：先试 unifoundry.com，连不上自动改用中科大 / GNU 镜像的 BDF 并在本地转换 |
+| `ascii.png` | 纯英文（Minecraft 字体） | Java 版客户端 client.jar：依次找 `--java-jar`、`CUI_JAVA_CLIENT_JAR`、sapdon 缓存、官方启动器目录（`%APPDATA%\.minecraft\versions`），都没有就从 Mojang 官方下载最新正式版（约 40 MB，缓存到 `~/.sapdon/java/`） |
+
+网络不通时可以手动下载后指定：`--unifont <unifont-16.0.04.hex.gz 或 .bdf.gz>`、`--java-jar <client.jar>`。
+游戏与 Unifont 不同的字形（真机采样还原的 51 个）在源码里（`src/font/gameGlyphs.ts`），不需要额外文件。
+预览地址后面加 `?scale=5` 可以按指定的界面缩放渲染（与游戏的「界面缩放」一致时可以和游戏截图逐像素对比）；`?demo=responsive` 是响应式演示。
 
 设计说明、验证状态、路线图：[docs/DESIGN.md](docs/DESIGN.md)。
