@@ -7,6 +7,7 @@
  *   粗体：Minecraft 字体每字 +1，Unifont 每字 +0.5（实测「中」粗体 7.0）
  * 行高 10（字形 8 + 行距 2）。`§x` 格式码不占宽度。
  */
+import { gameGlyphInk } from './gameGlyphs.js'
 import { UNIFONT_HALF } from './unifontWidths.js'
 
 export const LINE_HEIGHT = 10
@@ -36,6 +37,9 @@ export function unifontWidth(ch: string): number {
     const g = GLYPH_WIDTH.get(ch)
     if (g !== undefined) return g
     const cp = ch.codePointAt(0)!
+    // 游戏与 Unifont 不同的字形（真机采样还原，见 gameGlyphs.ts）：字距 = 墨迹宽 / 2 + 1
+    const ink = gameGlyphInk(cp)
+    if (ink !== undefined) return ink / 2 + 1
     if (cp >= 0x20 && cp < 0x10000) {
         const half = parseInt(UNIFONT_HALF[cp - 0x20], 36)
         if (half) return half / 2
