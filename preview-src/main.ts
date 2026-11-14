@@ -10,6 +10,8 @@ import { mountResponsive } from './responsive'
 
 // ?demo=responsive：响应式布局演示；否则：开关翻页测试书
 const DEMO = new URLSearchParams(location.search).get('demo')
+// ?scale=5：预览的界面缩放（与游戏「界面缩放」一致时可以和游戏截图逐像素对比；缺省 3）
+const SCALE = Math.max(1, Math.min(8, Number(new URLSearchParams(location.search).get('scale')) || 3))
 
 const FILE: Record<string, string> = {
     [T.book]: 'book', [T.line]: 'line', [T.rowHover]: 'row_hover', [T.arrowL]: 'arrow_left', [T.arrowLH]: 'arrow_left_hover',
@@ -39,7 +41,7 @@ function mountBook(): void {
     const formText = signal(FORM.body)
     const formButtons = signal(buttonsFor('home', 'right'))
     const preview = mountPreview(document.getElementById('app')!, {
-        root: book, viewport: [300, 220], scale: 3, textures,
+        root: book, viewport: [300, 220], scale: SCALE, textures,
         formText, formButtons, title,
         // 模拟服务端：翻页箭头 → 重新打开表单（标题带 P:<页>;、开关回到初始状态）
         onFormButton: (i) => {

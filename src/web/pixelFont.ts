@@ -74,12 +74,13 @@ const hexToRgb = (hex: string): [number, number, number] => [parseInt(hex.slice(
 const OBF_POOL = 'abcdefghjkmnopqrsuvwxyzABCDEFGHJKLMNOPQRSUVWXYZ0123456789#$%&+=?'
 
 /**
- * 画一个对齐到屏幕像素的方块（x, y, w, h 为屏幕像素，可以是小数）：四条边各自四舍五入——与游戏一样不做抗锯齿。
- * 否则 Unifont 的半像素在 3 倍缩放下是 1.5 个屏幕像素，画布会把边缘画成半透明的灰色，标点这种只有几个像素的字形看起来就「样子不一样」
- * （真机 1.20.1 对比：位置一致，只是预览发虚）
+ * 画一个对齐到屏幕像素的方块（x, y, w, h 为屏幕像素，可以是小数），与游戏同样的光栅化：**起点向下取整、终点向上取整**，不做抗锯齿。
+ * 真机 1.20.1（缩放 5）：一个半像素本应 2.5 屏幕像素，游戏画成 3–4（笔画均匀、偏实）；字形就是 GNU Unifont（「；」逐格吻合）。
+ * 先前预览用四舍五入：3 倍缩放下半像素交替画成 1 / 2 像素，同一个字形里点有粗有细——「，」「。」这种几个点的标点看起来像另一套字体；
+ * 更早还有抗锯齿（边缘发灰）。向外取整后每个半像素在 3 倍缩放下都是 2 像素。
  */
 function px(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number): void {
-    const x0 = Math.round(x), y0 = Math.round(y), x1 = Math.round(x + w), y1 = Math.round(y + h)
+    const x0 = Math.floor(x + 1e-6), y0 = Math.floor(y + 1e-6), x1 = Math.ceil(x + w - 1e-6), y1 = Math.ceil(y + h - 1e-6)
     if (x1 > x0 && y1 > y0) ctx.fillRect(x0, y0, x1 - x0, y1 - y0)
 }
 
