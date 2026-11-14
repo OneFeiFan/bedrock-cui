@@ -22,6 +22,8 @@ export interface LintOptions {
     viewport?: [number, number]
     /** 检查弹性布局「内容放不下」时试的屏幕尺寸（缺省 400×300 与极小的 240×135） */
     viewports?: [number, number][]
+    /** 只给这些根的绑定加 binding_condition: always（缺省全部） */
+    alwaysRoots?: string[]
 }
 
 /**

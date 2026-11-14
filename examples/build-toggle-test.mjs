@@ -10,10 +10,11 @@ import { fileURLToPath } from 'node:url'
 import { serverForm } from 'cui'
 import { buildBook, ARROWS, BOOK_PAGES, FORM, T, TEXTURE_INFO } from './toggle-book.mjs'
 import { buildResponsiveDemo, RESPONSIVE_FORM } from './responsive-demo.mjs'
+import { buildFocusRouted, FOCUS_PAGES, FOCUS_ROUTED, FOCUS_ROUTES, FOCUS_STAY } from './focus-routed.mjs'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 const outRoot = path.resolve(process.argv[2] ?? path.join(here, '..', 'out'))
-const VERSION = [1, 10, 0]
+const VERSION = [1, 11, 0]
 const UUID = { bp: '6a3f0e2c-91d4-4b7a-8c55-0e1f7a2b9c31', bpScript: 'c2e8b7d1-4f6a-4c9e-a1b2-3d4e5f607182', rp: '1f9c3a7e-2b4d-4e6f-8a90-b1c2d3e4f5a6', rpRes: '7d8e9f0a-1b2c-4d3e-9f4a-5b6c7d8e9f01' }
 const NAME = 'cui_toggle_test'
 
@@ -21,7 +22,15 @@ const NAME = 'cui_toggle_test'
 const VARIANT = process.env.CUI_VARIANT ?? '无动画'
 // 两个界面同一个命名空间，按标题路由：打开哪个只创建哪个
 const book = buildBook({ variant: VARIANT })
-const { files, issues } = serverForm({ namespace: NAME, panels: [{ panelId: FORM.title, content: book, routes: BOOK_PAGES.serverRoutes() }, { panelId: RESPONSIVE_FORM.title, content: buildResponsiveDemo() }], textures: (p) => TEXTURE_INFO[p], screenAnimation: VARIANT === '有动画' })
+const focusRouted = buildFocusRouted()
+const { files, issues } = serverForm({ namespace: NAME, panels: [
+    // 测试书：静态界面（默认聚焦可靠）
+    { panelId: FORM.title, content: book, routed: false },
+    // 响应式演示：路由界面（只在打开它时创建）
+    { panelId: RESPONSIVE_FORM.title, content: buildResponsiveDemo() },
+    // 实验：路由界面上的服务端翻页 + 默认聚焦（与测试书对照）
+    { panelId: FOCUS_ROUTED.title, content: focusRouted, routes: FOCUS_PAGES.serverRoutes() },
+], textures: (p) => TEXTURE_INFO[p], screenAnimation: VARIANT === '有动画' })
 const ROUTES = Object.fromEntries(ARROWS.map((a) => [a.index, { target: a.target, from: a.from, dir: a.dir }]))
 if (issues.some((i) => i.level === 'error')) { console.error(issues); process.exit(1) }
 
@@ -100,8 +109,8 @@ system.run(() => { for (const p of world.getAllPlayers()) camera(p, true) })
  */
 function open(player, page = 'home', dir = 'right') {
     camera(player, false)
-    // 标题 = 路由：<界面 id>/<页名> → 那一页的开关本来就是选中的（serverTitle）
-    const form = new ActionFormData().title(TITLE + '/' + page).body('')
+    // 标题 cui_ui:toggle_test|P:<页名>;（静态界面：锚点 + 页码开关按标题显示那一页）
+    const form = new ActionFormData().title(TITLE + '|P:' + page + ';').body('')
     SLOT_ITEMS.forEach((id, i) => form.button('s' + i + '|' + info(player, id)))
     form.button('close|')
     form.button('txt|' + inventoryText(player))
@@ -128,10 +137,11 @@ function open(player, page = 'home', dir = 'right') {
 // ── DDUI 翻页实验：CustomForm + Observable。按钮不关表单，点了只改可观察数据 ⇒「下一页」一直是同一个控件，
 //    鼠标不动也能连点（与原生界面同一个道理）。外观由 Ore UI 画，不能用 JSON UI 改。
 const RP_UUID = ${JSON.stringify(UUID.rp)}
+// 各页正文行数相同、每行都短（不会被自动折行）：表单总高度不随页面变化（真机 1.10.0：翻页时框的高度变一下，看起来像闪烁）
 const DD_PAGES = [
-    { title: '第 1 页 · 钻石剑', img: 'textures/cui_test/items/diamond_sword.png', tip: '钻石剑：耐久 1561', body: '这是 DDUI（数据驱动界面）的翻页实验。上面的「下一页」按钮一直是同一个控件：点了以后脚本只改写标题、图片与正文，表单不关闭、不重开。\\n\\n请把鼠标停在「下一页」上不动，连续点击。' },
-    { title: '第 2 页 · 钻石', img: 'textures/cui_test/items/diamond.png', tip: '钻石', body: '图片可以带提示框（把鼠标停在图标上），也可以点击。\\n\\nDDUI 是新的 Ore UI 画的：布局是从上到下的一列，外观（颜色、底图、边距）要到 1.26.60 预览版才开始支持资源包定制。' },
-    { title: '第 3 页 · 木棍', img: 'textures/cui_test/items/stick.png', tip: '木棍', body: '最后一页：「下一页」变成禁用（不隐藏，位置不变）。\\n\\n对比 JSON UI 的书：外观完全自定义，但翻页箭头要走服务端（关表单再开）。' },
+    { title: '第 1 页 · 钻石剑', img: 'textures/cui_test/items/diamond_sword.png', tip: '钻石剑：耐久 1561', body: '这是 DDUI 的翻页实验。\\n「下一页」一直是同一个控件，\\n点了以后只改写标题、图片与正文，\\n表单不关闭、不重开。\\n鼠标停在「下一页」上不动，连点。' },
+    { title: '第 2 页 · 钻石', img: 'textures/cui_test/items/diamond.png', tip: '钻石', body: '图片可以带提示框，也可以点击。\\nDDUI 由 Ore UI 画：布局是一列，\\n外观要到 1.26.60 预览版\\n才开始支持资源包定制。\\n各页正文行数相同，高度不变。' },
+    { title: '第 3 页 · 木棍', img: 'textures/cui_test/items/stick.png', tip: '木棍', body: '最后一页：「下一页」变成禁用，\\n不隐藏，位置不变。\\n对比 JSON UI 的书：外观完全自定义，\\n但翻页箭头要走服务端。\\n（这一行用来补齐行数）' },
 ]
 function openDDUI(player) {
     let k = 0
@@ -158,6 +168,27 @@ function openDDUI(player) {
         .catch((e) => player.sendMessage('§c[CUI] DDUI 出错：' + e))
 }
 
+// ── 实验：路由界面上的服务端翻页 + 默认聚焦（箭头写法与测试书相同，只差在「路由界面」）
+const FR_TITLE = ${JSON.stringify(FOCUS_ROUTED.title)}
+const FR_ROUTES = ${JSON.stringify(Object.fromEntries(FOCUS_ROUTES.map((a) => [a.index, a])))}
+const FR_STAY = ${FOCUS_STAY}
+function openFocusRouted(player, page = 'p1', dir = 'right') {
+    camera(player, false)
+    const form = new ActionFormData().title(FR_TITLE + '/' + page).body('')
+    for (let i = 0; i <= FR_STAY; i++) {
+        const a = FR_ROUTES[i]
+        form.button(i === FR_STAY ? 'stay|' : a ? 'go' + i + '|' + (a.from === page && a.dir === dir ? 'F' : '') : '')
+    }
+    form.show(player).then((r) => {
+        if (r.canceled) { camera(player, true); return }
+        const a = FR_ROUTES[r.selection]
+        player.sendMessage('§7[CUI·路由版] 在「' + page + '」收到按钮 ' + r.selection + (a ? ' → 翻到「' + a.target + '」' : r.selection === FR_STAY ? '（原地不动）' : '（不是翻页按钮）'))
+        if (a) return openFocusRouted(player, a.target, a.dir)
+        if (r.selection === FR_STAY) return openFocusRouted(player, page, dir)
+        camera(player, true)
+    })
+}
+
 // ── 响应式布局演示（第二个界面：同一命名空间按标题路由，只创建这一个）
 function openResponsive(player) {
     const form = new ActionFormData().title(TITLE_RESPONSIVE).body('')
@@ -175,8 +206,8 @@ function openDDUI2(player) {
     const go = (d) => {
         const next = Math.max(0, Math.min(DD_PAGES.length - 1, k + d))
         if (next === k) return
-        // 先显示新页、再隐藏旧页（中间不会出现「两页都没有」的空档）
-        shown[next].setData(true); shown[k].setData(false)
+        // 先隐藏旧页、再显示新页：先显示新页的话，中间有一瞬间两页同时显示，框被撑高（真机 1.10.0）
+        shown[k].setData(false); shown[next].setData(true)
         k = next
         noPrev.setData(k === 0); noNext.setData(k === DD_PAGES.length - 1)
     }
@@ -194,7 +225,7 @@ function openDDUI2(player) {
         .catch((e) => player.sendMessage('§c[CUI] DDUI 出错：' + e))
 }
 
-// 触发物品：书 = 测试书；纸 = 响应式演示；羽毛 = DDUI 翻页实验；燧石 = DDUI 对照版
+// 触发物品：书 = 测试书；纸 = 响应式演示；羽毛 = DDUI 翻页实验；燧石 = DDUI 对照版；指南针 = 路由版翻页实验
 // （1.9.0 用书与笔触发 DDUI：原版书写界面会先打开，关掉后 DDUI 才「有概率」出现——换成没有原版界面的物品）
 world.afterEvents.itemUse.subscribe((e) => {
     if (e.source.typeId !== 'minecraft:player') return
@@ -203,11 +234,13 @@ world.afterEvents.itemUse.subscribe((e) => {
     else if (id === 'minecraft:paper') openResponsive(e.source)
     else if (id === 'minecraft:feather') openDDUI(e.source)
     else if (id === 'minecraft:flint') openDDUI2(e.source)
+    else if (id === 'minecraft:compass') openFocusRouted(e.source)
 })
 system.afterEvents.scriptEventReceive.subscribe((e) => {
     if (e.id === 'cui:open' && e.sourceEntity?.typeId === 'minecraft:player') open(e.sourceEntity)
     if (e.id === 'cui:ddui' && e.sourceEntity?.typeId === 'minecraft:player') openDDUI(e.sourceEntity)
     if (e.id === 'cui:ddui2' && e.sourceEntity?.typeId === 'minecraft:player') openDDUI2(e.sourceEntity)
+    if (e.id === 'cui:focusr' && e.sourceEntity?.typeId === 'minecraft:player') openFocusRouted(e.sourceEntity)
     if (e.id === 'cui:responsive' && e.sourceEntity?.typeId === 'minecraft:player') openResponsive(e.sourceEntity)
 })
 `)

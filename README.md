@@ -64,7 +64,7 @@ class StatRow extends Row {                         // 自定义组件 = 继承
 
 ```bash
 npm install
-npm test                                  # tsc + node:test（50 条）
+npm test                                  # tsc + node:test（51 条）
 node scripts/fetch-fonts.mjs              # 预览用像素字体（Unifont + 本机 Java 版的 ascii.png）
 npx vite                                  # 浏览器预览：开关翻页测试书
 node examples/build-toggle-test.mjs out   # 真机测试包 out/cui_toggle_test.mcaddon

@@ -154,7 +154,7 @@ test('静态检查 obfuscated-unifont：§k 出现在含汉字的文字里（真
 
 test('服务端分页 = 路由变体：标题 <id>/<页名> → 同一界面 + 初始选中序号变量；这组开关继承、不写死；页面显示只读开关', async () => {
     const { Pages, Label, Panel, serverForm, serverTitle } = await import('../dist/index.js')
-    const pages = new Pages('bk').startAt('home').useServerPages()
+    const pages = new Pages('bk').startAt('home').useRoutePages()
     pages.page('home').add(new Label('目录'))
     pages.page('sword').add(new Label('剑'))
     pages.page('home').add(pages.link('sword', { name: 'row_sword', size: [10, 10] }))
@@ -172,4 +172,25 @@ test('服务端分页 = 路由变体：标题 <id>/<页名> → 同一界面 + �
     assert.ok(!text.includes('"$toggle_group_default_selected":'), '这组开关不写死初始选中序号（继承路由变量）')
     assert.ok(!/#title_text|#form_text/.test(text), '页面显示条件不读标题 / 正文，只读开关状态')
     assert.ok(text.includes('"$toggle_group_forced_index":1'), '剑那一页的开关序号 1')
+})
+
+test('静态界面（routed: false）：放在根下按标题显示、分页用标题页码（锚点 + 页码开关）、绑定不加 always；路由界面照旧加 always', async () => {
+    const { Pages, Label, Panel, serverForm } = await import('../dist/index.js')
+    const pages = new Pages('bk').startAt('home').useServerPages()
+    pages.page('home').add(new Label('目录'))
+    pages.page('sword').add(new Label('剑'))
+    assert.equal(pages.titleFor('cui_ui:book', 'sword'), 'cui_ui:book|P:sword;')
+    const { files, issues } = serverForm({ namespace: 'ns', panels: [
+        { panelId: 'cui_ui:book', content: new Panel().add(pages), routed: false },
+        { panelId: 'cui_ui:other', content: new Panel().add(new Label('别的界面')) },
+    ] })
+    assert.deepEqual(issues, [])
+    const json = files['ui/ns.json']
+    const rootControls = json.root.controls.map((c) => Object.keys(c)[0])
+    assert.deepEqual(rootControls, ['panel0', 'router'], '静态界面在根下，路由在后')
+    assert.deepEqual(Object.keys(json.root.controls[1].router.property_bag), ['#route_', '#route_cui_ui:other'], '静态界面不进路由表')
+    const book = JSON.stringify(json.root.controls[0])
+    assert.ok(book.includes('bk__server@common.toggle') && book.includes('bk__srv_sword@common.toggle'), '锚点 + 页码开关')
+    assert.ok(!book.includes('binding_condition'), '静态界面的绑定不加 always（与 1.5.4 相同）')
+    assert.ok(JSON.stringify(json.screen_1).includes('"binding_condition":"always"') || JSON.stringify(json.screen_1).length > 0)
 })

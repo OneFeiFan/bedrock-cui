@@ -25,7 +25,7 @@ const TITLE = [0.24, 0.13, 0.03], BODY = [0.27, 0.19, 0.11], WHITE = [1, 1, 1], 
 /** 表单数据（脚本发的）：正文带运行期数据；按钮 0–3 是格子的数据载体，按钮 4 是「关闭」 */
 export const FORM = {
     title: 'cui_ui:toggle_test',
-    // 标题 = 路由：cui_ui:toggle_test/<页名>（serverTitle）；正文不再用
+    // 标题 = cui_ui:toggle_test|P:<页名>;（pages.titleFor）；正文不用
     body: '',
     // 预览用的样例；真机脚本在运行期按玩家背包实时计算（examples/build-toggle-test.mjs）
     buttons: ['s0|§7耐久 1561\n§a背包里有 1 个', 's1|§a背包里有 3 个', 's2|§a背包里有 3 个', 's3|§8背包里没有', 'close|',
@@ -170,7 +170,7 @@ class DebugStrip extends Panel {
         super({ size: [290, 24], anchor: 'top_left', offset: [0, 184] })
         this.add(new Image({ texture: T.purple, size: ['100%', '100%'] }))
         const row1 = new Panel({ size: ['100% - 8px', 10], anchor: 'top_left', offset: [4, 2] })
-        row1.add(new DebugCell('目录·剑', 'gbp_sword_l1', 0), new DebugCell('目录·钻石', 'gbp_diamond_l1', 66), new DebugCell('书签', bookmarkName, 132))
+        row1.add(new DebugCell('锚点', 'gbp__server', 0), new DebugCell('目录·剑', 'gbp_sword_l1', 66), new DebugCell('目录·钻石', 'gbp_diamond_l1', 132), new DebugCell('书签', bookmarkName, 214))
         const row2 = new Panel({ size: ['100% - 8px', 10], anchor: 'top_left', offset: [4, 12] })
         row2.add(new Label({ text: `§e${variant}§7 标题：`, shadow: true, anchor: 'left_middle' }), new Label({ text: form.title, color: WHITE, shadow: true, anchor: 'left_middle', offset: [86, 0] }))
         this.add(row1, row2)
@@ -185,7 +185,8 @@ export function buildBook(options = {}) {
     root.add(new Image({ texture: T.book, size: [272, 180], anchor: 'top_left' }))
     ARROWS = []
     // 混合翻页：翻页箭头走服务端（标题带 P:<页>;），目录 / 书签用开关
-    // 服务端分页：每一页一个路由（标题 cui_ui:toggle_test/<页名>），路由变量 = 这组开关的初始选中序号
+    // 服务端分页（静态界面，真机 1.5.4 验证）：标题 cui_ui:toggle_test|P:<页名>; + 锚点 + 页码开关
+    // （1.10.0 试过路由界面：显示正常，但默认聚焦不可靠，鼠标不动连点翻页会乱跳）
     const pages = new Pages({ group: 'gbp', start: 'home', size: [272, 180], anchor: 'top_left' }).useServerPages()
     BOOK_PAGES = pages
     const detail = new Pages({ group: 'gbd', start: 'none', size: [272, 180], anchor: 'top_left', layer: 40 })

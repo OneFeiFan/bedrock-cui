@@ -79,10 +79,11 @@ const DESCRIPTION = '钻石剑是钻石制成的近战武器，攻击伤害与�
 export function buildResponsiveDemo() {
     const root = new Panel().setSize(Size.full())
 
-    // 卡片：宽 92%、高 88%，上下限 220×128 ～ 400×250，居中（最小高度要放得进 135 高的极小屏幕）
+    // 卡片：宽 92%、高 88%，上下限 220×128 ～ 560×320，居中。
+    // 真机 1.10.0：上限 400×250 在常见电脑屏幕上一直顶着，只看到整体缩放、看不到折行变化 ⇒ 上限放宽
     const card = new Panel().setName('card')
         .setSize(Length.pct(92), Length.pct(88))
-        .setMinSize(220, 128).setMaxSize(400, 250)
+        .setMinSize(220, 128).setMaxSize(560, 320)
         .setAnchor(Anchor.CENTER)
     card.add(new Image(Textures.FRAME).setSize(Size.full()))
 
@@ -109,8 +110,27 @@ export function buildResponsiveDemo() {
 
     content.add(header, new Divider(), body, new Divider(), footer)
     card.add(content)
-    root.add(card)
+    root.add(card, new ScreenRuler())
     return root
+}
+
+/**
+ * 屏幕标尺：沿上边、左边每 50 界面像素一个刻度，每 100 标数字。屏幕边缘露出的最后一个数字 ≈ 屏幕的界面像素尺寸——
+ * 基岩版按窗口大小自动选界面缩放，拖窗口时界面像素数大致不变；调「界面缩放」或改长宽比时它才变，看这里就知道变了多少。
+ */
+class ScreenRuler extends Panel {
+    constructor() {
+        super()
+        this.setName('ruler').setSize(Size.full()).setLayer(60)
+        for (let x = 50; x <= 1200; x += 50) {
+            this.add(new Image(Textures.LINE).setKeepRatio(false).setSize(1, x % 100 ? 3 : 6).setAnchor(Anchor.TOP_LEFT).setOffset(x, 0))
+            if (x % 100 === 0) this.add(new Label(`${x}`, Styles.MUTED).setAnchor(Anchor.TOP_LEFT).setOffset(x + 2, 1))
+        }
+        for (let y = 50; y <= 800; y += 50) {
+            this.add(new Image(Textures.LINE).setKeepRatio(false).setSize(y % 100 ? 3 : 6, 1).setAnchor(Anchor.TOP_LEFT).setOffset(0, y))
+            if (y % 100 === 0) this.add(new Label(`${y}`, Styles.MUTED).setAnchor(Anchor.TOP_LEFT).setOffset(2, y + 1))
+        }
+    }
 }
 
 /** 表单约定：标题（路由键）；按钮 0 取消、1 查看配方 */

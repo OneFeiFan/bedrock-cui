@@ -18,6 +18,11 @@ export interface ServerFormPanel {
      * 「同一个界面 + 这些变量」的派生元素。服务端分页：`routes: pages.serverRoutes()`，标题用 serverTitle(panelId, 页名)。
      */
     routes?: { base?: Record<string, unknown>, variants?: Record<string, Record<string, unknown>> }
+    /**
+     * 是否走标题路由（只在打开它时才创建；缺省 true）。false = 静态界面：表单打开时就创建，按「标题包含 panelId」显示——
+     * 要靠默认聚焦连点翻页的界面用静态（真机 1.10.0：路由界面由工厂在打开之后才创建，默认聚焦不可靠；1.5.4 的静态写法可靠）。
+     */
+    routed?: boolean
 }
 
 /** 服务端分页的表单标题：`<panelId>/<页名>`（与 serverForm 的路由一致） */
@@ -68,6 +73,7 @@ export function serverForm(options: ServerFormOptions): ServerFormFiles {
     const routes: { title: string, id: string }[] = []
     const derived: Record<string, Record<string, unknown>> = {}
     panels.forEach((p, i) => {
+        if (p.routed === false) return
         routes.push({ title: p.panelId, id: routeId(i) })
         for (const [v, vars] of Object.entries(p.routes?.variants ?? {})) {
             if (!/^[A-Za-z0-9_-]+$/.test(v)) throw new Error(`路由名只能用字母、数字、_ 与 -：${v}`)
@@ -88,13 +94,17 @@ export function serverForm(options: ServerFormOptions): ServerFormFiles {
             ],
         },
     })
-    const screens: Record<string, Element> = { root: new Panel({ size: ['100%', '100%'], visible: form.title.contains(prefix), children: [router] }) }
+    // 静态界面：直接放在根下，按「标题包含 panelId」显示（与 1.5.4 相同）
+    const statics = panels.filter((p) => p.routed === false).map((p) => new Panel({ size: ['100%', '100%'], visible: form.title.contains(p.panelId), children: [p.content] }))
+    const screens: Record<string, Element> = { root: new Panel({ size: ['100%', '100%'], visible: form.title.contains(prefix), children: [...statics, router] }) }
     panels.forEach((p, i) => {
+        if (p.routed === false) return
         const screen = new Panel({ size: ['100%', '100%'], children: [p.content] })
         for (const [k, v] of Object.entries(p.routes?.base ?? {})) screen.setVariable(k, v)
         screens[routeId(i)] = screen
     })
-    const { json, issues } = compileNamespace(options.namespace, screens, options)
+    // binding_condition: always 只给路由界面（静态界面保持 1.5.4 的输出）
+    const { json, issues } = compileNamespace(options.namespace, screens, { ...options, alwaysRoots: Object.keys(screens).filter((k) => k !== 'root') })
     Object.assign(json, derived)
     const hook = {
         namespace: 'server_form',

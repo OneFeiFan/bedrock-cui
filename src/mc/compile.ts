@@ -12,6 +12,7 @@ import { compileExpr, isExpr, type Expr } from '../core/expr.js'
 import { finalize, type Element } from '../core/element.js'
 import type { RNode } from '../core/node.js'
 import { lint, lintLayout, type LintIssue, type LintOptions } from './lint.js'
+import { SCROLLBAR } from '../layout/engine.js'
 
 type Json = Record<string, unknown>
 
@@ -52,7 +53,10 @@ class Compiler {
     /** 提升到命名空间顶层的元素（Scroll 的内容） */
     readonly hoisted: Json = {}
     private scrolls = 0
+    /** 当前根是否给绑定加 binding_condition: always（路由界面加；静态界面保持 1.5.4 的输出） */
+    always = true
     constructor(private readonly namespace = '') { }
+    private cond(): { binding_condition?: string } { return this.always ? { binding_condition: ALWAYS } : {} }
 
     control(n: RNode, inCollection: string | undefined): Json {
         const p = n.props
@@ -90,7 +94,7 @@ class Compiler {
             if (c.globals.length && c.controls.length) {
                 this.issues.push({ rule: 'mixed-sources', level: 'warning', path: n.path, message: `${key} 的表达式同时读全局绑定（${c.globals.join('、')}）与开关状态：真机里开关变化不会触发重新计算（1.5.2）。把全局条件放进一个 stateFrom 开关，再按开关名读` })
             }
-            for (const g of c.globals) if (!declaredGlobals.has(g)) { declaredGlobals.add(g); bindings.push({ binding_name: g, binding_condition: ALWAYS }) }
+            for (const g of c.globals) if (!declaredGlobals.has(g)) { declaredGlobals.add(g); bindings.push({ binding_name: g, ...this.cond() }) }
             for (const col of c.collections) {
                 if (inCollection?.startsWith(THROUGH_TOGGLE)) this.issues.push({ rule: 'collection-through-toggle', level: 'error', path: n.path, message: `开关里读不到外层集合项的 ${col.name}（真机：common.toggle 自带空集合名的 collection_details 绑定）。把 CollectionItem 放进开关的状态面板里` })
                 else if (!inCollection) this.issues.push({ rule: 'collection-ref-outside', level: 'error', path: n.path, message: `${col.name} 只能在 ${col.collection} 的集合项（FormButton）里使用` })
@@ -98,14 +102,14 @@ class Compiler {
                 if (!declaredCollections.has(k2)) {
                     if (!declaredCollections.size) bindings.push({ binding_type: 'collection_details', binding_collection_name: col.collection })
                     declaredCollections.add(k2)
-                    bindings.push({ binding_type: 'collection', binding_collection_name: col.collection, binding_name: col.name, binding_condition: ALWAYS })
+                    bindings.push({ binding_type: 'collection', binding_collection_name: col.collection, binding_name: col.name, ...this.cond() })
                 }
             }
             // 跨区域读开关状态：不写 resolve_sibling_scope（原版主界面标签页的写法；只有兄弟控件才写 true）
             for (const ctl of c.controls) {
-                bindings.push({ binding_type: 'view', source_control_name: ctl.control, ...(ctl.siblingScope ? { resolve_sibling_scope: true } : {}), source_property_name: ctl.property, target_property_name: ctl.local, binding_condition: ALWAYS })
+                bindings.push({ binding_type: 'view', source_control_name: ctl.control, ...(ctl.siblingScope ? { resolve_sibling_scope: true } : {}), source_property_name: ctl.property, target_property_name: ctl.local, ...this.cond() })
             }
-            bindings.push({ binding_type: 'view', source_property_name: c.text, target_property_name: spec.target, binding_condition: ALWAYS })
+            bindings.push({ binding_type: 'view', source_property_name: c.text, target_property_name: spec.target, ...this.cond() })
             if (spec.prop) out[spec.prop] = spec.target
         }
 
@@ -175,7 +179,8 @@ class Compiler {
                 // 原版 common.scrolling_panel：内容提升为顶层元素，用 $scrolling_content 引用
                 key = `${n.name}@common.scrolling_panel`
                 const content = `${n.name}_scroll_content_${this.scrolls++}`
-                this.hoisted[content] = { type: 'panel', size: ['100%', '100%c'], controls: n.children.map((c) => this.entry(c, undefined)) }
+                // 内容宽 = 区域宽 − 8：原版的滚动条盖在内容上面（真机 1.10.0：文字被滚动条挡住），要给它让位
+                this.hoisted[content] = { type: 'panel', size: [`100% - ${SCROLLBAR}px`, '100%c'], anchor_from: 'top_left', anchor_to: 'top_left', controls: n.children.map((c) => this.entry(c, undefined)) }
                 vars.$scrolling_content = `${this.namespace}.${content}`
                 vars.$show_background = false
                 vars.$scroll_bar_contained = true
@@ -251,6 +256,7 @@ export function compileNamespace(namespace: string, roots: Record<string, Elemen
     const json: Json = { namespace }
     const all: RNode[] = []
     for (const [name, el] of Object.entries(roots)) {
+        c.always = options.alwaysRoots ? options.alwaysRoots.includes(name) : true
         const saved = el.name
         el.name = name
         const [n] = finalize(el)
