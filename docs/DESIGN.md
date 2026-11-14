@@ -146,6 +146,10 @@ Unifont 像素字体按**文件头**（gzip 魔术字节 1F 8B）判断是否要
 （所以按 Unifont 校准的折行、位置都对），形状不同、标点最明显。查过 Unifont 6.3–16.0 共 11 个版本，全角逗号只在 15.0 改过一次设计，新旧都对不上。
 官方样例包与几个原版资源包备份都只有 ja_JP / zh_TW 专用字形图，没有默认字体。⏳ 需要游戏安装目录里的默认字形图（data/resource_packs/vanilla/font）——
 预览直接用它们画字、按它们算字宽；属 Mojang 资源，只在本机使用，不随源码分发（与 ascii.png 同样处理）。
+用户提供的 `data/resource_packs/vanilla/font` 里只有：`minecraft-ten.ttf`（标题字体，font_type MinecraftTen）、`smooth/smooth_XX.fontdata`
+（**平滑字体的字宽表**：4 字节头 + 256 个 float32，单位是字号；汉字页整页 0.907——矢量字体的规则）与 `smooth/remapping.dat`。
+**默认像素字体**（我们的文字控件不写 font_type）的汉字字距每个字不同（「中」6.5、多数 8.5）——不是平滑字体；它的字形图（glyph_XX.png，
+默认字体会读资源包的 font/glyph_XX.png，自定义 E2 / A0 页已验证）在别的位置，待在安装目录里搜。
 
 ### 静态界面为缺省，路由界面为可选（v0.11）
 
