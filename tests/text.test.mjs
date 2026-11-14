@@ -104,3 +104,19 @@ test('分页孤行控制：标题不落在页底（挪到下一页和正文在�
         assert.equal(pages.map((p) => plain(p).replace(/\s/g, '')).join(''), plain(text).replace(/\s/g, ''), '不丢字')
     }
 })
+
+test('游戏折行（真机 1.20.1）：单词与紧跟的开括号不断、开括号后不断、闭括号 / 句读前不断——「6（line_padding），」整体换行；汉字之间照常可断', async () => {
+    const { measureText, textWidth } = await import('../dist/index.js')
+    for (const [open, close] of [['（', '）'], ['(', ')']]) {
+        const text = `上：emoji 字形 + 行距 6${open}line_padding${close}，图标不压行。`
+        // 宽度恰好放得下「…行距 6（」——先前会在「（」后断开
+        const w = textWidth(`上：emoji 字形 + 行距 6${open}`)
+        const { lines } = measureText(text, 1, w)
+        assert.equal(lines[0], '上：emoji 字形 + 行距', `${open}${close}`)
+        assert.ok(lines[1].startsWith(`6${open}line_padding${close}，`), lines[1])
+    }
+    // 纯汉字照常逐字断；句号不在行首
+    const { lines } = measureText('看图标是否参与折行有没有阴影。', 1, textWidth('看图标是否参与折行有没'))
+    assert.equal(lines[0], '看图标是否参与折行有没')
+    assert.ok(!lines[1].startsWith('。'))
+})
