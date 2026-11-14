@@ -19,7 +19,10 @@ export interface ServerFormPanel {
      */
     routes?: { base?: Record<string, unknown>, variants?: Record<string, Record<string, unknown>> }
     /**
-     * 是否走标题路由（只在打开它时才创建；缺省 true）。false = 静态界面：表单打开时就创建，按「标题包含 panelId」显示——
+     * 是否走标题路由（只在打开它时才创建；**缺省 false = 静态界面**：表单打开时就创建，按「标题包含 panelId」显示）。
+     * ⚠️ 路由界面的两个已知问题（真机）：① 默认聚焦不可靠（1.10.0 / 1.12.0，翻页乱跳）；② 里面的百分比尺寸没有按屏幕算
+     * （1.13.0 响应式演示：根面板接近 0×0，卡片一直被最小尺寸托住、窗口怎么变都一样）。只在界面用固定像素尺寸、不靠默认聚焦时才用。
+     * 原说明：false = 静态界面：表单打开时就创建，按「标题包含 panelId」显示——
      * 要靠默认聚焦连点翻页的界面用静态（真机 1.10.0 / 1.12.0：路由界面由工厂在打开之后才创建，默认聚焦不可靠、翻页乱跳；
      * 静态写法可靠。试过「焦点交接」——静态部分放透明缓冲按钮、界面建好后隐藏它——游戏不会重选焦点，无效）。
      */
@@ -74,7 +77,7 @@ export function serverForm(options: ServerFormOptions): ServerFormFiles {
     const routes: { title: string, id: string }[] = []
     const derived: Record<string, Record<string, unknown>> = {}
     panels.forEach((p, i) => {
-        if (p.routed === false) return
+        if (!p.routed) return
         routes.push({ title: p.panelId, id: routeId(i) })
         for (const [v, vars] of Object.entries(p.routes?.variants ?? {})) {
             if (!/^[A-Za-z0-9_-]+$/.test(v)) throw new Error(`路由名只能用字母、数字、_ 与 -：${v}`)
@@ -96,10 +99,16 @@ export function serverForm(options: ServerFormOptions): ServerFormFiles {
         },
     })
     // 静态界面：直接放在根下，按「标题包含 panelId」显示（与 1.5.4 相同）
-    const statics: Element[] = panels.filter((p) => p.routed === false).map((p) => new Panel({ size: ['100%', '100%'], visible: form.title.contains(p.panelId), children: [p.content] }))
-    const screens: Record<string, Element> = { root: new Panel({ size: ['100%', '100%'], visible: form.title.contains(prefix), children: [...statics, router] }) }
+    const statics: Element[] = panels.filter((p) => !p.routed).map((p) => new Panel({ size: ['100%', '100%'], visible: form.title.contains(p.panelId), children: [p.content] }))
+    // 静态界面按「标题包含 panelId」显示：panelId 不能是别的界面标题的一部分
+    for (const p of panels) {
+        if (p.routed) continue
+        const clash = panels.find((q) => q !== p && q.panelId.includes(p.panelId))
+        if (clash) throw new Error(`静态界面按「标题包含 ${p.panelId}」显示，但 ${clash.panelId} 也包含它：换一个不互相包含的 id`)
+    }
+    const screens: Record<string, Element> = { root: new Panel({ size: ['100%', '100%'], visible: form.title.contains(prefix), children: [...statics, ...(routes.length ? [router] : [])] }) }
     panels.forEach((p, i) => {
-        if (p.routed === false) return
+        if (!p.routed) return
         const screen = new Panel({ size: ['100%', '100%'], children: [p.content] })
         for (const [k, v] of Object.entries(p.routes?.base ?? {})) screen.setVariable(k, v)
         screens[routeId(i)] = screen

@@ -77,14 +77,21 @@ test('serverForm：挂到原版服务端表单（工厂 + 标题门控 + 隐藏�
     const ns = files['ui/cui_test.json']
     assert.equal(ns.root.bindings[0].binding_name, '#title_text')
     assert.equal(ns.root[ns.root.bindings[1].source_property_name.match(/\$\w+/)[0]], 'cui_ui:', '根面板按前缀显示（隐藏原版长表单的同一前缀）')
-    // 标题路由：只创建标题完全相同的那个界面
-    const router = ns.root.controls[0].router
+    // 缺省：静态界面，放在根下按「标题包含 panelId」显示；没有路由
+    const stat = ns.root.controls[0].panel0
+    assert.equal(stat[stat.bindings[1].source_property_name.match(/\$\w+/)[0]], 'cui_ui:test')
+    assert.equal(ns.root.controls.length, 1, '没有路由界面就不生成路由')
+    // routed: true：标题路由，只创建标题完全相同的那个界面
+    const routedNs = serverForm({ namespace: 'cui_test', panels: [{ panelId: 'cui_ui:test', content: book(), routed: true }] }).files['ui/cui_test.json']
+    const ns2 = routedNs
+    const router = ns2.root.controls[0].router
     assert.equal(router.type, 'collection_panel')
     assert.deepEqual(router.property_bag, { '#route_': [], '#route_cui_ui:test': ['screen_0'] })
     assert.deepEqual(router.factory.control_ids, { screen_0: '@cui_test.screen_0' })
     assert.equal(router.bindings[1].source_property_name, "('#route_' + #title_text)")
     assert.equal(router.bindings[1].target_property_name, '#collection_length')
-    assert.ok(ns.screen_0, '界面是命名空间里的独立元素，由工厂按需创建')
+    assert.ok(ns2.screen_0, '界面是命名空间里的独立元素，由工厂按需创建')
+    assert.throws(() => serverForm({ namespace: 'x', panels: [{ panelId: 'cui_ui:a', content: new Panel() }, { panelId: 'cui_ui:ab', content: new Panel() }] }), /也包含它/, '静态界面的 id 不能是别的标题的一部分')
     assert.throws(() => serverForm({ namespace: 'x', panelId: 'nope', content: book() }), /cui_ui:/)
 })
 
@@ -119,12 +126,12 @@ test('启用 / 禁用：enabled 表达式 → #enabled 绑定；禁用的开关�
 
 test('serverForm 多个界面：按标题路由，只创建标题完全相同的那一个；标题重复时报错', async () => {
     const { serverForm, Panel, Label } = await import('../dist/index.js')
-    const { files } = serverForm({ namespace: 'two', panels: [{ panelId: 'cui_ui:book', content: new Panel({ children: [new Label({ text: '书' })] }) }, { panelId: 'cui_ui:bookshelf', content: new Panel({ children: [new Label({ text: '书架' })] }) }] })
+    const { files } = serverForm({ namespace: 'two', panels: [{ panelId: 'cui_ui:book', content: new Panel({ children: [new Label({ text: '书' })] }), routed: true }, { panelId: 'cui_ui:bookshelf', content: new Panel({ children: [new Label({ text: '书架' })] }), routed: true }] })
     const ns = files['ui/two.json']
     const router = ns.root.controls[0].router
     assert.deepEqual(router.property_bag, { '#route_': [], '#route_cui_ui:book': ['screen_0'], '#route_cui_ui:bookshelf': ['screen_1'] }, '标题互为子串也没关系：按完整标题查')
     assert.ok(ns.screen_0 && ns.screen_1)
-    assert.throws(() => serverForm({ namespace: 'x', panels: [{ panelId: 'cui_ui:a', content: new Panel() }, { panelId: 'cui_ui:a', content: new Panel() }] }), /同一个标题/)
+    assert.throws(() => serverForm({ namespace: 'x', panels: [{ panelId: 'cui_ui:a', content: new Panel(), routed: true }, { panelId: 'cui_ui:a', content: new Panel(), routed: true }] }), /同一个标题/)
 })
 
 test('静态检查：开关序号必须是非负整数（-1 = 不强制、自动分配，会撞号）', async () => {
@@ -159,7 +166,7 @@ test('服务端分页 = 路由变体：标题 <id>/<页名> → 同一界面 + �
     pages.page('sword').add(new Label('剑'))
     pages.page('home').add(pages.link('sword', { name: 'row_sword', size: [10, 10] }))
     const book = new Panel().add(pages)
-    const { files, issues } = serverForm({ namespace: 'ns', panels: [{ panelId: 'cui_ui:book', content: book, routes: pages.serverRoutes() }] })
+    const { files, issues } = serverForm({ namespace: 'ns', panels: [{ panelId: 'cui_ui:book', content: book, routes: pages.serverRoutes(), routed: true }] })
     assert.deepEqual(issues, [])
     const json = files['ui/ns.json']
     const router = json.root.controls[0].router
@@ -182,7 +189,7 @@ test('静态界面（routed: false）：放在根下按标题显示、分页用�
     assert.equal(pages.titleFor('cui_ui:book', 'sword'), 'cui_ui:book|P:sword;')
     const { files, issues } = serverForm({ namespace: 'ns', panels: [
         { panelId: 'cui_ui:book', content: new Panel().add(pages), routed: false },
-        { panelId: 'cui_ui:other', content: new Panel().add(new Label('别的界面')) },
+        { panelId: 'cui_ui:other', content: new Panel().add(new Label('别的界面')), routed: true },
     ] })
     assert.deepEqual(issues, [])
     const json = files['ui/ns.json']

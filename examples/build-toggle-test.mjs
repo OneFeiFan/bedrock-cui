@@ -13,7 +13,7 @@ import { buildResponsiveDemo, RESPONSIVE_FORM } from './responsive-demo.mjs'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 const outRoot = path.resolve(process.argv[2] ?? path.join(here, '..', 'out'))
-const VERSION = [1, 13, 0]
+const VERSION = [1, 14, 0]
 const UUID = { bp: '6a3f0e2c-91d4-4b7a-8c55-0e1f7a2b9c31', bpScript: 'c2e8b7d1-4f6a-4c9e-a1b2-3d4e5f607182', rp: '1f9c3a7e-2b4d-4e6f-8a90-b1c2d3e4f5a6', rpRes: '7d8e9f0a-1b2c-4d3e-9f4a-5b6c7d8e9f01' }
 const NAME = 'cui_toggle_test'
 
@@ -24,7 +24,7 @@ const book = buildBook({ variant: VARIANT })
 const { files, issues } = serverForm({ namespace: NAME, panels: [
     // 测试书：静态界面（默认聚焦可靠）
     { panelId: FORM.title, content: book, routed: false },
-    // 响应式演示：路由界面（只在打开它时创建）
+    // 响应式演示：静态界面（真机 1.13.0：路由界面里的百分比没有按屏幕算，根面板接近 0×0，卡片一直被最小尺寸托住）
     { panelId: RESPONSIVE_FORM.title, content: buildResponsiveDemo() },
 ], textures: (p) => TEXTURE_INFO[p], screenAnimation: VARIANT === '有动画' })
 const ROUTES = Object.fromEntries(ARROWS.map((a) => [a.index, { target: a.target, from: a.from, dir: a.dir }]))
@@ -156,11 +156,11 @@ function openDDUI(player) {
         .button('← 上一页', () => go(-1), { disabled: noPrev })
         .divider()
         .header(title)
-        .image(img, RP_UUID, { tooltip: tip, width: 32 })
+        .image(img, RP_UUID, { tooltip: tip, width: 0.15 })
         .label(body)
-    // 预加载（方案 A：一开始就隐藏）——看隐藏着的图片会不会也把贴图载入缓存。
-    // 真机 1.12.0：以宽 1 显示的预加载让「缩一下」消失了（确认是图片第一次加载），但 width 没把图缩小，图整个显示了出来
-    for (const p of DD_PAGES) form.image(p.img, RP_UUID, { visible: false })
+    // 预加载：三张图以 width 0.01（表单宽度的 1%，两三个像素）一直显示在底部，贴图始终是加载好的。
+    // width 是「占表单宽度的比例」：1.12.0 写的 1 = 满宽，所以图整个显示了出来；1.13.0 隐藏着的预加载不起作用（羽毛更常闪）
+    for (const p of DD_PAGES) form.image(p.img, RP_UUID, { width: 0.01 })
     form.closeButton()
         .show()
         .then((reason) => player.sendMessage('§7[CUI] DDUI 表单关闭：' + reason))
@@ -195,19 +195,17 @@ function openDDUI2(player) {
         .divider()
     DD_PAGES.forEach((p, i) => {
         form.header(p.title, { visible: shown[i] })
-            .image(p.img, RP_UUID, { tooltip: p.tip, width: 32, visible: shown[i] })
+            .image(p.img, RP_UUID, { tooltip: p.tip, width: 0.15, visible: shown[i] })
             .label(p.body, { visible: shown[i] })
     })
-    // 预加载（方案 B：先显示、半秒后隐藏）——保底：打开时底部会闪一下，但贴图一定载入过
-    const preload = new ObservableBoolean(true)
-    for (const p of DD_PAGES) form.image(p.img, RP_UUID, { visible: preload })
-    system.runTimeout(() => preload.setData(false), 10)
+    // 预加载：同上，width 0.01 一直显示（1.13.0 先显示半秒再隐藏：仍偶尔闪——隐藏后贴图可能被释放）
+    for (const p of DD_PAGES) form.image(p.img, RP_UUID, { width: 0.01 })
     form.closeButton().show()
         .then((reason) => player.sendMessage('§7[CUI] DDUI 对照版关闭：' + reason))
         .catch((e) => player.sendMessage('§c[CUI] DDUI 出错：' + e))
 }
 
-// 触发物品：书 = 测试书；纸 = 响应式演示；羽毛 = DDUI（预加载图片一开始就隐藏）；燧石 = DDUI 对照版（预加载图片先显示、半秒后隐藏）
+// 触发物品：书 = 测试书；纸 = 响应式演示；羽毛 = DDUI（改写内容）；燧石 = DDUI 对照版（切换显示）；两者都以 width 0.01 预加载图片
 // （1.9.0 用书与笔触发 DDUI：原版书写界面会先打开，关掉后 DDUI 才「有概率」出现——换成没有原版界面的物品）
 world.afterEvents.itemUse.subscribe((e) => {
     if (e.source.typeId !== 'minecraft:player') return
