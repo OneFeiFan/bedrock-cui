@@ -288,15 +288,18 @@ export const LONG = [
 const RULER_ROWS_L = ['Il!.,;:|', 'kfkf<><>', '[](){}"*', '~~~~~~~~', 'Hello World', '§lBold Text', 'mmmmmmmmmm', '#$%&+=?/']
 // ───────────── 字形图标（font/glyph_E2.png，构建时自动生成）：文字里写字符就显示物品图标 ─────────────
 export const ICONS = new GlyphSheet('E2')
+// 真机 1.17.0：字形页按 1:1 画（16 高、以文字行为中心），字距 = 墨迹宽 + 1 ⇒ 小图标（缺省，8×8，与文字同高）用于正文，大图标（16×16）用于标题 / 单独一行
 export const GI = {
-    SWORD: ICONS.icon('diamond_sword', T.sword, [0, 16]),
-    DIAMOND: ICONS.icon('diamond', T.diamond, [2, 12]),
-    STICK: ICONS.icon('stick', T.stick, [2, 13]),
-    BOOK: ICONS.icon('book', T.book_item, [0, 16]),
+    SWORD: ICONS.icon('diamond_sword', T.sword, { ink: [0, 8] }),
+    DIAMOND: ICONS.icon('diamond', T.diamond, { ink: [1, 6] }),
+    STICK: ICONS.icon('stick', T.stick, { ink: [1, 7] }),
+    BOOK: ICONS.icon('book', T.book_item, { ink: [0, 8] }),
+    SWORD_L: ICONS.icon('diamond_sword_l', T.sword, { size: 'large', ink: [0, 16] }),
+    DIAMOND_L: ICONS.icon('diamond_l', T.diamond, { size: 'large', ink: [2, 12] }),
 }
-const { SWORD: GS, DIAMOND: GD, STICK: GK, BOOK: GB } = GI
-/** 字形图标的字宽标尺：预测 = 墨迹宽 / 2 + 1（钻石剑、书 9，钻石 7，木棍 7.5），与 Unifont 同一规则——待真机核对 */
-const GLYPH_ROWS = [`${GS}${GS}${GS}`, `${GD}${GD}${GD}${GD}`, `${GK}${GK}${GK}${GK}`, `${GB}${GB}${GB}`, `a${GD}b${GK}c`, `钻石${GD}×2`, `§l${GS}${GD}${GK}`, `§c${GD}${GK}§r 染色？`]
+const { SWORD: GS, DIAMOND: GD, STICK: GK, BOOK: GB, SWORD_L: GSL, DIAMOND_L: GDL } = GI
+/** 字形图标的字宽标尺：小图标 钻石剑 / 书 9、钻石 7、木棍 8；大图标 钻石剑 17、钻石 13（1.17.0 实测） */
+const GLYPH_ROWS = [`${GS}${GS}${GS}${GS}`, `${GD}${GD}${GD}${GD}`, `${GK}${GK}${GK}${GK}`, `${GB}${GB}${GB}${GB}`, `a${GD}b${GK}c`, `钻石${GD}×2`, `§l${GS}${GD}${GK}`, `${GSL}${GDL} 大图标`]
 
 const RULER_ROWS_R = ['钻石剑钻石剑钻石剑钻', 'abc 中文 xyz', '中一二三十口日', '，。、；：！？', '「引号」（括号）', '§l粗体钻石剑', '背包里有 12 个', '§oitalic 斜体']
 
@@ -447,9 +450,10 @@ function buildTextPages(pages) {
     chain.push('tglyph')
     const glyphPage = pages.page('tglyph')
     glyphPage.add(new Side('L').add(new Title('字形图标'), ...GLYPH_ROWS.map((t, i) => new RulerRow(t, 20 + i * 15))))
-    glyphPage.add(new Side('R').add(new Title('图标与折行'),
+    glyphPage.add(new Side('R').add(new Title('小图标与折行'),
         new Paragraph({ text: `合成钻石剑：工作台中间一列放 ${GD}${GD}，下面放 ${GK}，得到 ${GS}。附魔台旁放满 ${GB} 书架能提高附魔等级；耐久快用尽时，在铁砧上用 ${GD} 修复。`, width: 110, color: BODY, anchor: 'top_left', offset: [0, 22] }),
-        new Body('§8看：图标是否参与折行；有没有阴影；左页最后一行的红色颜色码会不会把图标染红。', 98)))
+        new Label({ text: `${GSL} §l钻石剑`, color: TITLE, anchor: 'top_left', offset: [0, 90] }),
+        new Body('§8上：大图标配标题（单独一行）。小图标与文字同高，正文里不压行。', 106)))
     // 文本页之间的箭头
     chain.forEach((key, i) => {
         const page = pages.page(key)

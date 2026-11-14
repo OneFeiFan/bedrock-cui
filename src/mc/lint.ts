@@ -6,6 +6,7 @@ import { walk, type RNode } from '../core/node.js'
 import { parseSize } from '../layout/units.js'
 import { measureText, usesUnifont } from '../font/metrics.js'
 import { Texture } from '../core/values.js'
+import { GlyphSheet } from '../core/glyphs.js'
 import { layout, type Box, type TextureInfo } from '../layout/engine.js'
 
 export interface LintIssue {
@@ -133,6 +134,12 @@ export function lint(roots: RNode[], options: LintOptions = {}): LintIssue[] {
             }
         }
         if (n.props.grow) push('grow-outside-flex', 'warning', n, 'setGrow() 只在 Row / Column 的直接子元素上起作用；这里的父元素不是弹性容器')
+        // 大字形图标（16 高）在多行文字里：以文字行为中心上下各多 4，行距 10 → 压到上下行（真机 1.17.0）
+        if (n.type === 'label' && typeof n.props.text === 'string' && [...n.props.text].some((ch) => GlyphSheet.lookup(ch)?.size === 'large')) {
+            const w = typeof n.props.size?.[0] === 'number' ? n.props.size[0] : Infinity
+            const lines = measureText(n.props.text, n.props.fontScale ?? 1, w).lines.length
+            if (lines > 1) push('glyph-line-overlap', 'warning', n, '大字形图标（16 高）放在多行文字里会压到上下行：正文里用小图标（缺省），大图标放标题或单独一行')
+        }
         // §k 乱码：含汉字（整段用 Unifont 画）时真机只显示成一串点（1.5.3）
         if (n.type === 'label' && typeof n.props.text === 'string' && /§k/i.test(n.props.text) && usesUnifont(n.props.text)) {
             push('obfuscated-unifont', 'warning', n, '§k 乱码出现在含汉字的文字里：整段用 Unifont 画，真机只显示成一串点；乱码请放在纯 ASCII 的文字框里')

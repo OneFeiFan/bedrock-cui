@@ -122,7 +122,7 @@ export function mountPreview(el: HTMLElement, options: PreviewOptions): Preview 
         if (!g || !url) return undefined
         let img = glyphImgs.get(url)
         if (!img) { img = new Image(); img.onload = () => { glyphLoaded.value++ }; img.src = url; glyphImgs.set(url, img) }
-        return img.complete && img.naturalWidth ? { img, ink: g.ink } : undefined
+        return img.complete && img.naturalWidth ? { img, ink: g.ink, size: g.size } : undefined
     }
     if (options.fonts) void loadPixelFonts(options.fonts).then((f) => { if (f.unifont || f.ascii) pixel.value = f })
     const rootEl = (): Element => (typeof options.root === 'function' ? (options.root as () => Element)() : options.root)
