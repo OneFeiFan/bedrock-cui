@@ -46,10 +46,14 @@ class Title extends Panel {
     }
 }
 
-class Body extends Label {
+/**
+ * 正文说明：CUI 预折行（Paragraph：按字断行、避头尾），宽 = 书页内容区 110。
+ * 不交给游戏折行——游戏只在空格处换行，中英混排会折出很短的行（真机 1.23.0「页首有一张 1」；lint engine-wrap-short-line）
+ */
+class Body extends Paragraph {
     constructor(text, y = 22) {
-        super(text)
-        this.setColor(BODY).setSize(FULL, Length.auto()).setAnchor(TOP_LEFT).setOffset(0, y)
+        super(text, 110)
+        this.setColor(BODY).setAnchor(TOP_LEFT).setOffset(0, y)
     }
 }
 

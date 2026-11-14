@@ -4,7 +4,7 @@
 import { isExpr } from '../core/expr.js'
 import { walk, type RNode } from '../core/node.js'
 import { parseSize } from '../layout/units.js'
-import { measureText, usesUnifont } from '../font/metrics.js'
+import { measureText, textWidth, usesUnifont } from '../font/metrics.js'
 import { Texture } from '../core/values.js'
 import { GlyphSheet } from '../core/glyphs.js'
 import { InlineIcon } from '../core/inline.js'
@@ -55,6 +55,23 @@ export function lintLayout(roots: RNode[], options: LintOptions = {}): LintIssue
             const a = labels[i].rect, c = labels[j].rect
             const ox = Math.min(a.x + a.w, c.x + c.w) - Math.max(a.x, c.x), oy = Math.min(a.y + a.h, c.y + c.h) - Math.max(a.y, c.y)
             if (ox > 0.5 && oy > 0.5) issues.push({ rule: 'text-overlap', level: 'warning', path: labels[j].node.path, message: `与 ${labels[i].node.path.split('/').pop()} 重叠（${Math.round(ox * 10) / 10} × ${Math.round(oy * 10) / 10} 像素）` })
+        }
+        // 交给游戏折行的静态文字折出过短的行：游戏只在空格处换行（真机 1.23.0），中英混排时「数字 + 空格」后面一长串汉字整个移到下一行，
+        // 留下很短的一行（「页首有一张 1」只占一半）。固定宽度的静态文字请用 Paragraph（CUI 预折行：按字断行、避头尾）。
+        // CUI 排好的行（Paragraph）每行都以换行符结束，算段落的最后一行，不检查；运行期文字（表达式）也不检查
+        if (b.node.type === 'label' && typeof b.node.props.text === 'string' && b.lines && b.rect.w > 0) {
+            const fs = b.node.props.fontScale ?? 1, w = b.rect.w
+            for (const para of b.node.props.text.split('\n')) {
+                const lines = measureText(para, fs, w).lines
+                const short = lines.slice(0, -1).find((l) => textWidth(l, fs) < w - 17 * fs)
+                if (short !== undefined) {
+                    issues.push({
+                        rule: 'engine-wrap-short-line', level: 'warning', path: b.node.path,
+                        message: `游戏只在空格处换行：这段文字会折出过短的行（「${short.replace(/§./g, '')}」只占 ${Math.round(textWidth(short, fs))}/${Math.round(w)}）——固定宽度的静态文字请用 Paragraph（CUI 预折行：按字断行、避头尾）`,
+                    })
+                    break
+                }
+            }
         }
         // 九宫格图片比自己的边框还小：游戏与预览的画法不同（真机 1.23.0：1×1 的紫色九宫格在游戏里画成更大、更深的方块，位置也偏）
         if (b.node.type === 'image' && b.slice) {

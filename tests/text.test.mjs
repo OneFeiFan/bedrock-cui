@@ -114,3 +114,23 @@ test('游戏折行（真机 1.20.1 / 1.23.0）：只在空格处换行；单词�
     ]
     for (const [text, game] of cases) assert.deepEqual(measureText(text, 1, 110).lines.map((l) => l.replace(/§./g, '')), game, text)
 })
+
+test('静态检查 engine-wrap-short-line：交给游戏折行的静态文字折出过短的行（游戏只在空格处换行，真机 1.23.0）；Paragraph、运行期文字、折得好的文字不报', async () => {
+    const { compileNamespace, Label, Panel, Paragraph, Length, form } = await import('../dist/index.js')
+    const text = '页首有一张 1 层紫色小图抢先出现（1.22.0 的 G 没有它，被盖住）。'
+    const rule = (...items) => compileNamespace('t', { root: new Panel().setSize(200, 200).add(...items) }).issues
+        .filter((i) => i.rule === 'engine-wrap-short-line').map((i) => i.path.split('/').pop())
+    assert.deepEqual(rule(new Label(text).setName('game').setSize(110, Length.auto())), ['game'])
+    assert.deepEqual(rule(new Paragraph(text, 110).setName('cui')), [], 'Paragraph 由 CUI 预折行')
+    assert.deepEqual(rule(new Label(form.buttonText).setName('runtime').setSize(110, Length.auto())), [], '运行期文字没法预折行')
+    assert.deepEqual(rule(new Label('没有空格的一整段中文会在任意字之间断开所以不会出现过短的行').setName('fine').setSize(110, Length.auto())), [])
+})
+
+test('autoSpace：开括号 / 开引号后面不加空格（「（1.22.0」——之前误加成「（ 1.22.0」）；中英文之间照常留空', async () => {
+    const { autoSpace } = await import('../dist/font/rich.js')
+    assert.equal(autoSpace('抢先出现（1.22.0 的'), '抢先出现（1.22.0 的')
+    assert.equal(autoSpace('按「Esc」关闭'), '按「Esc」关闭')
+    assert.equal(autoSpace('《Bedrock》'), '《Bedrock》')
+    assert.equal(autoSpace('钻石剑Minecraft'), '钻石剑 Minecraft')
+    assert.equal(autoSpace('；Esc'), '； Esc')
+})

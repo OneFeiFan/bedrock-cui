@@ -84,12 +84,12 @@ const CJK = '[\\u2E80-\\u9FFF\\uF900-\\uFAFF\\u3000-\\u303F\\uFF00-\\uFFEF]'
 const HAN = '[\\u2E80-\\u2FFF\\u3040-\\u9FFF\\uF900-\\uFAFF]'
 /**
  * 中英文之间留一个空格（已有空格的不重复加；§ 码不影响判断）：
- *   汉字 / 中文标点 → 英文：留空（「；Esc」→「； Esc」）
+ *   汉字 / 中文标点 → 英文：留空（「；Esc」→「； Esc」）；开括号 / 开引号后面不留（「（1.22.0」——之前误加成「（ 1.22.0」）
  *   英文 → 汉字：留空；英文 → 中文标点：不留（「Minecraft、」）
  */
 export function autoSpace(text: string): string {
     return text
-        .replace(new RegExp(`(${CJK})((?:§.)*)([A-Za-z0-9@#&(\\[])`, 'g'), '$1 $2$3')
+        .replace(new RegExp(`(?![（《「『【〈〔〖“‘])(${CJK})((?:§.)*)([A-Za-z0-9@#&(\\[])`, 'g'), '$1 $2$3')
         // (?<!§)：格式码的那个字母 / 数字（§9 的 9）不算英文
         .replace(new RegExp(`(?<!§)([A-Za-z0-9%)\\]!?.:;])((?:§.)*)(${HAN})`, 'g'), '$1$2 $3')
 }
