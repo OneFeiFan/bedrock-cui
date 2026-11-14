@@ -72,7 +72,11 @@ test('serverForm：挂到原版服务端表单（工厂 + 标题门控 + 隐藏�
     assert.deepEqual(issues, [])
     assert.deepEqual(Object.keys(files).sort(), ['ui/_ui_defs.json', 'ui/cui_test.json', 'ui/server_form.json'])
     const hook = files['ui/server_form.json']
-    assert.equal(hook.main_screen_content.modifications[0].value[0].cui_form_factory_cui_test.factory.control_ids.long_form, '@cui_test.root')
+    const factoryPanel = hook.main_screen_content.modifications[0].value[0].cui_form_factory_cui_test
+    assert.equal(factoryPanel.factory.control_ids.long_form, '@cui_test.root')
+    // 真机 1.14.0：工厂面板与主内容区不铺满屏幕时根面板是 0×0（原版 main_screen_content 是 [0, 0]），百分比布局全部塌成 0
+    assert.deepEqual([factoryPanel.size, factoryPanel.anchor_from, factoryPanel.anchor_to], [['100%', '100%'], 'top_left', 'top_left'])
+    assert.deepEqual(hook.main_screen_content.size, ['100%', '100%'])
     assert.equal(hook.long_form.modifications[0].value[1].source_property_name, "((#title_text - 'cui_ui:') = #title_text)")
     const ns = files['ui/cui_test.json']
     assert.equal(ns.root.bindings[0].binding_name, '#title_text')

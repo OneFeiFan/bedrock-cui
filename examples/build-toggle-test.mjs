@@ -13,7 +13,7 @@ import { buildResponsiveDemo, RESPONSIVE_FORM } from './responsive-demo.mjs'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 const outRoot = path.resolve(process.argv[2] ?? path.join(here, '..', 'out'))
-const VERSION = [1, 14, 0]
+const VERSION = [1, 15, 0]
 const UUID = { bp: '6a3f0e2c-91d4-4b7a-8c55-0e1f7a2b9c31', bpScript: 'c2e8b7d1-4f6a-4c9e-a1b2-3d4e5f607182', rp: '1f9c3a7e-2b4d-4e6f-8a90-b1c2d3e4f5a6', rpRes: '7d8e9f0a-1b2c-4d3e-9f4a-5b6c7d8e9f01' }
 const NAME = 'cui_toggle_test'
 
@@ -158,9 +158,9 @@ function openDDUI(player) {
         .header(title)
         .image(img, RP_UUID, { tooltip: tip, width: 0.15 })
         .label(body)
-    // 预加载：三张图以 width 0.01（表单宽度的 1%，两三个像素）一直显示在底部，贴图始终是加载好的。
-    // width 是「占表单宽度的比例」：1.12.0 写的 1 = 满宽，所以图整个显示了出来；1.13.0 隐藏着的预加载不起作用（羽毛更常闪）
-    for (const p of DD_PAGES) form.image(p.img, RP_UUID, { width: 0.01 })
+    // 预加载：三张图一直显示在底部（贴图始终是加载好的）。width 是「占表单宽度的比例」。
+    // 真机 1.14.0：width 0.01 不再闪，但小点还看得见；DDUI 没有透明度 / 层叠 ⇒ 再缩小，羽毛 0.002、燧石 0.004 对照（太小可能连贴图都不载入）
+    for (const p of DD_PAGES) form.image(p.img, RP_UUID, { width: 0.002 })
     form.closeButton()
         .show()
         .then((reason) => player.sendMessage('§7[CUI] DDUI 表单关闭：' + reason))
@@ -198,8 +198,8 @@ function openDDUI2(player) {
             .image(p.img, RP_UUID, { tooltip: p.tip, width: 0.15, visible: shown[i] })
             .label(p.body, { visible: shown[i] })
     })
-    // 预加载：同上，width 0.01 一直显示（1.13.0 先显示半秒再隐藏：仍偶尔闪——隐藏后贴图可能被释放）
-    for (const p of DD_PAGES) form.image(p.img, RP_UUID, { width: 0.01 })
+    // 预加载：同上，width 0.004（与羽毛的 0.002 对照）
+    for (const p of DD_PAGES) form.image(p.img, RP_UUID, { width: 0.004 })
     form.closeButton().show()
         .then((reason) => player.sendMessage('§7[CUI] DDUI 对照版关闭：' + reason))
         .catch((e) => player.sendMessage('§c[CUI] DDUI 出错：' + e))

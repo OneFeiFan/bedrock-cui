@@ -119,11 +119,13 @@ export function serverForm(options: ServerFormOptions): ServerFormFiles {
     const hook = {
         namespace: 'server_form',
         main_screen_content: {
-            // 与 sapdon 的挂法一致（真机验证）：主内容区填满，工厂实例化出的根面板才能铺满屏幕
-            size: ['fill', 'fill'],
+            // 原版 main_screen_content 是 size [0, 0]（屏幕中央的一个点；原版表单都是定尺寸、居中挂在上面）。
+            // 主内容区与工厂面板都要铺满屏幕（100%、左上锚点），根面板里的百分比尺寸才按屏幕算——真机 1.14.0：
+            // 之前工厂面板没写尺寸（sapdon 沿用），根面板是 0×0，定尺寸的书看起来正常，百分比布局全部塌成 0（与 @bedrock-core 的挂法对照修正）
+            size: ['100%', '100%'],
             modifications: [{
                 array_name: 'controls', operation: 'insert_back',
-                value: [{ [`cui_form_factory_${options.namespace}`]: { type: 'panel', factory: { name: 'server_form_factory', control_ids: { long_form: `@${options.namespace}.root` } } } }],
+                value: [{ [`cui_form_factory_${options.namespace}`]: { type: 'panel', size: ['100%', '100%'], anchor_from: 'top_left', anchor_to: 'top_left', factory: { name: 'server_form_factory', control_ids: { long_form: `@${options.namespace}.root` } } } }],
             }],
         },
         ...(options.screenAnimation ? {} : {
