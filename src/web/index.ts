@@ -181,12 +181,12 @@ export function mountPreview(el: HTMLElement, options: PreviewOptions): Preview 
     if (typeof window !== 'undefined') window.addEventListener('resize', () => { if (dprNow() !== dpr.value) dpr.value = dprNow() })
     // 控件的位置与尺寸取整到设备像素：汉字字距 8.5，行内排版拆出的文字段常从 x.5 开始——摆在小数坐标上，浏览器会再插值一次、整段发虚
     const S = (v: number) => `${Math.round(v * scale * dpr.value) / dpr.value}px`
+    // 裁剪区 = 祖先的裁剪框（相对这个元素，可以伸到元素外面：文字画布比控件大一圈——阴影、斜体、大字形图标——不能被控件自己的框切掉）
     const clipPath = (b: Box, area: Rect) => {
         if (!b.clip) return ''
         const c = b.clip
-        const top = Math.max(0, c.y - area.y), left = Math.max(0, c.x - area.x)
-        const right = Math.max(0, area.x + area.w - (c.x + c.w)), bottom = Math.max(0, area.y + area.h - (c.y + c.h))
-        return `inset(${S(top)} ${S(right)} ${S(bottom)} ${S(left)})`
+        const l = S(c.x - area.x), t = S(c.y - area.y), r = S(c.x + c.w - area.x), bt = S(c.y + c.h - area.y)
+        return `polygon(${l} ${t}, ${r} ${t}, ${r} ${bt}, ${l} ${bt})`
     }
 
     const draw = (b: Box): HTMLElement | undefined => {
@@ -247,9 +247,12 @@ export function mountPreview(el: HTMLElement, options: PreviewOptions): Preview 
             glyphImage, lineSpacing: n.props.lineSpacing,
         })
         if (!r) return false
-        const cssW = `${canvas.width / k}px`, cssH = `${canvas.height / k}px`
-        Object.assign(canvas.style, { width: cssW, height: cssH, imageRendering: 'pixelated', display: 'block', marginTop: `${-Math.round(r.padTop * scale * k * (n.props.fontScale ?? 1)) / k}px` })
-        d.style.width = cssW; d.style.height = cssH
+        // 画布比控件大一圈（阴影、斜体、大字形图标的余量），从控件左上角开始、超出部分照常显示——控件的 div 保持排版尺寸，
+        // 调试边框才与控件对齐（先前把 div 撑成画布大小，边框比控件大一圈、文字看起来偏在左上角）
+        Object.assign(canvas.style, {
+            position: 'absolute', left: '0px', top: `${-Math.round(r.padTop * scale * k * (n.props.fontScale ?? 1)) / k}px`,
+            width: `${canvas.width / k}px`, height: `${canvas.height / k}px`, imageRendering: 'pixelated', display: 'block',
+        })
         d.appendChild(canvas)
         return true
     }

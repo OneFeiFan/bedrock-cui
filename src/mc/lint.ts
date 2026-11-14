@@ -103,7 +103,7 @@ function lintCoveredText(boxes: Box[]): LintIssue[] {
         }
         if (best) issues.push({
             rule: 'text-covered', level: 'warning', path: t.b.node.path,
-            message: `被图片 ${best.im.node.path.split('/').slice(-2).join('/')} 盖住：文字层级 ${t.b.z} ≤ 图片层级 ${best.im.z}（真机：同层的图片会盖住文字，与书写顺序无关）。文字缺省 layer 1——别把文字的 layer 写低，或把图片的调低`,
+            message: `可能被图片 ${best.im.node.path.split('/').slice(-2).join('/')} 盖住：文字层级 ${t.b.z} ≤ 图片层级 ${best.im.z}（真机 1.4.0 被盖住；1.21.x 同一行另有更高层的字时没被盖住——规则待对照实验确认）。文字缺省 layer 1——别把文字的 layer 写低，或把图片的调低`,
         })
     }
     return issues

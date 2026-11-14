@@ -224,7 +224,7 @@ export function buildBook(options = {}) {
         new RowLink(pages, 'sword', T.sword, '钻石剑', 20),
         new RowLink(pages, 'diamond', T.diamond, '钻石', 38),
         new RowLink(pages, 'about', T.book_item, '检查清单', 56),
-        new RowLink(pages, 'tlayer', T.paper, '叠放顺序', 74),
+        new RowLink(pages, 'tlayer', T.paper, '叠放顺序（对照）', 74),
         new RowLink(pages, 'tinline', T.emerald, '行内图标（Text）', 92),
         new RowLink(pages, 'tglyph', T.diamond, '字形图标', 110)))
     home.add(new ServerArrow('home', 'sword', 'right'))
@@ -367,20 +367,31 @@ function buildSpecialPage(page) {
     page.add(new Side('R').add(new Title('CUI 处理后'), ...SPECIAL.map((t, i) => row(i, t, false))))
 }
 
-/** 叠放顺序诊断：深色底板 + 白字的几种写法，看哪几种文字被盖住（真机 1.3.0 色块里的文字不见了） */
+/**
+ * 叠放顺序对照实验（1.22.0）：每行 = 深色底板 + 一段 0 层白字，每次只改一个条件，看哪几行的白字被底板盖住。
+ * 来历：真机 1.4.0「底板 + 0 层字」被盖住（于是文字缺省 layer 1）；可 1.21.x 的 V0（同样的底板 + 0 层字，但同一行多了一个 2 层的提示字）
+ * 字是看得见的——规则不只是「同层图片盖住文字」。
+ */
 function buildLayerTest(sideL, sideR) {
     const row = (i, ...items) => new Panel().setSize(FULL, 18).setAnchor(TOP_LEFT).setOffset(0, 22 + i * 20).add(...items)
     const bg = () => new Image(T.purple).setSize(Size.full())
-    const txt = (s) => new Label(s).setColor(WHITE).setAnchor(CENTER_LEFT).setOffset(6, 0)
-    sideL.add(new Title('叠放顺序'),
-        // V0 故意被盖住（预览与真机都是一片空白；静态检查 text-covered 也会报）——行内右侧用更高层级写明预期，免得以为是 bug
-        row(0, bg(), txt('V0 字 layer 0').setLayer(0), new Label('§7应被盖住').setLayer(2).setAnchor(CENTER_RIGHT).setOffset(-5, 0)),
-        row(1, bg(), txt('V1 图在前 字在后')),
-        row(2, bg(), txt('V2 同上 + 阴影').setShadow()),
-        row(3, txt('V3 字在前 图在后'), bg()),
-        row(4, bg(), txt('V4 字写 layer 1').setLayer(1)),
-        row(5, bg().add(txt('V5 字是图的子元素'))))
-    sideR.add(new Title('1.5.0 预期'), new Body('1.4.0 真机：只有 V4 的字可见。\n\n现在框架给文字缺省 layer 1：V1–V5 都应可见；V0 故意写 layer 0，应被盖住。'))
+    /** 被测的白字：显式 0 层 */
+    const txt = (s) => new Label(s).setColor(WHITE).setAnchor(CENTER_LEFT).setOffset(6, 0).setLayer(0)
+    /** 同一行右侧的另一段字（灰色），层级 n */
+    const other = (s, n) => new Label(`§7${s}`).setLayer(n).setAnchor(CENTER_RIGHT).setOffset(-5, 0)
+    sideL.add(new Title('叠放顺序 1'),
+        row(0, bg(), txt('A 字0')),
+        row(1, bg(), txt('B 字0'), other('+字2', 2)),
+        row(2, bg(), txt('C 字0'), other('+字0', 0)),
+        row(3, bg(), txt('D 字0'), new Image(T.diamond).setSize(10, 10).setAnchor(CENTER_RIGHT).setOffset(-5, 0).setLayer(2)),
+        row(4, txt('E 字0 在前'), bg()),
+        row(5, bg(), new Label('F 字缺省（1）').setColor(WHITE).setAnchor(CENTER_LEFT).setOffset(6, 0)))
+    sideR.add(new Title('叠放顺序 2'),
+        row(0, bg().setLayer(1), txt('G 图1 字1').setLayer(1)),
+        row(1, new Panel().setSize(Size.full()).setLayer(1).add(bg(), txt('H 面板1 内'))),
+        row(2, bg().add(txt('I 字0 是子元素'))),
+        row(3, bg(), txt('J 字0'), other('+字1', 1)),
+        new Body('§8请截图：看哪几行的白字被底板盖住（只剩深色）。右侧灰字、钻石是同一行里另加的。', 104))
 }
 
 /** 文本测试的各页：折行对比、富文本、字宽标尺、长文本分页、运行期长文本、特殊字符、叠放顺序、字形 / 行内图标、字形采样 */
