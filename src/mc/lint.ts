@@ -8,7 +8,7 @@ import { measureText, usesUnifont } from '../font/metrics.js'
 import { Texture } from '../core/values.js'
 import { GlyphSheet } from '../core/glyphs.js'
 import { InlineIcon } from '../core/inline.js'
-import { layout, type Box, type TextureInfo } from '../layout/engine.js'
+import { batchKey, layout, type Box, type TextureInfo } from '../layout/engine.js'
 
 export interface LintIssue {
     rule: string
@@ -71,39 +71,45 @@ export function lintLayout(roots: RNode[], options: LintOptions = {}): LintIssue
 }
 
 /**
- * 文字被图片盖住（真机 1.4.0：同层的图片会盖住文字，与书写顺序、父子关系无关——CUI 因此给文字缺省 layer 1）：
- * 文字的层级 ≤ 与它重叠的图片的层级 → 警告（预览里同层也是先画文字、后画图片，所以看到的是空白）。
- * 图片在另一个条件分支里（与文字的最近公共祖先之下有动态显示条件，例如书的另一页）不算——两者不会同时显示。
+ * 文字被图片盖住——游戏的绘制规则（真机 1.3.0 / 1.4.0 / 1.22.0 叠放实验）：先按层级；同一层里按材质分批（文字一批、每种贴图一批），
+ * 各批的先后 = 这一批在控件树里（文档顺序）第一次出现的先后。所以：图片层级更高，或同层但这种贴图在这一层第一次出现得比文字晚 → 盖住文字。
+ * 「第一次出现」只算会与这段文字同时显示的控件：另一个条件分支里的（例如书的另一页）不算。报关系最近的那张图。
  */
 function lintCoveredText(boxes: Box[]): LintIssue[] {
     const issues: LintIssue[] = []
-    const entries: { b: Box, chain: Box[] }[] = []
+    const entries: { b: Box, chain: Box[], i: number }[] = []
     const collect = (b: Box, chain: Box[]) => {
         const c = [...chain, b]
-        if (b.node.type === 'label' || (b.node.type === 'image' && b.texture)) entries.push({ b, chain: c })
+        entries.push({ b, chain: c, i: entries.length })
         b.children.forEach((x) => collect(x, c))
     }
     boxes.forEach((b) => collect(b, []))
     const hasText = (b: Box) => isExpr(b.node.props.text) || String(b.node.props.text ?? '').replace(/§./g, '').trim() !== ''
-    const images = entries.filter((e) => e.b.node.type === 'image')
-    for (const t of entries) {
-        if (t.b.node.type !== 'label' || !hasText(t.b)) continue
+    const lca = (a: Box[], b: Box[]) => { let k = 0; while (k < a.length && k < b.length && a[k] === b[k]) k++; return k }
+    /** e 是否与 t 同时显示：e 在两者公共祖先之下没有动态显示条件 */
+    const together = (t: { chain: Box[] }, e: { chain: Box[] }) => !e.chain.slice(lca(t.chain, e.chain)).some((x) => isExpr(x.node.props.visible))
+    const texts = entries.filter((e) => e.b.node.type === 'label' && hasText(e.b))
+    const images = entries.filter((e) => e.b.node.type === 'image' && e.b.texture)
+    for (const t of texts) {
         const a = t.b.rect
-        // 盖住它的图片里报关系最近的那张（与文字的公共祖先最深——通常是它自己的底板，而不是整页背景）
+        const world = entries.filter((e) => together(t, e))
+        const firstOf = (z: number, key: string) => world.find((e) => e.b.z === z && batchKey(e.b) === key)?.i ?? Infinity
+        const textFirst = firstOf(t.b.z, 'text')
         let best: { im: Box, k: number } | undefined
         for (const im of images) {
-            if (im.b.z < t.b.z) continue
+            if (im.b.z < t.b.z || !together(t, im)) continue
+            if (im.b.z === t.b.z && firstOf(im.b.z, batchKey(im.b)!) < textFirst) continue   // 这种贴图在这一层先出现：先画，文字在上面
             const c = im.b.rect
             const ox = Math.min(a.x + a.w, c.x + c.w) - Math.max(a.x, c.x), oy = Math.min(a.y + a.h, c.y + c.h) - Math.max(a.y, c.y)
             if (ox <= 0.5 || oy <= 0.5) continue
-            let k = 0
-            while (k < t.chain.length && k < im.chain.length && t.chain[k] === im.chain[k]) k++
-            if (im.chain.slice(k).some((x) => isExpr(x.node.props.visible))) continue
+            const k = lca(t.chain, im.chain)
             if (!best || k > best.k) best = { im: im.b, k }
         }
         if (best) issues.push({
             rule: 'text-covered', level: 'warning', path: t.b.node.path,
-            message: `可能被图片 ${best.im.node.path.split('/').slice(-2).join('/')} 盖住：文字层级 ${t.b.z} ≤ 图片层级 ${best.im.z}（真机 1.4.0 被盖住；1.21.x 同一行另有更高层的字时没被盖住——规则待对照实验确认）。文字缺省 layer 1——别把文字的 layer 写低，或把图片的调低`,
+            message: best.im.z > t.b.z
+                ? `被图片 ${best.im.node.path.split('/').slice(-2).join('/')} 盖住：图片层级 ${best.im.z} 高于文字 ${t.b.z}`
+                : `被图片 ${best.im.node.path.split('/').slice(-2).join('/')} 盖住：同在第 ${t.b.z} 层，这种贴图在这一层第一次出现得比文字晚（游戏同层按材质分批画，先出现的批先画）。把文字的 layer 调高一层最稳`,
         })
     }
     return issues

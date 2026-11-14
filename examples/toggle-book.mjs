@@ -18,7 +18,7 @@ export const T = {
     tab: 'textures/cui_test/tab', tabHover: 'textures/cui_test/tab_hover',
     cell: 'textures/ui/cell_image', highlight: 'textures/ui/highlight_slot', purple: 'textures/ui/purpleBorder',
     sword: 'textures/items/diamond_sword', diamond: 'textures/items/diamond', stick: 'textures/items/stick', book_item: 'textures/items/book_normal',
-    ruler: 'textures/cui_test/ruler', paper: 'textures/items/paper', name_tag: 'textures/items/name_tag', map: 'textures/items/map_empty', emerald: 'textures/items/emerald', writable: 'textures/items/book_writable',
+    ruler: 'textures/cui_test/ruler', teal: 'textures/cui_test/teal_bg', paper: 'textures/items/paper', name_tag: 'textures/items/name_tag', map: 'textures/items/map_empty', emerald: 'textures/items/emerald', writable: 'textures/items/book_writable',
 }
 const TITLE = Color.fromJSON([0.24, 0.13, 0.03]), BODY = Color.fromJSON([0.27, 0.19, 0.11]), WHITE = Color.WHITE, GRAY = Color.fromJSON([0.67, 0.67, 0.67])
 const { TOP_LEFT, TOP_CENTER, TOP_RIGHT, CENTER_LEFT, CENTER, CENTER_RIGHT, BOTTOM_RIGHT } = Anchor
@@ -224,7 +224,7 @@ export function buildBook(options = {}) {
         new RowLink(pages, 'sword', T.sword, '钻石剑', 20),
         new RowLink(pages, 'diamond', T.diamond, '钻石', 38),
         new RowLink(pages, 'about', T.book_item, '检查清单', 56),
-        new RowLink(pages, 'tlayer', T.paper, '叠放顺序（对照）', 74),
+        new RowLink(pages, 'tlayer', T.paper, '叠放规则验证', 74),
         new RowLink(pages, 'tinline', T.emerald, '行内图标（Text）', 92),
         new RowLink(pages, 'tglyph', T.diamond, '字形图标', 110)))
     home.add(new ServerArrow('home', 'sword', 'right'))
@@ -368,30 +368,30 @@ function buildSpecialPage(page) {
 }
 
 /**
- * 叠放顺序对照实验（1.22.0）：每行 = 深色底板 + 一段 0 层白字，每次只改一个条件，看哪几行的白字被底板盖住。
- * 来历：真机 1.4.0「底板 + 0 层字」被盖住（于是文字缺省 layer 1）；可 1.21.x 的 V0（同样的底板 + 0 层字，但同一行多了一个 2 层的提示字）
- * 字是看得见的——规则不只是「同层图片盖住文字」。
+ * 叠放规则的预测验证（1.23.0）。由 1.3.0 / 1.4.0 / 1.22.0 的实验推出的规则：同一层里按材质分批画（文字一批、每种贴图一批），
+ * 各批的先后 = 这一批在控件树里第一次出现的先后。按这条规则，两个与直觉相反的预测：
+ *   · 0 层里另一种贴图（青色，这一页第一次出现在文字之后）会盖住 0 层的字——Q、S
+ *   · 页首先放一张 1 层的紫色小图（抢先出现），1 层的紫色底板就盖不住 1 层的字——T、V（1.22.0 的 G 被盖住）
+ * 预览就按这条规则画：游戏截图与预览一致，规则就确认了。
  */
-function buildLayerTest(sideL, sideR) {
+function buildLayerTest(page) {
+    // 页首：1 层的紫色小图（1×1，放在书本外框最左上角的深色边上），让紫色这一批在 1 层先于任何文字出现
+    page.add(new Image(T.purple).setSize(1, 1).setAnchor(TOP_LEFT).setOffset(1, 1).setLayer(1))
     const row = (i, ...items) => new Panel().setSize(FULL, 18).setAnchor(TOP_LEFT).setOffset(0, 22 + i * 20).add(...items)
-    const bg = () => new Image(T.purple).setSize(Size.full())
-    /** 被测的白字：显式 0 层 */
-    const txt = (s) => new Label(s).setColor(WHITE).setAnchor(CENTER_LEFT).setOffset(6, 0).setLayer(0)
-    /** 同一行右侧的另一段字（灰色），层级 n */
-    const other = (s, n) => new Label(`§7${s}`).setLayer(n).setAnchor(CENTER_RIGHT).setOffset(-5, 0)
-    sideL.add(new Title('叠放顺序 1'),
-        row(0, bg(), txt('A 字0')),
-        row(1, bg(), txt('B 字0'), other('+字2', 2)),
-        row(2, bg(), txt('C 字0'), other('+字0', 0)),
-        row(3, bg(), txt('D 字0'), new Image(T.diamond).setSize(10, 10).setAnchor(CENTER_RIGHT).setOffset(-5, 0).setLayer(2)),
-        row(4, txt('E 字0 在前'), bg()),
-        row(5, bg(), new Label('F 字缺省（1）').setColor(WHITE).setAnchor(CENTER_LEFT).setOffset(6, 0)))
-    sideR.add(new Title('叠放顺序 2'),
-        row(0, bg().setLayer(1), txt('G 图1 字1').setLayer(1)),
-        row(1, new Panel().setSize(Size.full()).setLayer(1).add(bg(), txt('H 面板1 内'))),
-        row(2, bg().add(txt('I 字0 是子元素'))),
-        row(3, bg(), txt('J 字0'), other('+字1', 1)),
-        new Body('§8请截图：看哪几行的白字被底板盖住（只剩深色）。右侧灰字、钻石是同一行里另加的。', 104))
+    // 青色贴图不是九宫格：铺满整行要关掉保持宽高比（缺省保持，16×16 的图会画成正方形）
+    const bg = (tex, layer) => new Image(tex).setKeepRatio(false).setSize(Size.full()).setLayer(layer)
+    const txt = (s, layer) => new Label(s).setColor(WHITE).setAnchor(CENTER_LEFT).setOffset(6, 0).setLayer(layer)
+    page.add(new Side('L').add(new Title('预测 1 · 0 层'),
+        row(0, bg(T.purple, 0), txt('P 紫底0 字0 → 可见', 0)),
+        row(1, bg(T.teal, 0), txt('Q 青底0 字0 → 盖住', 0)),
+        row(2, bg(T.purple, 0), txt('R 紫底0 字0 → 可见', 0)),
+        row(3, bg(T.teal, 0), txt('S 青底0 字0 → 盖住', 0)),
+        new Body('§8青色贴图在 0 层第一次出现时，0 层的文字已经出现过了：青色这一批后画。', 104)))
+    page.add(new Side('R').add(new Title('预测 2 · 1 层'),
+        row(0, bg(T.purple, 1), txt('T 紫底1 字1 → 可见', 1)),
+        row(1, bg(T.teal, 1), txt('U 青底1 字1 → 盖住', 1)),
+        row(2, txt('V 字1 写在前 → 可见', 1), bg(T.purple, 1)),
+        new Body('§8页首有一张 1 层紫色小图抢先出现（1.22.0 的 G 没有它，被盖住）。', 84)))
 }
 
 /** 文本测试的各页：折行对比、富文本、字宽标尺、长文本分页、运行期长文本、特殊字符、叠放顺序、字形 / 行内图标、字形采样 */
@@ -444,10 +444,7 @@ function buildTextPages(pages) {
     chain.push('tspecial')
     buildSpecialPage(pages.page('tspecial'))
     chain.push('tlayer')
-    const layerPage = pages.page('tlayer')
-    const ll = new Side('L'), lr = new Side('R')
-    buildLayerTest(ll, lr)
-    layerPage.add(ll, lr)
+    buildLayerTest(pages.page('tlayer'))
     // 字形图标：左页字宽标尺，右页带图标的段落（看折行）
     chain.push('tglyph')
     const glyphPage = pages.page('tglyph')
@@ -490,5 +487,5 @@ export const TEXTURE_INFO = {
     // 原版 .json：cell_image 是两倍精度（10×10 像素、base_size 5×5、nineslice 1）；highlight_slot 也是九宫格
     [T.cell]: { size: [10, 10], baseSize: [5, 5], nineslice: 1 }, [T.highlight]: { size: [1, 1], baseSize: [1, 1], nineslice: 1 }, [T.purple]: { size: [16, 16], baseSize: [16, 16], nineslice: 4 },
     [T.sword]: { size: [16, 16] }, [T.diamond]: { size: [16, 16] }, [T.stick]: { size: [16, 16] }, [T.book_item]: { size: [16, 16] },
-    [T.ruler]: { size: [101, 5] }, [T.paper]: { size: [16, 16] }, [T.name_tag]: { size: [16, 16] }, [T.map]: { size: [16, 16] }, [T.emerald]: { size: [16, 16] }, [T.writable]: { size: [16, 16] },
+    [T.ruler]: { size: [101, 5] }, [T.teal]: { size: [16, 16] }, [T.paper]: { size: [16, 16] }, [T.name_tag]: { size: [16, 16] }, [T.map]: { size: [16, 16] }, [T.emerald]: { size: [16, 16] }, [T.writable]: { size: [16, 16] },
 }

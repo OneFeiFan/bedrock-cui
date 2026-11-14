@@ -1,7 +1,7 @@
 // 排版引擎：按 JSON UI 规则（锚点、尺寸单位、stack、grid、clip、layer、keep_ratio、文字、按钮态、集合项）
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { Panel, Stack, Grid, Image, Label, FormGate, FormButton, buttonPayload, finalize, layout, findBox, textWidth } from '../dist/index.js'
+import { Panel, Size, Stack, Grid, Image, Label, FormGate, FormButton, buttonPayload, finalize, layout, findBox, textWidth } from '../dist/index.js'
 
 const run = (root, env = {}) => layout(finalize(root), { viewport: [200, 100], ...env })
 const R = (b) => [b.rect.x, b.rect.y, b.rect.w, b.rect.h].map((v) => Math.round(v * 100) / 100)
@@ -185,23 +185,30 @@ test('静态检查 text-overlap：同一容器里两个文字控件重叠（line
     assert.deepEqual(issues.map((i) => `${i.rule}@${i.path.split('/').pop()}`), ['text-overlap@note'])
 })
 
-test('静态检查 text-covered：文字层级 ≤ 重叠图片的层级 → 被盖住（真机 1.4.0：同层图片盖住文字，与书写顺序无关）；报关系最近的那张图；另一个条件分支里的图不算', async () => {
-    const { compileNamespace, toggleState, Image } = await import('../dist/index.js')
-    const rule = (root) => compileNamespace('t', { root }).issues.filter((i) => i.rule === 'text-covered').map((i) => `${i.path.split('/').pop()}←${i.message.match(/图片 (\S+)/)[1]}`)
-    const row = (name, labelProps) => new Panel({ name, size: [100, 18], anchor: 'top_left' }).add(
-        new Image({ name: 'bg', texture: 'textures/ui/x', size: ['100%', '100%'] }), new Label({ name: 'txt', text: '文字', ...labelProps }))
-    // 同层（文字显式 layer 0）→ 报，指向这一行自己的底板，而不是整页背景
-    const page = new Panel({ size: [200, 200] }).add(new Image({ name: 'pagebg', texture: 'textures/ui/x', size: ['100%', '100%'] }), row('r0', { layer: 0 }), row('r1', {}))
-    assert.deepEqual(rule(page), ['txt←r0/bg'])
-    // 文字缺省 layer 1 → 不报（上面的 r1）；图片层级更高 → 报
-    const high = new Panel({ size: [200, 200] }).add(new Image({ name: 'cover', texture: 'textures/ui/x', size: [50, 50], layer: 2 }), new Label({ name: 'under', text: '被盖住' }))
-    assert.deepEqual(rule(high), ['under←root/cover'])
-    // 图片在另一个条件分支（书的另一页）→ 不报；文字所在页有条件、图片总在 → 报
-    const pages = new Panel({ size: [200, 200] }).add(
-        new Panel({ name: 'pA', size: ['100%', '100%'], visible: toggleState('p').not() }).add(new Label({ name: 'a', text: '甲页', layer: 0 })),
-        new Panel({ name: 'pB', size: ['100%', '100%'], visible: toggleState('p') }).add(new Image({ name: 'img', texture: 'textures/ui/x', size: ['100%', '100%'] })))
-    assert.deepEqual(rule(pages), [])
-    const always = new Panel({ size: [200, 200] }).add(new Image({ name: 'top', texture: 'textures/ui/x', size: ['100%', '100%'], layer: 3 }),
-        new Panel({ name: 'pA', size: ['100%', '100%'], visible: toggleState('p') }).add(new Label({ name: 'a', text: '甲页' })))
-    assert.deepEqual(rule(always), ['a←root/top'])
+test('静态检查 text-covered：同层按材质分批、先出现的批先画（真机 1.3.0 / 1.4.0 / 1.22.0）；图片层级更高也盖住；另一个条件分支里的控件不算', async () => {
+    const { compileNamespace, toggleState, Image, Anchor } = await import('../dist/index.js')
+    const X = 'textures/ui/x', Y = 'textures/ui/y'
+    const rule = (...items) => compileNamespace('t', { root: new Panel().setSize(200, 200).add(...items) }).issues
+        .filter((i) => i.rule === 'text-covered').map((i) => `${i.path.split('/').pop()}←${i.message.match(/图片 (\S+)/)[1]}`)
+    const row = (name, tex, textLayer, bgLayer = 0) => new Panel().setName(name).setSize(100, 18).setAnchor(Anchor.TOP_LEFT).add(
+        new Image(tex).setName('bg').setSize(Size.full()).setLayer(bgLayer), new Label('文字').setName('txt').setLayer(textLayer))
+    const title = (layer) => new Label('标题').setName('title').setAnchor(Anchor.TOP_RIGHT).setLayer(layer)
+    // 1.22.0 的 A：0 层先出现底板贴图、后出现文字 → 文字在上
+    assert.deepEqual(rule(row('a', X, 0)), [])
+    // 1.4.0 的 V1：0 层的标题文字先出现 → 文字那一批先画，底板盖住
+    assert.deepEqual(rule(title(0), row('v1', X, 0)), ['txt←v1/bg'])
+    // 1.22.0 的 G：1 层的标题文字先出现，底板与字都在 1 层 → 盖住
+    assert.deepEqual(rule(title(1), row('g', X, 1, 1)), ['txt←g/bg'])
+    // 预测：1 层先放一张同贴图的小图（抢先出现）→ 同样的写法字在上
+    assert.deepEqual(rule(new Image(X).setSize(1, 1).setLayer(1), title(1), row('t', X, 1, 1)), [])
+    // 预测：0 层里另一种贴图第一次出现晚于文字 → 0 层也会盖住
+    assert.deepEqual(rule(row('p', X, 0), row('q', Y, 0).setOffset(0, 20)), ['txt←q/bg'])
+    // 图片层级更高 → 盖住
+    assert.deepEqual(rule(new Image(X).setName('cover').setSize(50, 50).setLayer(2), new Label('被盖住').setName('under')), ['under←root/cover'])
+    // 另一页（条件分支）里先出现的文字不算：乙页自己的世界里底板先出现
+    const pages = [
+        new Panel().setName('pA').setSize(Size.full()).setVisible(toggleState('p').not()).add(new Label('甲页').setLayer(0)),
+        new Panel().setName('pB').setSize(Size.full()).setVisible(toggleState('p')).add(row('b', X, 0)),
+    ]
+    assert.deepEqual(rule(...pages), [])
 })

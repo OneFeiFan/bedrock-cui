@@ -340,15 +340,28 @@ export function layout(roots: RNode[], env: LayoutEnv): Box[] {
 }
 
 /**
- * 按绘制顺序展平：z 小的先画；**同一 z 时文字先画、图片后画**（取最坏情况——真机 1.4.0：同层的图片会盖住文字，
- * 与文档顺序、父子关系无关），再按文档顺序。这样预览里也能看出「文字被底板盖住」。
+ * 按绘制顺序展平——游戏的规则（真机 1.3.0 / 1.4.0 / 1.22.0 的叠放实验一起推出来的）：
+ *   · 先按层级（相对父控件累加的 layer）；
+ *   · **同一层里按「材质」分批画**：所有文字是一批，每种贴图各是一批；**各批的先后 = 这一批在控件树里（文档顺序、深度优先）第一次出现的先后**；
+ *   · 同一批里按文档顺序。
+ * 所以同层的底板与文字谁在上，看这一层里是文字先出现还是这种贴图先出现——与这一行自己的书写顺序无关
+ * （1.22.0：0 层先出现紫色底板 → 0 层的字都在上面；1 层先出现标题文字 → 1 层的紫色底板盖住 1 层的字）。
  */
 export function drawOrder(boxes: Box[]): Box[] {
     const out: Box[] = []
     const visit = (b: Box) => { out.push(b); b.children.forEach(visit) }
     boxes.forEach(visit)
-    const rank = (b: Box) => (b.node.type === 'label' ? 0 : b.node.type === 'image' ? 1 : 0)
-    return out.sort((a, b) => a.z - b.z || rank(a) - rank(b) || a.order - b.order)
+    const first = new Map<string, number>()
+    out.forEach((b, i) => { const k = batchKey(b); if (k && !first.has(`${b.z}|${k}`)) first.set(`${b.z}|${k}`, i) })
+    const batch = (b: Box) => { const k = batchKey(b); return k ? first.get(`${b.z}|${k}`)! : -1 }
+    return out.sort((a, b) => a.z - b.z || batch(a) - batch(b) || a.order - b.order)
+}
+
+/** 绘制批次：文字一批；图片按贴图分批；其它控件不画东西 */
+export function batchKey(b: Box): string | undefined {
+    if (b.node.type === 'label') return 'text'
+    if (b.node.type === 'image') return `image:${b.texture ?? ''}`
+    return undefined
 }
 
 /** 找一个路径的控件（测试用） */

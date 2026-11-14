@@ -18,7 +18,7 @@ const FILE: Record<string, string> = {
     [T.arrowR]: 'arrow_right', [T.arrowRH]: 'arrow_right_hover', [T.tab]: 'tab', [T.tabHover]: 'tab_hover',
     [T.cell]: 'cell_image', [T.highlight]: 'highlight_slot', [T.purple]: 'purpleBorder',
     [T.sword]: 'diamond_sword', [T.diamond]: 'diamond', [T.stick]: 'stick', [T.book_item]: 'book_normal',
-    [T.ruler]: 'ruler', [T.paper]: 'paper', [T.name_tag]: 'name_tag', [T.map]: 'map_empty', [T.writable]: 'book_writable', [T.emerald]: 'emerald',
+    [T.ruler]: 'ruler', [T.teal]: 'teal_bg', [T.paper]: 'paper', [T.name_tag]: 'name_tag', [T.map]: 'map_empty', [T.writable]: 'book_writable', [T.emerald]: 'emerald',
 }
 const textures: Record<string, PreviewTexture> = Object.fromEntries(Object.entries(FILE).map(([p, f]) => [p, { url: `./textures/${f}.png`, ...TEXTURE_INFO[p] }]))
 
