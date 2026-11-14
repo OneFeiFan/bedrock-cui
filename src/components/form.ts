@@ -4,7 +4,8 @@
  *   FormButton 绑定到第 index 个表单按钮；按钮文字包含 tag 时显示（tag 后面可带运行期数据，用 buttonPayload(tag) 读）
  */
 import { form } from '../core/expr.js'
-import { Button, CollectionItem, Panel, type LayoutOptions, isOptions } from '../core/element.js'
+import { Button, CollectionItem, Panel, type LayoutOptions, isOptions, _applyOptions } from '../core/element.js'
+import { Anchor, Size } from '../core/values.js'
 
 export interface FormGateOptions extends LayoutOptions { tag: string }
 
@@ -15,7 +16,10 @@ export class FormGate extends Panel {
     constructor(options: FormGateOptions)
     constructor(a: string | FormGateOptions) {
         const { tag, ...rest } = isOptions(a) ? a as FormGateOptions : { tag: a as string }
-        super({ size: ['100%', '100%'], ...rest, visible: form.text.contains(tag) })
+        super()
+        this.setSize(Size.full())
+        _applyOptions(this, rest)       // 已弃用的参数对象写法带来的布局选项
+        this.setVisible(form.text.contains(tag))
     }
 }
 
@@ -47,9 +51,13 @@ export class FormButton extends CollectionItem {
     constructor(a: number | FormButtonOptions, tagArg?: string, width?: number, height?: number) {
         const options: FormButtonOptions = isOptions(a) ? a as FormButtonOptions : { index: a as number, tag: tagArg!, size: [width!, height!] }
         const { index, tag, size, onPress, focusPrecedence, children, name, anchor, anchorFrom, anchorTo, offset, layer, gridPos } = options
-        super({ name, collection: 'form_buttons', index, size, anchor, anchorFrom, anchorTo, offset, layer, gridPos })
+        super('form_buttons', index)
+        // 尺寸是两种写法都有的；其余布局选项只有已弃用的参数对象写法会带来
+        _applyOptions(this, { name, size, anchor, anchorFrom, anchorTo, offset, layer, gridPos })
         this.tag = tag
-        this.button = new Button({ name: 'button', size, anchor: 'center', visible: form.buttonText.contains(tag), onPress, focusPrecedence })
+        this.button = new Button().setName('button').setSize(Size.from(size as [number, number])).setAnchor(Anchor.CENTER).setVisible(form.buttonText.contains(tag))
+        if (focusPrecedence !== undefined) this.button.setFocusPrecedence(focusPrecedence)
+        if (onPress) this.button.onPress(onPress)
         super.add(this.button)
         if (children) this.add(...children)
     }

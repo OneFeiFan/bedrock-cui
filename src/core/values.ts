@@ -150,13 +150,13 @@ export class Color {
         const n = parseInt(m[1], 16)
         return new Color((n >> 16) & 255, (n >> 8) & 255, n & 255)
     }
-    /** 由 JSON UI 的 [0–1, 0–1, 0–1] 得到 */
-    static fromJSON(v: RGB): Color { return new Color(Math.round(v[0] * 255), Math.round(v[1] * 255), Math.round(v[2] * 255)) }
+    /** 由 JSON UI 的 [0–1, 0–1, 0–1] 得到（无损：[0.27, 0.19, 0.11] 写回去还是这三个数，不会因取整变成 0.271） */
+    static fromJSON(v: RGB): Color { return new Color(v[0] * 255, v[1] * 255, v[2] * 255) }
     static readonly WHITE = new Color(255, 255, 255)
     static readonly BLACK = new Color(0, 0, 0)
     /** JSON UI 写法：0–1 浮点（保留三位小数） */
     toJSON(): RGB { return [this.r, this.g, this.b].map((v) => Math.round((v / 255) * 1000) / 1000) as RGB }
-    toString(): string { return `#${[this.r, this.g, this.b].map((v) => v.toString(16).padStart(2, '0')).join('')}` }
+    toString(): string { return `#${[this.r, this.g, this.b].map((v) => Math.round(v).toString(16).padStart(2, '0')).join('')}` }
 }
 
 /** 内边距（安全区） */

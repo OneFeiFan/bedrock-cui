@@ -595,6 +595,17 @@ function snapshot(list: Element[], parentPath: string): RNode[] {
     })
 }
 
+/**
+ * @internal 已弃用的参数对象写法的兼容层：把布局选项并进一个已经构造好的元素（效果与参数对象构造函数相同）。
+ * 框架自己的代码一律用 setXxx()；只有仍接受参数对象的公开方法（例如 pages.page(key, options)）经过这里。
+ */
+export function _applyOptions(el: Element, options: LayoutOptions): void {
+    const { children, name, ...rest } = options
+    if (name !== undefined) el.name = name
+    for (const [k, v] of Object.entries(rest)) if (v !== undefined) el.props[k] = v
+    if (children) el.add(...children)
+}
+
 /** @internal 给自己展开子树的组件（Text）用 */
 export const _snapshot = (list: Element[], parentPath: string): RNode[] => snapshot(list, parentPath)
 

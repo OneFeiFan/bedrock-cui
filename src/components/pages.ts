@@ -1,7 +1,7 @@
 /**
  * 客户端分页：一组单选开关切换页面，**不经过服务端**——整本书放在一个表单里，翻页不关表单、不重开（没有空档）。
  *
- *   const pages = new Pages({ group: 'book', start: 'home' })
+ *   const pages = new Pages('book').startAt('home')
  *   const home = pages.page('home')          // 一页（Panel），往里加内容
  *   const sword = pages.page('sword')
  *   const link = pages.link('sword', {...})  // 一个跳到 sword 页的开关，可以放在树里任何地方（目录行、箭头、书签）
@@ -12,7 +12,8 @@
  * 再开一个 Pages（不同 group）就是相互独立的另一组状态（例如物品详情弹层：关掉后回到原来那页）。
  */
 import { form, toggleState, type Expr } from '../core/expr.js'
-import { Panel, Toggle, type LayoutOptions, isOptions } from '../core/element.js'
+import { Panel, Toggle, type LayoutOptions, isOptions, _applyOptions } from '../core/element.js'
+import { Size } from '../core/values.js'
 
 export interface PagesOptions extends LayoutOptions {
     /** 开关组名：同时用作开关名前缀，要在整个界面里唯一 */
@@ -61,7 +62,7 @@ export class Pages extends Panel {
     useServerPages(source: Expr = form.title, prefix = 'P:'): this {
         if (this.serverMode) return this
         // ⚠️ 锚点序号不能用 -1（= 不强制、自动分配，真机 1.5.0）；finalize 时取「页数」
-        const anchor = new Toggle({ name: `${this.group}__server`, group: this.group, index: 0, size: [0, 0] })
+        const anchor = new Toggle(this.group, 0).setName(`${this.group}__server`).setSize(0, 0)
         this.add(anchor)
         this.serverMode = { kind: 'title', source, prefix, anchor, flags: new Map() }
         return this
@@ -94,8 +95,9 @@ export class Pages extends Panel {
         const existing = this.entries.get(key)
         if (existing) return existing.panel
         const index = this.entries.size
-        const panel = new Panel({ size: ['100%', '100%'], name: `${this.group}_${key}`, ...options })
-        const anchor = new Toggle({ name: `${this.group}__${key}`, group: this.group, index, size: [0, 0] })
+        const panel = new Panel().setName(`${this.group}_${key}`).setSize(Size.full())
+        _applyOptions(panel, options)
+        const anchor = new Toggle(this.group, index).setName(`${this.group}__${key}`).setSize(0, 0)
         this.add(anchor, panel)
         this.entries.set(key, { index, panel, links: [anchor] })
         return panel
@@ -104,7 +106,8 @@ export class Pages extends Panel {
     /** 一个跳到 key 页的开关（放在树里任何地方；视觉加在它的状态面板里） */
     link(key: string, options: Omit<LayoutOptions, 'name'> & { name?: string } = {}): Toggle {
         const e = this.entries.get(key) ?? (this.page(key), this.entries.get(key)!)
-        const t = new Toggle({ name: options.name ?? `${this.group}_${key}_l${e.links.length}`, group: this.group, index: e.index, ...options })
+        const t = new Toggle(this.group, e.index).setName(options.name ?? `${this.group}_${key}_l${e.links.length}`)
+        _applyOptions(t, { ...options, name: undefined })
         e.links.push(t)
         return t
     }
@@ -116,7 +119,7 @@ export class Pages extends Panel {
 
     /**
      * 把一个自己构造的开关（例如继承 Toggle 的目录行、箭头、书签类）挂到 key 页：设好组名、序号、名字。
-     * 构造时用 `pages.toggleOptions(key)` 拿到这些参数也可以。
+     * 继承 Toggle 的类在构造函数里写 `super(pages.group, pages.indexOf(key))`，再 `pages.attach(key, this)`。
      */
     attach(key: string, toggle: Toggle): Toggle {
         const e = this.entries.get(key) ?? (this.page(key), this.entries.get(key)!)
@@ -127,7 +130,7 @@ export class Pages extends Panel {
         return toggle
     }
 
-    /** 构造跳到 key 页的开关所需的参数 */
+    /** @deprecated 构造跳到 key 页的开关所需的参数（给参数对象写法用）。改用 `new Toggle(pages.group, pages.indexOf(key))` + `pages.attach(key, 开关)`，或 `pages.link(key)` */
     toggleOptions(key: string): { group: string, index: number } {
         return { group: this.group, index: this.indexOf(key) }
     }
@@ -137,7 +140,8 @@ export class Pages extends Panel {
      * 真机：弹层下面的开关能被点穿；拦截层层级更高、先接住点击，点它不改变任何状态（选中的还是这一页）。
      */
     blocker(key: string, options: Omit<LayoutOptions, 'name'> & { name?: string } = {}): Toggle {
-        const t = new Toggle({ ...this.toggleOptions(key), size: ['100%', '100%'], ...options, raw: { sound_volume: 0, ...(options.raw ?? {}) } })
+        const t = new Toggle(this.group, this.indexOf(key)).setSize(Size.full()).setRaw('sound_volume', 0)
+        _applyOptions(t, { ...options, raw: { sound_volume: 0, ...(options.raw ?? {}) } })
         return this.attach(key, t)
     }
 
@@ -176,7 +180,7 @@ export class Pages extends Panel {
                 if (key === startKey) byServer = byServer.or(source.minus(prefix).eq(source))
                 let flag = flags.get(key)
                 if (!flag) {
-                    flag = new Toggle({ name: `${this.group}__srv_${key}`, group: `${this.group}__srv_${key}`, radio: false, index: 0, size: [0, 0] })
+                    flag = new Toggle(`${this.group}__srv_${key}`, 0).setName(`${this.group}__srv_${key}`).setRadio(false).setSize(0, 0)
                     flags.set(key, flag)
                     this.add(flag)
                 }

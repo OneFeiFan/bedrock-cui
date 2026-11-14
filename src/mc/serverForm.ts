@@ -6,6 +6,7 @@
  */
 import { form } from '../core/expr.js'
 import { Panel, Raw, type Element } from '../core/element.js'
+import { Anchor, Size } from '../core/values.js'
 import { compileNamespace, type CompileResult } from './compile.js'
 import type { LintOptions } from './lint.js'
 
@@ -87,29 +88,26 @@ export function serverForm(options: ServerFormOptions): ServerFormFiles {
         }
     })
     const router = new Raw({
-        name: 'router', size: ['100%', '100%'], anchor: 'top_left',
-        json: {
-            type: 'collection_panel',
-            property_bag: { '#route_': [], ...Object.fromEntries(routes.map((r) => [`#route_${r.title}`, [r.id]])) },
-            factory: { name: `${options.namespace}_title_screen`, control_ids: Object.fromEntries(routes.map((r) => [r.id, `@${options.namespace}.${r.id}`])) },
-            bindings: [
-                { binding_name: '#title_text', binding_condition: 'always' },
-                { binding_type: 'view', source_property_name: "('#route_' + #title_text)", target_property_name: '#collection_length', binding_condition: 'always' },
-            ],
-        },
-    })
+        type: 'collection_panel',
+        property_bag: { '#route_': [], ...Object.fromEntries(routes.map((r) => [`#route_${r.title}`, [r.id]])) },
+        factory: { name: `${options.namespace}_title_screen`, control_ids: Object.fromEntries(routes.map((r) => [r.id, `@${options.namespace}.${r.id}`])) },
+        bindings: [
+            { binding_name: '#title_text', binding_condition: 'always' },
+            { binding_type: 'view', source_property_name: "('#route_' + #title_text)", target_property_name: '#collection_length', binding_condition: 'always' },
+        ],
+    }).setName('router').setSize(Size.full()).setAnchor(Anchor.TOP_LEFT)
     // 静态界面：直接放在根下，按「标题包含 panelId」显示（与 1.5.4 相同）
-    const statics: Element[] = panels.filter((p) => !p.routed).map((p) => new Panel({ size: ['100%', '100%'], visible: form.title.contains(p.panelId), children: [p.content] }))
+    const statics: Element[] = panels.filter((p) => !p.routed).map((p) => new Panel().setSize(Size.full()).setVisible(form.title.contains(p.panelId)).add(p.content))
     // 静态界面按「标题包含 panelId」显示：panelId 不能是别的界面标题的一部分
     for (const p of panels) {
         if (p.routed) continue
         const clash = panels.find((q) => q !== p && q.panelId.includes(p.panelId))
         if (clash) throw new Error(`静态界面按「标题包含 ${p.panelId}」显示，但 ${clash.panelId} 也包含它：换一个不互相包含的 id`)
     }
-    const screens: Record<string, Element> = { root: new Panel({ size: ['100%', '100%'], visible: form.title.contains(prefix), children: [...statics, ...(routes.length ? [router] : [])] }) }
+    const screens: Record<string, Element> = { root: new Panel().setSize(Size.full()).setVisible(form.title.contains(prefix)).add(...statics, ...(routes.length ? [router] : [])) }
     panels.forEach((p, i) => {
         if (!p.routed) return
-        const screen = new Panel({ size: ['100%', '100%'], children: [p.content] })
+        const screen = new Panel().setSize(Size.full()).add(p.content)
         for (const [k, v] of Object.entries(p.routes?.base ?? {})) screen.setVariable(k, v)
         screens[routeId(i)] = screen
     })
