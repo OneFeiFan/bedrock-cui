@@ -14,6 +14,14 @@
   ],
   "license": "MIT",
   "author": "OneFeiFan",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/OneFeiFan/bedrock-cui.git"
+  },
+  "homepage": "https://github.com/OneFeiFan/bedrock-cui#readme",
+  "bugs": {
+    "url": "https://github.com/OneFeiFan/bedrock-cui/issues"
+  },
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

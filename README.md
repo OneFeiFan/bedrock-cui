@@ -1,5 +1,8 @@
 # bedrock-cui
 
+[![test](https://github.com/OneFeiFan/bedrock-cui/actions/workflows/test.yml/badge.svg)](https://github.com/OneFeiFan/bedrock-cui/actions/workflows/test.yml)
+[![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 **Minecraft 基岩版 JSON UI 的面向对象 UI 框架。** 用 TypeScript / JavaScript 写一棵组件树，同时得到：
 
 - **基岩版 JSON UI**（挂到原版服务端表单 `ActionFormData` 上，脚本打开即显示）；
@@ -20,7 +23,13 @@
 npm install bedrock-cui
 ```
 
-需要 Node.js ≥ 20.19 或 ≥ 22.12。（发布到 npm 之前可以从源码使用：克隆本仓库后 `npm install && npm run build`。）
+需要 Node.js ≥ 20.19 或 ≥ 22.12。发布到 npm 之前，可以从源码使用：
+
+```bash
+git clone https://github.com/OneFeiFan/bedrock-cui.git
+cd bedrock-cui
+npm install && npm run build
+```
 
 ## 快速开始
 
@@ -166,6 +175,7 @@ docs            DESIGN.md（设计与全部真机测试记录）
 ## 开发
 
 ```bash
+git clone https://github.com/OneFeiFan/bedrock-cui.git && cd bedrock-cui
 npm install
 npm test                                   # 编译 + 测试（包括 PC 与安卓折行的真机回归）；CI 在 Ubuntu 与 Windows、Node 20 / 22 上跑
 node examples/build-toggle-test.mjs out    # 真机测试包 out/cui_toggle_test.mcaddon（书 = 测试书，纸 = 响应式演示）
@@ -178,6 +188,11 @@ node examples/build-toggle-test.mjs out    # 真机测试包 out/cui_toggle_test
 - **[Mojang/bedrock-samples](https://github.com/Mojang/bedrock-samples)**——原版界面定义，用于对照 JSON UI 的结构与全局变量。
 - **[Bedrock Wiki](https://wiki.bedrock.dev/)**——JSON UI 与脚本 API 的社区文档。
 - **[quickjs-emscripten](https://github.com/justjake/quickjs-emscripten)**——在本机实测脚本端运行时的性能。
+
+## 反馈
+
+问题与建议请到 [Issues](https://github.com/OneFeiFan/bedrock-cui/issues)。报告游戏里的显示问题时，附上真机截图、平台（PC / 安卓 / iOS / 主机）与游戏版本最有帮助——
+框架里的规则都是这样一条条测出来的。
 
 ## 许可证
 
