@@ -22,3 +22,6 @@ jobs:
       - run: npm test
       # 最小例子：打包并对生成的脚本做类型检查
       - run: node examples/hello-book.mjs out
+      # 手册：链接与代码块；API 参考与源码一致（API 改了而参考没更新就失败）
+      - run: npm run docs:check
+      - run: npm run docs:api && git diff --exit-code -- docs/guide/reference

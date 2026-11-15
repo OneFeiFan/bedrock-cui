@@ -17,6 +17,8 @@
 
 框架里的每一条「游戏怎么画、怎么折行、怎么叠放」的规则，都来自在 PC 与安卓真机上的反复实测（见 [docs/DESIGN.md](docs/DESIGN.md)）。
 
+**手册**：<https://onefeifan.github.io/bedrock-cui/>（源文件在 [docs/guide](docs/guide/index.md)）
+
 ## 安装
 
 ```bash

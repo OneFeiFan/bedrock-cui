@@ -22,6 +22,8 @@ import type { Anchor as AnchorName } from './node.js'
 export interface LayoutOptions {
     /** 控件名（同级唯一；缺省 = 类型 + 序号）。开关的名字还要全局唯一（别的控件按名字读它的状态） */
     name?: string
+    /** CSS 类名（只用于网页输出） */
+    className?: string
     size?: [Size, Size]
     offset?: [Size, Size]
     /** 同时设 anchor_from 与 anchor_to */
@@ -202,6 +204,9 @@ export abstract class Element {
     get anchorTo(): AnchorValue | undefined { const a = this.props.anchorTo ?? this.props.anchor; return a ? AnchorValue.from(a) : undefined }
     /** 层级（相对父控件） */
     get layer(): number | undefined { return this.props.layer }
+    /** CSS 类名（只用于网页输出 bedrock-cui/dom；编译 JSON UI 时忽略） */
+    get className(): string | undefined { return this.props.className }
+    set className(v: string | undefined) { if (v === undefined) delete this.props.className; else this.props.className = v }
     set layer(v: number | undefined) { this.props.layer = v }
     /** 是否显示：布尔或表达式（表达式 → 绑定） */
     get visible(): boolean | Expr | undefined { return this.props.visible }
@@ -291,6 +296,7 @@ export abstract class Element {
         return this
     }
     setLayer(n: number): this { this.layer = n; return this }
+    setClassName(name: string): this { this.className = name; return this }
     setVisible(v: boolean | Expr): this { this.visible = v; return this }
     setAlpha(a: number): this { this.alpha = a; return this }
     /** 裁掉越出自身的子控件（clips_children） */

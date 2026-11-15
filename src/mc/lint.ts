@@ -217,6 +217,7 @@ export function lint(roots: RNode[], options: LintOptions = {}): LintIssue[] {
     // 开关的名字要全局唯一：别的控件按名字（source_control_name）读它的状态
     const toggles = new Map<string, RNode>()
     walk(roots, (n) => {
+        if (n.props.web) push('web-only', 'error', n, `${n.props.web.tag === 'a' ? 'Link' : 'Html'} 是网页专用的元素（bedrock-cui/dom），不能编译成 JSON UI`)
         checkSiblings(n.children)
         if (n.slots) for (const s of Object.values(n.slots)) checkSiblings(s)
         if (n.type === 'toggle') {

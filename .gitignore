@@ -4,3 +4,4 @@ dist-preview/
 out/
 preview-src/public/font/
 *.tgz
+site-dist/

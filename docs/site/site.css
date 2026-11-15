@@ -1,0 +1,89 @@
+/* bedrock-cui 手册网站。页面的弹性布局由 bedrock-cui/dom 输出（行内样式），这里只管尺寸、排版、颜色。 */
+:root {
+    --bg: #ffffff; --bg-soft: #f6f6f7; --bg-code: #f6f6f7; --line: #e2e2e3;
+    --text: #213547; --text-soft: #5c6b7a; --brand: #2f7d4a; --brand-soft: #e7f3eb;
+    --tip: #2f7d4a; --tip-bg: #eef7f1; --warn: #b26b00; --warn-bg: #fdf6e7;
+    --hl: rgba(47, 125, 74, 0.12);
+    --tok-c: #8a96a3; --tok-s: #b35a1f; --tok-k: #7b3fb5; --tok-n: #1b6fa8;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+}
+@media (prefers-color-scheme: dark) {
+    :root {
+        --bg: #1b1b1f; --bg-soft: #202127; --bg-code: #161618; --line: #2e2e32;
+        --text: #dfdfd6; --text-soft: #98989f; --brand: #5fbf7f; --brand-soft: #1f3327;
+        --tip: #5fbf7f; --tip-bg: #1d2a22; --warn: #e2a33b; --warn-bg: #2d2516;
+        --hl: rgba(95, 191, 127, 0.14);
+        --tok-c: #6b7580; --tok-s: #e3a26f; --tok-k: #c792ea; --tok-n: #79b8ff;
+    }
+}
+
+* { box-sizing: border-box; }
+html { scroll-padding-top: 72px; }
+body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--font); font-size: 16px; line-height: 1.75; -webkit-font-smoothing: antialiased; }
+a { color: var(--brand); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* 顶栏 */
+.topbar { position: sticky; top: 0; z-index: 10; height: 56px; padding: 0 24px; align-items: center !important; gap: 20px; background: var(--bg); border-bottom: 1px solid var(--line); }
+.topbar .brand { font-weight: 700; font-size: 18px; color: var(--text); }
+.topbar .nav { color: var(--text-soft); font-size: 14px; }
+.topbar .nav:hover { color: var(--brand); text-decoration: none; }
+
+/* 三栏 */
+.layout { max-width: 1440px; margin: 0 auto; width: 100%; }
+.sidebar { flex: none; width: 260px; position: sticky; top: 56px; height: calc(100vh - 56px); overflow-y: auto; padding: 24px 16px 48px 24px; border-right: 1px solid var(--line); background: var(--bg-soft); }
+.side-title { display: block; margin: 18px 0 6px; font-size: 13px; font-weight: 700; color: var(--text); }
+.side-title:first-child { margin-top: 0; }
+.side-link { display: block; padding: 3px 0; font-size: 14px; color: var(--text-soft); }
+.side-link:hover { color: var(--brand); text-decoration: none; }
+.side-link.active { color: var(--brand); font-weight: 600; }
+.main { flex: 1 1 0; min-width: 0; padding: 32px 48px 64px; }
+.toc { flex: none; width: 220px; position: sticky; top: 56px; height: calc(100vh - 56px); overflow-y: auto; padding: 32px 16px; }
+.toc-title { display: block; font-size: 13px; font-weight: 700; margin-bottom: 6px; }
+.toc-link { display: block; font-size: 13px; padding: 2px 0; color: var(--text-soft); }
+
+/* 正文 */
+.content { max-width: 760px; }
+.content h1 { font-size: 30px; line-height: 1.3; margin: 0 0 24px; }
+.content h2 { font-size: 22px; margin: 48px 0 16px; padding-top: 24px; border-top: 1px solid var(--line); }
+.content h3 { font-size: 18px; margin: 32px 0 8px; }
+.content .anchor { opacity: 0; margin-left: 4px; font-weight: 400; }
+.content h2:hover .anchor, .content h3:hover .anchor { opacity: 1; }
+.content p, .content ul, .content ol { margin: 12px 0; }
+.content li { margin: 4px 0; }
+.content :not(pre) > code { font-family: var(--mono); font-size: 0.875em; padding: 2px 6px; border-radius: 4px; background: var(--bg-code); }
+.content table { display: block; overflow-x: auto; border-collapse: collapse; margin: 16px 0; font-size: 14px; }
+.content th, .content td { border: 1px solid var(--line); padding: 6px 12px; text-align: left; vertical-align: top; }
+.content th { background: var(--bg-soft); }
+.content blockquote { margin: 16px 0; padding: 4px 16px; border-left: 3px solid var(--line); color: var(--text-soft); }
+
+/* 代码 */
+pre.code { margin: 16px 0; padding: 14px 0; overflow-x: auto; border-radius: 8px; background: var(--bg-code); font-family: var(--mono); font-size: 13.5px; line-height: 1.65; }
+pre.code code { display: block; min-width: max-content; }
+pre.code .line { display: block; padding: 0 20px; }
+pre.code .line.hl { background: var(--hl); }
+.tok-c { color: var(--tok-c); } .tok-s { color: var(--tok-s); } .tok-k { color: var(--tok-k); } .tok-n { color: var(--tok-n); }
+
+/* 提示框 */
+.callout { margin: 16px 0; padding: 8px 16px; border-radius: 8px; border-left: 4px solid; }
+.callout > :last-child { margin-bottom: 8px; }
+.callout-title { font-weight: 700; margin: 8px 0 4px !important; }
+.callout.tip, .callout.learn { border-color: var(--tip); background: var(--tip-bg); }
+.callout.warning { border-color: var(--warn); background: var(--warn-bg); }
+.callout.details { border-color: var(--line); background: var(--bg-soft); }
+.callout.details summary { cursor: pointer; font-weight: 700; padding: 8px 0; }
+
+/* 上一页 / 下一页 */
+.pager { max-width: 760px; margin-top: 48px; padding-top: 24px; border-top: 1px solid var(--line); }
+.pager a { padding: 10px 16px; border: 1px solid var(--line); border-radius: 8px; font-size: 14px; }
+.pager a:hover { border-color: var(--brand); text-decoration: none; }
+.edit { display: inline-block; margin-top: 24px; font-size: 13px; color: var(--text-soft); }
+
+/* 窄屏 */
+@media (max-width: 1200px) { .toc { display: none !important; } }
+@media (max-width: 860px) {
+    .sidebar { display: none !important; }
+    .main { padding: 24px 20px 48px; }
+    .topbar { padding: 0 16px; gap: 14px; }
+}

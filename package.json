@@ -32,7 +32,8 @@
     "./node": "./dist/node/index.js",
     "./runtime": "./dist/runtime/index.js",
     "./runtime/server-pages": "./dist/runtime/serverPages.js",
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./dom": "./dist/dom/index.js"
   },
   "files": [
     "dist",
@@ -44,15 +45,20 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "prepare": "tsc -p tsconfig.json",
     "test": "tsc -p tsconfig.json && node scripts/run-tests.mjs",
     "dev": "vite",
     "preview:build": "vite build",
-    "prepublishOnly": "npm test"
+    "prepublishOnly": "npm test",
+    "docs:api": "node scripts/gen-api-reference.mjs",
+    "docs:check": "node scripts/check-docs.mjs",
+    "docs:site": "node scripts/build-site.mjs"
   },
   "devDependencies": {
     "@minecraft/server": "^2.0.0",
     "@minecraft/server-ui": "^2.2.0",
     "@types/node": "^22.20.5",
+    "marked": "^15.0.12",
     "typescript": "^5.6.3",
     "vite": "^8.3.8"
   },
