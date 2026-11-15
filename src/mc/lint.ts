@@ -4,7 +4,7 @@
 import { isExpr } from '../core/expr.js'
 import { walk, type RNode } from '../core/node.js'
 import { parseSize } from '../layout/units.js'
-import { measureText, textWidth, usesUnifont } from '../font/metrics.js'
+import { measureText, textWidth, usesUnifont, withMetricsProfile, type MetricsProfile } from '../font/metrics.js'
 import { Texture } from '../core/values.js'
 import { GlyphSheet } from '../core/glyphs.js'
 import { InlineIcon } from '../core/inline.js'
@@ -26,13 +26,34 @@ export interface LintOptions {
     viewports?: [number, number][]
     /** 只给这些根的绑定加 binding_condition: always（缺省全部） */
     alwaysRoots?: string[]
+    /** 按哪些平台的字宽排版检查（缺省 PC 与安卓） */
+    profiles?: MetricsProfile[]
 }
 
 /**
  * 按排版结果检查：contain 的元素里，子孙不得越出它的范围（有内边距时是内容面板的范围）。
  * 所有页面都排出来（忽略动态 visible）；overflow: true 的子树跳过（提示框等）。
  */
+/**
+ * 按排版结果检查。各平台字宽不同（PC 汉字 8.5、全角标点很窄；安卓都是 9），交给游戏折行的文字在安卓上行数可能更多：
+ * 按每个字宽档案各排一次（缺省 PC 与安卓），只在某个平台出现的问题注明平台。
+ */
 export function lintLayout(roots: RNode[], options: LintOptions = {}): LintIssue[] {
+    const profiles = options.profiles ?? ['pc', 'android']
+    const out: LintIssue[] = []
+    const seen = new Set<string>()
+    for (const p of profiles) {
+        for (const i of withMetricsProfile(p, () => lintLayoutOnce(roots, options))) {
+            const key = `${i.rule}@${i.path}`
+            if (seen.has(key)) continue
+            seen.add(key)
+            out.push(p === profiles[0] ? i : { ...i, message: `${i.message}（${p === 'android' ? '安卓' : p}字宽）` })
+        }
+    }
+    return out
+}
+
+function lintLayoutOnce(roots: RNode[], options: LintOptions = {}): LintIssue[] {
     const issues: LintIssue[] = []
     let boxes: Box[]
     // 排不出来（例如尺寸表达式写错——静态检查的 bad-size 已经报了）就跳过
@@ -47,6 +68,15 @@ export function lintLayout(roots: RNode[], options: LintOptions = {}): LintIssue
                 issues.push({ rule: 'out-of-bounds', level: 'warning', path: b.node.path, message: `越出 ${bounds.path} 的安全区（${side} 像素）` })
                 return // 只报最外层越界的元素，子孙不再重复报
             }
+        }
+        // 运行期文字（表达式）、高度自动，放在安全区里却没有裁剪：构建时不知道它有多长，排版时按一行算，运行时可能越过安全区
+        // （真机 1.27.0：背包说明一长，最后一行压到了翻页箭头上）。放进定高 + setClip() 的面板，或 Scroll
+        if (bounds && b.node.type === 'label' && isExpr(b.node.props.text) && !b.clip) {
+            const h = b.node.props.size?.[1]
+            if (h === undefined || h === 'default') issues.push({
+                rule: 'runtime-text-unbounded', level: 'warning', path: b.node.path,
+                message: `运行期文字的高度在构建时不知道，放在 ${bounds.path} 的安全区里可能越界（例如压到翻页箭头）：放进定高并 setClip() 的面板，或 Scroll`,
+            })
         }
         // 同一个容器里两个文字控件互相重叠（真机 1.20.0：line_padding 让文字控件变高，压住了下面的说明）。
         // 带动态显示条件的跳过（「是 / 否」这种同一位置二选一的写法是有意叠放）
@@ -67,7 +97,7 @@ export function lintLayout(roots: RNode[], options: LintOptions = {}): LintIssue
                 if (short !== undefined) {
                     issues.push({
                         rule: 'engine-wrap-short-line', level: 'warning', path: b.node.path,
-                        message: `游戏只在空格处换行：这段文字会折出过短的行（「${short.replace(/§./g, '')}」只占 ${Math.round(textWidth(short, fs))}/${Math.round(w)}）——固定宽度的静态文字请用 Paragraph（CUI 预折行：按字断行、避头尾）`,
+                        message: `游戏只在空格处换行：这段文字会折出过短的行（「${short.replace(/§./g, '')}」只占 ${Math.round(textWidth(short, fs))}/${Math.round(w)}）——静态文字请用 Paragraph（缺省软换行：交给游戏、按各平台的字宽逐字排满），运行期文字用 cui/runtime 的 softWrap`,
                     })
                     break
                 }

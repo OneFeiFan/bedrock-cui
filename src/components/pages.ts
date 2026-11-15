@@ -13,7 +13,10 @@
  */
 import { form, toggleState, type Expr } from '../core/expr.js'
 import { Panel, Toggle, type LayoutOptions, isOptions, _applyOptions } from '../core/element.js'
-import { Size } from '../core/values.js'
+import { Anchor, Size } from '../core/values.js'
+import { FormButton } from './form.js'
+import { STAY_TAG, arrowTag, type ServerArrowRoute, type ServerPaging } from '../core/serverPagesShared.js'
+import type { Element } from '../core/element.js'
 
 export interface PagesOptions extends LayoutOptions {
     /** 开关组名：同时用作开关名前缀，要在整个界面里唯一 */
@@ -32,9 +35,9 @@ export interface PagesOptions extends LayoutOptions {
 interface Entry { index: number, panel: Panel, links: Toggle[] }
 
 export class Pages extends Panel {
-    readonly group: string
+    private _group: string
     private readonly entries = new Map<string, Entry>()
-    private start?: string
+    private _start?: string
     /** 服务端分页的策略：title = 标题带页码 + 锚点 + 页码开关（静态界面，真机 1.5.4 验证）；routes = 每页一个路由（路由界面） */
     private serverMode?: { kind: 'title', source: Expr, prefix: string, anchor: Toggle, flags: Map<string, Toggle> } | { kind: 'routes' }
 
@@ -45,13 +48,31 @@ export class Pages extends Panel {
     constructor(a: string | PagesOptions) {
         const { group, start, server, ...rest } = isOptions(a) ? a as PagesOptions : { group: a as string } as PagesOptions
         super({ size: ['100%', '100%'], ...rest })
-        this.group = group
-        this.start = start
+        this._group = group
+        this._start = start
         if (server) this.useServerPages(server.source, server.prefix)
     }
 
+    /** 开关组名（同时是开关名前缀）。只能在还没有页面时改：页面的开关创建时就带上了组名 */
+    get group(): string { return this._group }
+    set group(v: string) {
+        if (this.entries.size && v !== this._group) throw new Error(`Pages 的组名要在创建页面之前定（已有 ${this.entries.size} 页用了「${this._group}」）`)
+        this._group = v
+    }
+    setGroup(v: string): this { this.group = v; return this }
     /** 初始页（缺省第一页） */
-    startAt(key: string): this { this.start = key; return this }
+    get start(): string | undefined { return this._start }
+    set start(v: string | undefined) { this._start = v }
+    setStart(key: string): this { this._start = key; return this }
+    /** 同 setStart */
+    startAt(key: string): this { return this.setStart(key) }
+    /** 服务端页码（useServerPages 的设置）；赋值 = useServerPages(source, prefix) */
+    get server(): { source: Expr, prefix: string } | undefined {
+        const m = this.serverMode
+        return m && m.kind === 'title' ? { source: m.source, prefix: m.prefix } : undefined
+    }
+    set server(v: { source?: Expr, prefix?: string } | undefined) { if (v) this.useServerPages(v.source, v.prefix) }
+    setServer(source: Expr = form.title, prefix = 'P:'): this { return this.useServerPages(source, prefix) }
 
     /**
      * 服务端页码（混合翻页，**静态界面**用；真机 1.5.4 验证）：脚本把标题写成 `<界面 id>|P:<页名>;`（titleFor），
@@ -66,6 +87,56 @@ export class Pages extends Panel {
         this.add(anchor)
         this.serverMode = { kind: 'title', source, prefix, anchor, flags: new Map() }
         return this
+    }
+
+    // ───────── 混合翻页：服务端翻页箭头（真机 1.4.0–1.26.0 验证的做法，脚本端配 cui/runtime/server-pages 的 ServerPagesForm） ─────────
+
+    private arrows: ServerArrowRoute[] = []
+    private buttonBase = 10
+    private nextButton?: number
+    private stayIndex?: number
+
+    /** 服务端翻页按钮从第几个表单按钮开始分配（缺省 10；前面的序号留给界面自己的表单按钮） */
+    setButtonBase(n: number): this {
+        if (this.nextButton !== undefined) throw new Error('setButtonBase 要在第一个 serverArrow / stayButton 之前调用')
+        this.buttonBase = n
+        return this
+    }
+    private allocButton(): number { const i = this.nextButton ?? this.buttonBase; this.nextButton = i + 1; return i }
+
+    /**
+     * 翻页箭头（服务端）：点了关掉表单，脚本按新页码重开。由两个**序号相同**的表单按钮组成——普通版（优先级 10）与聚焦版（文字带 F，优先级 100）；
+     * 脚本重开时给「刚才点击方向」的箭头加 F，鼠标不动也能连续翻页。art(hover) 每次调用都要返回新的元素（普通 / 悬停 / 按下各用一份）。
+     * 需要 useServerPages()；返回的面板自己摆放位置（setAnchor / setOffset）。
+     */
+    serverArrow(from: string, to: string, dir: 'prev' | 'next', art: (hover: boolean) => Element | Element[], width: number, height: number): Panel {
+        if (this.serverMode?.kind !== 'title') this.useServerPages()
+        const index = this.allocButton()
+        this.arrows.push({ index, from, to, dir })
+        const box = new Panel().setSize(width, height)
+        const list = (e: Element | Element[]) => (Array.isArray(e) ? e : [e])
+        for (const [focused, precedence] of [[false, 10], [true, 100]] as const) {
+            const b = new FormButton(index, arrowTag(index, focused), width, height).setFocusPrecedence(precedence)
+            b.default.add(...list(art(false))); b.hover.add(...list(art(true))); b.pressed.add(...list(art(true)))
+            box.add(b)
+        }
+        return box
+    }
+
+    /**
+     * 「原地不动」：透明的表单按钮（1×1，优先级 50——介于聚焦版箭头 100 与普通箭头 10 之间）。当前方向没有箭头时（例如最后一页再点「下一页」），
+     * 鼠标没动的点击交给它，脚本原样重开当前页（真机 1.5.3：否则落到反方向的箭头，来回循环）。放在界面里任意位置即可。
+     */
+    stayButton(): FormButton {
+        if (this.stayIndex !== undefined) throw new Error('每组 Pages 只要一个 stayButton')
+        this.stayIndex = this.allocButton()
+        return new FormButton(this.stayIndex, STAY_TAG, 1, 1).setName(`${this.group}__stay`).setAnchor(Anchor.TOP_LEFT).setFocusPrecedence(50)
+    }
+
+    /** 翻页路由表（给脚本端 ServerPagesForm）：界面 id 即表单标题的前缀，例如 'cui_ui:my_book' */
+    serverPaging(panelId: string): ServerPaging {
+        const prefix = this.serverMode?.kind === 'title' ? this.serverMode.prefix : 'P:'
+        return { title: panelId, prefix, start: this._start ?? [...this.entries.keys()][0], arrows: this.arrows.map((a) => ({ ...a })), ...(this.stayIndex !== undefined ? { stay: this.stayIndex } : {}) }
     }
 
     /** 静态界面的服务端分页：表单标题 `<界面 id>|P:<页名>;` */
@@ -83,7 +154,7 @@ export class Pages extends Panel {
 
     /** 服务端路由：基础路由 = 初始页；`页名` 路由 = 那一页（给 serverForm 的 routes） */
     serverRoutes(): { base: Record<string, unknown>, variants: Record<string, Record<string, unknown>> } {
-        const startIndex = this.entries.get(this.start ?? [...this.entries.keys()][0])?.index ?? 0
+        const startIndex = this.entries.get(this._start ?? [...this.entries.keys()][0])?.index ?? 0
         return {
             base: { '$toggle_group_default_selected|default': startIndex },
             variants: Object.fromEntries([...this.entries].map(([key, e]) => [key, { $toggle_group_default_selected: e.index }])),
@@ -155,7 +226,7 @@ export class Pages extends Panel {
     pageKeys(): string[] { return [...this.entries.keys()] }
 
     protected override beforeFinalize(): void {
-        const startKey = this.start ?? [...this.entries.keys()][0]
+        const startKey = this._start ?? [...this.entries.keys()][0]
         const startIndex = this.entries.get(startKey)?.index ?? 0
         const mode = this.serverMode
         const pagesCount = this.entries.size

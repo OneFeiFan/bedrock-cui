@@ -1,4 +1,6 @@
 /**
+ * 挂载方式（改写原版 third_party_server_screen / main_screen_content、按表单标题显示自定义界面）借鉴自 sapdon 的 serverFormUI
+ * （https://github.com/Meteage/sapdon，MIT，Copyright (c) 2025 Meteage）。
  * 把界面挂到原版服务端表单上（ActionFormData）：与 sapdon ServerFormUI 同一套挂法（真机验证）——
  *   server_form.json：主内容区插入表单工厂（long_form → @命名空间.root）；标题以前缀开头时隐藏原版长表单
  *   命名空间文件：root = 全屏面板，标题包含 panelId 时显示

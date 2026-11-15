@@ -1,9 +1,5 @@
-CUI 使用的第三方数据
+bedrock-cui
+Copyright (c) 2026 OneFeiFan — MIT License（见 LICENSE）
 
-src/font/unifontWidths.ts
-  由 GNU Unifont 16.0.04（https://unifoundry.com/unifont/）的点阵计算出的字距表（只含宽度，不含字形）。
-  GNU Unifont 采用双许可：GNU GPLv2+（含 GNU 字体嵌入例外）或 SIL Open Font License 1.1。本数据按 SIL OFL 1.1 使用。
-
-预览用像素字体（不随源码分发，由 scripts/fetch-fonts.mjs 在本机准备）
-  unifont.hex.gz —— GNU Unifont（同上）
-  ascii.png      —— Minecraft 默认字体，取自开发者本机的 Minecraft Java 版客户端，版权归 Mojang
+本项目借鉴或包含的第三方内容（sapdon、GNU Unifont 字距数据、从游戏还原的少量字形）及其许可证见 THIRD_PARTY_NOTICES.md。
+与 Mojang Studios、Microsoft 没有关联。"Minecraft" 是 Mojang Synergies AB 的商标。

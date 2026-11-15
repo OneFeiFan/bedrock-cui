@@ -9,7 +9,8 @@
  *   4. 与表单数据混用：物品格子是开关，提示框里的运行期数据来自表单按钮文字；弹层里的数据来自表单正文
  *   5. 诊断：最后一页列出每个开关的选中状态（同序号的开关会不会一起选中）
  */
-import { Anchor, CollectionItem, Color, FormButton, GlyphSheet, Image, InlineIcon, Insets, Label, Length, Pages, Panel, Paragraph, Size, Stack, Text, TextStyle, Toggle, form, paginate, textWidth, toggleState } from 'cui'
+import { softWrap } from 'bedrock-cui/runtime'
+import { Anchor, CollectionItem, Color, FormButton, GlyphSheet, Image, InlineIcon, Insets, Label, Length, Pages, Panel, Paragraph, Size, Stack, Text, TextStyle, Toggle, form, paginate, textWidth, toggleState } from 'bedrock-cui'
 
 export const T = {
     book: 'textures/cui_test/book', line: 'textures/cui_test/line', rowHover: 'textures/cui_test/row_hover',
@@ -25,6 +26,9 @@ const { TOP_LEFT, TOP_CENTER, TOP_RIGHT, CENTER_LEFT, CENTER, CENTER_RIGHT, BOTT
 /** 父控件宽 / 高的百分之百 */
 const FULL = Length.pct(100)
 
+/** 运行期文字的样例（预览用；真机由脚本按玩家背包生成） */
+const RUNTIME_SAMPLE = '§6Steve§r 的背包（4 种物品）：\n§8diamond_sword §0×1§8、§8diamond §0×3§8、§8stick §0×12§8、§8oak_planks §0×64\n§2这段文字由脚本在运行期生成：背包里一共 4 种物品，其中钻石有 3 个，每 2 个钻石加 1 根木棍可以合成 1 把钻石剑。'
+
 /** 表单数据（脚本发的）：正文带运行期数据；按钮 0–3 是格子的数据载体，按钮 4 是「关闭」 */
 export const FORM = {
     title: 'cui_ui:toggle_test',
@@ -32,7 +36,7 @@ export const FORM = {
     body: '',
     // 预览用的样例；真机脚本在运行期按玩家背包实时计算（examples/build-toggle-test.mjs）
     buttons: ['s0|§7耐久 1561\n§a背包里有 1 个', 's1|§a背包里有 3 个', 's2|§a背包里有 3 个', 's3|§8背包里没有', 'close|',
-        'txt|§6Steve§r 的背包（4 种物品）：\n§8diamond_sword §0×1§8、§8diamond §0×3§8、§8stick §0×12§8、§8oak_planks §0×64\n§2这段文字由脚本在运行期生成，长度不固定，由引擎负责折行。'],
+        'txt|' + RUNTIME_SAMPLE, '', 'txw|' + softWrap(RUNTIME_SAMPLE, 110)],
 }
 
 // ───────────── 组件（都是类；构造函数只收必要参数，其余用 setXxx() 链式设置） ─────────────
@@ -58,10 +62,10 @@ class Body extends Paragraph {
 }
 
 class Side extends Panel {
-    // 安全区：左右各 3 像素、底部让出翻页箭头（18 像素）；contain = 内容不得越出（lint 按排版结果检查）
+    // 安全区：左右各 3 像素、底部让出翻页箭头（9 像素：小箭头画在 161–171）；contain = 内容不得越出（lint 按排版结果检查）
     constructor(side) {
         super()
-        this.setSize(116, 160).setAnchor(TOP_LEFT).setOffset(side === 'L' ? 14 : 142, 10).setPadding(Insets.of(3, 0, 3, 18)).setContain()
+        this.setSize(116, 160).setAnchor(TOP_LEFT).setOffset(side === 'L' ? 14 : 142, 10).setPadding(Insets.of(3, 0, 3, 9)).setContain()
     }
 }
 
@@ -80,35 +84,16 @@ class RowLink extends Toggle {
     }
 }
 
+/** 混合翻页的路由表（构建时由 pages.serverPaging() 导出，写进脚本给 ServerPagesForm） */
+export let PAGING
+/** 箭头贴图（hover = 悬停的样子）：原图 20×12 等比缩小的 16×10 */
+const arrowArt = (dir, hover) => new Image(dir === 'left' ? (hover ? T.arrowLH : T.arrowL) : (hover ? T.arrowRH : T.arrowR)).setSize(16, 10)
 /**
- * 翻页箭头 = 表单按钮（混合翻页）：点了关掉表单，服务端按 ARROWS 表重新打开到目标页（标题带 P:<页>;）。
- * 真机 1.4.0：服务端重开的表单按当前光标位置判定悬停，鼠标不动也能连续翻页；开关翻页做不到。
+ * 翻页箭头（服务端）：库的 pages.serverArrow()——两个同序号表单按钮（优先级 10 / 带 F 的 100），脚本端 ServerPagesForm 负责重开与默认聚焦。
+ * 放在纸面最下方：按钮 22×12、箭头画在 161–171；书页内容区底部只留 9 像素
  */
-export let ARROWS = []
-/** 书的分页（构建时给 serverForm 的路由、预览按页名查序号） */
-export let BOOK_PAGES
-const ARROW_BASE = 10
-/** 箭头贴图（hover = 悬停的样子） */
-const arrowArt = (dir, hover) => new Image(dir === 'left' ? (hover ? T.arrowLH : T.arrowL) : (hover ? T.arrowRH : T.arrowR)).setSize(20, 12)
-/**
- * 一个翻页箭头 = 两个**序号相同**的表单按钮（点哪个都发同一个序号）：
- *   普通版：文字含 goN| 就显示，聚焦优先级 10
- *   聚焦版：文字含 goN|F 才显示，聚焦优先级 100——服务端重开表单时给「刚才点击方向」的箭头加 F，
- *   真机 1.5.2：鼠标没动时点击交给默认聚焦的控件（原来是右上角 ×，书就关了）
- */
-class ServerArrow extends Panel {
-    constructor(from, target, dir) {
-        super()
-        this.setSize(28, 18).setAnchor(TOP_LEFT).setOffset(dir === 'left' ? 10 : 234, 156)
-        const index = ARROW_BASE + ARROWS.length
-        ARROWS.push({ index, from, target, dir })
-        for (const [tag, focusPrecedence] of [[`go${index}|`, 10], [`go${index}|F`, 100]]) {
-            const b = new FormButton(index, tag, 28, 18).setFocusPrecedence(focusPrecedence)
-            b.default.add(arrowArt(dir, false)); b.hover.add(arrowArt(dir, true)); b.pressed.add(arrowArt(dir, true))
-            this.add(b)
-        }
-    }
-}
+const arrow = (pages, from, to, dir) => pages.serverArrow(from, to, dir === 'left' ? 'prev' : 'next', (hover) => arrowArt(dir, hover), 22, 12)
+    .setAnchor(TOP_LEFT).setOffset(dir === 'left' ? 14 : 236, 160)
 
 /** 书签：回目录（与目录页的锚点、箭头同序号） */
 class Bookmark extends Toggle {
@@ -206,12 +191,10 @@ export function buildBook(options = {}) {
     // 书本 180 高 + 下方诊断带 24 高：整体居中
     const root = new Panel().setSize(290, 210)
     root.add(new Image(T.book).setSize(272, 180).setAnchor(TOP_LEFT))
-    ARROWS = []
     // 混合翻页：翻页箭头走服务端（标题带 P:<页>;），目录 / 书签用开关
     // 服务端分页（静态界面，真机 1.5.4 验证）：标题 cui_ui:toggle_test|P:<页名>; + 锚点 + 页码开关
     // （1.10.0 试过路由界面：显示正常，但默认聚焦不可靠，鼠标不动连点翻页会乱跳）
     const pages = new Pages('gbp').startAt('home').setSize(272, 180).setAnchor(TOP_LEFT).useServerPages()
-    BOOK_PAGES = pages
     const detail = new Pages('gbd').startAt('none').setSize(272, 180).setAnchor(TOP_LEFT).setLayer(40)
     root.add(pages, detail)
 
@@ -223,14 +206,15 @@ export function buildBook(options = {}) {
         new RowLink(pages, 'truler', T.map, '字宽标尺', 56),
         new RowLink(pages, 'tlong0', T.writable, '长文本分页', 74),
         new RowLink(pages, 'trun', T.emerald, '运行期长文本', 92),
-        new RowLink(pages, 'tspecial', T.name_tag, '特殊字符', 110)))
+        new RowLink(pages, 'tspecial', T.name_tag, '特殊字符', 110),
+        new RowLink(pages, 'tsoft', T.writable, '软换行回归', 128)))
     home.add(new Side('R').add(new Title('目录'),
         new RowLink(pages, 'sword', T.sword, '钻石剑', 20),
         new RowLink(pages, 'diamond', T.diamond, '钻石', 38),
         new RowLink(pages, 'about', T.book_item, '检查清单', 56),
         new RowLink(pages, 'tlayer', T.paper, '叠放规则验证', 74),
         new RowLink(pages, 'tinline', T.emerald, '行内图标（Text）', 92)))
-    home.add(new ServerArrow('home', 'sword', 'right'))
+    home.add(arrow(pages, 'home', 'sword', 'right'))
 
     // 钻石剑
     const sword = pages.page('sword')
@@ -240,26 +224,25 @@ export function buildBook(options = {}) {
         new ItemSlot(detail, 'sword', 1, T.diamond, '钻石').setOffset(35, 24),
         new ItemSlot(detail, 'sword', 2, T.diamond, '钻石').setOffset(35, 44),
         new ItemSlot(detail, 'sword', 3, T.stick, '木棍').setOffset(35, 64)))
-    sword.add(new ServerArrow('sword', 'home', 'left'), new ServerArrow('sword', 'diamond', 'right'))
+    sword.add(arrow(pages, 'sword', 'home', 'left'), arrow(pages, 'sword', 'diamond', 'right'))
 
     // 钻石
     const diamond = pages.page('diamond')
     diamond.add(new Side('L').add(new Title('钻石'), new Body('这一页从目录、上一页箭头都能到达：同一页有多个入口（同序号的开关）。')))
     diamond.add(new Side('R').add(new Title('说明'), new Body('右下箭头去诊断页，左下箭头回钻石剑页。')))
-    diamond.add(new ServerArrow('diamond', 'sword', 'left'), new ServerArrow('diamond', 'about', 'right'))
+    diamond.add(arrow(pages, 'diamond', 'sword', 'left'), arrow(pages, 'diamond', 'about', 'right'))
 
     // 检查页
     const about = pages.page('about')
     const bookmark = new Bookmark(pages, 'home')
     about.add(new Side('L').add(new Title('1.0.1 的结论'), new Body('按名字读开关是全局的；同序号的开关不会一起选中（只有被点的那个选中）；弹层会被点穿。')))
     about.add(new Side('R').add(new Title('1.0.2 请检查'), new Body('1 钻石剑页悬停格子：提示框有「背包里有 N 个」\n2 打开弹层后点底下的箭头：点不穿，也不关弹层（透明、无声）\n3 只有「关闭」按钮才关弹层')))
-    about.add(new ServerArrow('about', 'diamond', 'left'))
+    about.add(arrow(pages, 'about', 'diamond', 'left'))
 
     buildTextPages(pages)
 
-    // 「原地不动」：透明的表单按钮（序号 9），聚焦优先级 50——介于聚焦版箭头（100）与普通箭头（10）之间。
-    // 当前方向没有箭头时（例如最后一页再点「下一页」），鼠标没动的点击交给它：服务端原样重开当前页（真机 1.5.3：否则落到反方向的箭头，来回循环）
-    root.add(new FormButton(9, 'stay|', 1, 1).setName('stay').setAnchor(TOP_LEFT).setFocusPrecedence(50))
+    // 「原地不动」（库的 stayButton：优先级 50，当前方向没有箭头时接住鼠标没动的点击）
+    root.add(pages.stayButton())
 
     // 书签（任何页都在）
     root.add(bookmark)
@@ -275,6 +258,7 @@ export function buildBook(options = {}) {
     close.default.add(new Label('§4×').setAnchor(CENTER))
     close.hover.add(new Label('§c×').setAnchor(CENTER))
     root.add(close)
+    PAGING = pages.serverPaging(FORM.title)
     return root
 }
 
@@ -384,6 +368,23 @@ function buildLayerTest(page) {
         new Body('§8页首有一张 1 层紫色小图抢先出现（1.22.0 的 G 没有它，被盖住）。', 84)))
 }
 
+/**
+ * 软换行回归页：同一句话 A 原文交给游戏折行（只在空格处换行，数字两边的空格后面一长串汉字整个移到下一行，留下半行）；
+ * B 空格全换成不换行空格（真机 1.28.0：判断宽度按 9、画 4——游戏更新后复查这个怪癖还在不在）；C CUI 软换行（Paragraph 缺省）。
+ * （零宽空格、发丝空格真机显示成方框，已排除。）
+ */
+const SOFT_SAMPLE = '§2背包里一共 11 种物品，其中钻石有 0 个，每 2 个钻石加 1 根木棍可以合成 1 把钻石剑。'
+function buildSoftWrapTest(page) {
+    const caption = (s, y) => new Label(`§8${s}`).setAnchor(TOP_LEFT).setOffset(0, y)
+    const text = (s, y) => new Label(s).setSize(FULL, Length.auto()).setAnchor(TOP_LEFT).setOffset(0, y)
+    page.add(new Side('L').add(new Title('软换行回归'),
+        caption('A 原文（游戏折行）', 22), text(SOFT_SAMPLE, 32),
+        caption('B 不换行空格', 84), text(SOFT_SAMPLE.replace(/ /g, '\u00A0'), 94)))
+    page.add(new Side('R').add(new Title('CUI 软换行'),
+        caption('C Paragraph（缺省软换行）', 22), new Paragraph(SOFT_SAMPLE, 110).setAnchor(TOP_LEFT).setOffset(0, 32),
+        new Body('§8C 只调整汉字与数字交界处的间隔，交给游戏按当前平台的字宽逐字排满：PC 与安卓都不留半行、行首没有标点。', 84)))
+}
+
 /** 文本测试的各页：折行对比、富文本、字宽标尺、长文本分页、运行期长文本、特殊字符、叠放顺序、字形 / 行内图标、字形采样 */
 function buildTextPages(pages) {
     const chain = ['twrap', 'trich', 'truler']
@@ -394,7 +395,7 @@ function buildTextPages(pages) {
     // 折行对比
     const wrap = pages.page('twrap')
     wrap.add(new Side('L').add(new Title('引擎自动折行'), engineText(SAMPLE, 22)))
-    wrap.add(new Side('R').add(new Title('CUI 预折行'), paragraph(SAMPLE, 22)))
+    wrap.add(new Side('R').add(new Title('CUI 软换行'), paragraph(SAMPLE, 22)))
     // 富文本
     const rich = pages.page('trich')
     const at = (label, x, y) => label.setAnchor(TOP_LEFT).setOffset(x, y)
@@ -425,14 +426,18 @@ function buildTextPages(pages) {
     // 运行期长文本：按钮 5 的文字（脚本按玩家背包生成）
     chain.push('trun')
     const run = pages.page('trun')
-    const runtimeText = () => new CollectionItem('form_buttons', 5).setSize(110, 10).setAnchor(TOP_LEFT)
-        .add(new Label(form.buttonText.minus('txt|')).setColor(BODY).setSize(110, Length.auto()).setAnchor(TOP_LEFT))
-    run.add(new Side('L').add(new Title('运行期：高度 default'), runtimeText().setOffset(0, 22)))
-    const clipped = new Panel().setSize(110, 50).setAnchor(TOP_LEFT).setOffset(0, 22).setClip().add(runtimeText())
-    run.add(new Side('R').add(new Title('运行期：裁剪到 50 高'), clipped, new Body('§8上面的框只有 50 像素高，超出的部分被裁掉。', 80)))
+    // 同一段运行期文字：左 = 游戏自己折行（只在空格处换行）；右 = 脚本先用 cui/runtime 的 softWrap 做软换行（与 Paragraph 缺省模式相同）
+    // 长度不定：放进定高（标题下方到安全区底部 = 129）并裁剪的面板，再长也不会压到翻页箭头（lint runtime-text-unbounded）
+    const runtimeText = (index, tag) => new Panel().setSize(110, 129).setAnchor(TOP_LEFT).setOffset(0, 22).setClip().add(
+        new CollectionItem('form_buttons', index).setSize(110, 10).setAnchor(TOP_LEFT)
+            .add(new Label(form.buttonText.minus(tag)).setColor(BODY).setSize(110, Length.auto()).setAnchor(TOP_LEFT)))
+    run.add(new Side('L').add(new Title('运行期：游戏折行'), runtimeText(5, 'txt|')))
+    run.add(new Side('R').add(new Title('运行期：软换行'), runtimeText(7, 'txw|')))
     // 特殊字符、叠放顺序
     chain.push('tspecial')
     buildSpecialPage(pages.page('tspecial'))
+    chain.push('tsoft')
+    buildSoftWrapTest(pages.page('tsoft'))
     chain.push('tlayer')
     buildLayerTest(pages.page('tlayer'))
     // 行内图标（Text）：图标是真正的图片控件，与文字同高、清晰、颜色正确；折行 / 行高 / 样式延续由 CUI 排版
@@ -456,15 +461,15 @@ function buildTextPages(pages) {
     // 文本页之间的箭头
     chain.forEach((key, i) => {
         const page = pages.page(key)
-        page.add(new ServerArrow(key, i === 0 ? 'home' : chain[i - 1], 'left'))
-        if (i < chain.length - 1) page.add(new ServerArrow(key, chain[i + 1], 'right'))
+        page.add(arrow(pages, key, i === 0 ? 'home' : chain[i - 1], 'left'))
+        if (i < chain.length - 1) page.add(arrow(pages, key, chain[i + 1], 'right'))
     })
 }
 
 /** 贴图尺寸（给 lint 与预览用；九宫格写 nineslice） */
 export const TEXTURE_INFO = {
     [T.book]: { size: [272, 180] }, [T.line]: { size: [1, 1] }, [T.rowHover]: { size: [1, 1] },
-    [T.arrowL]: { size: [20, 12] }, [T.arrowLH]: { size: [20, 12] }, [T.arrowR]: { size: [20, 12] }, [T.arrowRH]: { size: [20, 12] },
+    [T.arrowL]: { size: [16, 10] }, [T.arrowLH]: { size: [16, 10] }, [T.arrowR]: { size: [16, 10] }, [T.arrowRH]: { size: [16, 10] },
     [T.tab]: { size: [20, 16] }, [T.tabHover]: { size: [20, 16] },
     // 原版 .json：cell_image 是两倍精度（10×10 像素、base_size 5×5、nineslice 1）；highlight_slot 也是九宫格
     [T.cell]: { size: [10, 10], baseSize: [5, 5], nineslice: 1 }, [T.highlight]: { size: [1, 1], baseSize: [1, 1], nineslice: 1 }, [T.purple]: { size: [16, 16], baseSize: [16, 16], nineslice: 4 },

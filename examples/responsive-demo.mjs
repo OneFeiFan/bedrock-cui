@@ -6,7 +6,7 @@
  *     标题栏、正文（setGrow 占满剩余高度）、底栏（按钮靠右）。编译成 JSON UI 原生的百分比 / fill，
  *     **游戏里随屏幕大小自适应**；浏览器预览里切换屏幕尺寸看效果。
  */
-import { Align, Anchor, Color, Column, FormButton, Image, Insets, Justify, Label, Length, Panel, Row, Scroll, Size, Texture, TextStyle } from 'cui'
+import { Align, Anchor, Color, Column, FormButton, Image, Insets, Justify, Label, Length, Panel, Row, Scroll, Size, Texture, TextStyle } from 'bedrock-cui'
 
 // ───────────── 贴图（尺寸、九宫格信息跟着贴图走） ─────────────
 export const Textures = {

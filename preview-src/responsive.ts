@@ -1,8 +1,8 @@
 /**
  * 预览：响应式布局演示（examples/responsive-demo.mjs）。上方按钮切换屏幕尺寸，看同一份界面在不同屏幕上的样子。
  */
-import { signal, Texture } from 'cui'
-import { mountDevtools, mountPreview, type PreviewTexture } from 'cui/web'
+import { signal, Texture } from 'bedrock-cui'
+import { mountDevtools, mountPreview, type PreviewTexture } from 'bedrock-cui/web'
 // @ts-ignore 示例是纯 JS
 import { buildResponsiveDemo, RESPONSIVE_FORM, SCREENS, Textures } from '../examples/responsive-demo.mjs'
 

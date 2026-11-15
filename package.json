@@ -1,24 +1,49 @@
 {
-  "name": "cui",
-  "version": "0.20.0",
-  "private": true,
+  "name": "bedrock-cui",
+  "version": "0.23.0",
+  "description": "Minecraft 基岩版 JSON UI 的面向对象 UI 框架：一棵组件树 → 基岩版 JSON UI ＋ 浏览器预览（按游戏的排版规则画）＋ 静态检查；附带服务端表单的混合翻页、跨平台软换行与附加包打包",
+  "keywords": [
+    "minecraft",
+    "bedrock",
+    "json-ui",
+    "ui",
+    "addon",
+    "mcaddon",
+    "server-form",
+    "scripting"
+  ],
+  "license": "MIT",
+  "author": "OneFeiFan",
   "type": "module",
-  "description": "跨平台 UI 框架：一棵组件树 → 基岩版 JSON UI ＋ 浏览器预览（按游戏排版规则）",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
     ".": "./dist/index.js",
     "./jsx-runtime": "./dist/core/jsx-runtime.js",
     "./web": "./dist/web/index.js",
-    "./node": "./dist/node/index.js"
+    "./node": "./dist/node/index.js",
+    "./runtime": "./dist/runtime/index.js",
+    "./runtime/server-pages": "./dist/runtime/serverPages.js",
+    "./package.json": "./package.json"
   },
+  "files": [
+    "dist",
+    "scripts/fetch-fonts.mjs",
+    "README.md",
+    "LICENSE",
+    "NOTICE",
+    "THIRD_PARTY_NOTICES.md"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "tsc -p tsconfig.json && node --test tests/*.test.mjs",
     "dev": "vite",
-    "preview:build": "vite build"
+    "preview:build": "vite build",
+    "prepublishOnly": "npm test"
   },
   "devDependencies": {
+    "@minecraft/server": "^2.0.0",
+    "@minecraft/server-ui": "^2.2.0",
     "@types/node": "^22.20.5",
     "typescript": "^5.6.3",
     "vite": "^8.3.8"

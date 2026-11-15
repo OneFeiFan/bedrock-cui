@@ -10,7 +10,7 @@
  * 每一行开头**补上当前样式码**——无论引擎会不会把颜色延续到下一行，显示都对。行宽留出 hang 像素给挂在行尾的标点，
  * 保证引擎不会再折一次。
  */
-import { LINE_HEIGHT, boldExtra, charWidth, usesUnifont } from './metrics.js'
+import { LINE_HEIGHT, boldExtra, charWidth, isWide, measureText, textWidth, usesUnifont, withMetricsProfile, type MetricsProfile } from './metrics.js'
 
 /** 基岩版颜色（前 16 个与 Java 相同；§g 起为基岩版独有；§v 树脂色为资料值，未在真机核对） */
 export const BEDROCK_COLORS: Record<string, string> = {
@@ -83,15 +83,170 @@ const CJK = '[\\u2E80-\\u9FFF\\uF900-\\uFAFF\\u3000-\\u303F\\uFF00-\\uFFEF]'
 /** 只有汉字（英文后面接**标点**不留空：「Minecraft、Bedrock」「JSON UI）」） */
 const HAN = '[\\u2E80-\\u2FFF\\u3040-\\u9FFF\\uF900-\\uFAFF]'
 /**
- * 中英文之间留一个空格（已有空格的不重复加；§ 码不影响判断）：
- *   汉字 / 中文标点 → 英文：留空（「；Esc」→「； Esc」）；开括号 / 开引号后面不留（「（1.22.0」——之前误加成「（ 1.22.0」）
- *   英文 → 汉字：留空；英文 → 中文标点：不留（「Minecraft、」）
+ * 中英文之间留一个空格（已有空格的不重复加；§ 码不影响判断）：只在**汉字**与英文 / 数字之间留，全角标点前后都不加
+ * （通行的中文排版规范：「上：emoji」「×1、diamond」「（1.22.0）」）。先前中文标点后面也加，真机看起来多出一截空隙。
  */
 export function autoSpace(text: string): string {
     return text
-        .replace(new RegExp(`(?![（《「『【〈〔〖“‘])(${CJK})((?:§.)*)([A-Za-z0-9@#&(\\[])`, 'g'), '$1 $2$3')
+        .replace(new RegExp(`(${HAN})((?:§.)*)([A-Za-z0-9@#&])`, 'g'), '$1 $2$3')
         // (?<!§)：格式码的那个字母 / 数字（§9 的 9）不算英文
-        .replace(new RegExp(`(?<!§)([A-Za-z0-9%)\\]!?.:;])((?:§.)*)(${HAN})`, 'g'), '$1$2 $3')
+        .replace(new RegExp(`(?<!§)([A-Za-z0-9%])((?:§.)*)(${HAN})`, 'g'), '$1$2 $3')
+}
+
+/** 不换行空格 */
+export const NBSP = '\u00A0'
+
+export interface SoftWrapOptions {
+    /** 中英文自动留空（缺省 true；只决定「哪些交界处要有间隔」，间隔用什么由 spacing 定） */
+    autoSpace?: boolean
+    /**
+     * 全宽字符（汉字、全角标点）与英文 / 数字交界处的间隔：
+     *   'auto'（缺省，需要 width）= 每处分别试「不换行空格」与「不留」，按各平台的折行模拟打分择优；
+     *   'nbsp' = 一律不换行空格；'none' = 一律去掉
+     */
+    spacing?: 'auto' | 'nbsp' | 'none'
+    /** 文字控件的宽度（像素；'auto' 用它模拟游戏折行） */
+    width?: number
+    /** font_scale_factor */
+    scale?: number
+    /** 按哪些平台的字宽择优（缺省 PC 与安卓） */
+    profiles?: MetricsProfile[]
+    /**
+     * 择优的力度：'full'（缺省，构建时用）= 每处交界的每种间隔都试，直到不能再改善；
+     * 'fast'（脚本端缺省）= 按规则给初值（挨着英文单词留普通空格、挨着数字不留），只修出问题的地方——QuickJS 上一次折行模拟约 0.65 毫秒，
+     * 'full' 一段要模拟几百次（真机 1.29.0：每次打开、翻页界面消失几秒），'fast' 通常十几次
+     */
+    effort?: 'full' | 'fast'
+}
+
+/**
+ * 软换行：交给游戏折行，但让它**逐字排满**（真机 1.28.0，PC 与安卓）。游戏只在空格处换行，而且「单词」一整行放得下就整个移到下一行——
+ * 中英混排时数字两边的空格后面一长串汉字被整个挪走，留下半行。把全宽字符与英文 / 数字交界处的空格换成不换行空格（U+00A0）或去掉之后，
+ * 整段没有可断的空格（英文单词之间的照旧），游戏把它当成一个超长单词，用**当前平台的真实字宽**逐字排满。
+ * 不换行空格判断宽度时按 9 算、画 4（metrics.NBSP_BREAK_WIDTH），而且换行落在它上面时它会跑到下一行行首（小缩进）；去掉则可能让标点落到行首
+ * （游戏逐字排不处理避头尾）。'auto' 用 PC 与安卓的折行模拟（与两台真机逐字一致）对每处交界择优。
+ */
+export function softWrapText(text: string, options: SoftWrapOptions = {}): string {
+    const src = (options.autoSpace ?? true) ? autoSpace(text) : text
+    // 按段落分别处理：段落之间互不影响（每行都从头量起）——搜索的规模与长度都小得多（脚本端在 QuickJS 上跑，真机 1.29.0 整段一起搜要好几秒）
+    return src.split('\n').map((para) => softWrapParagraph(para, options)).join('\n')
+}
+
+function softWrapParagraph(src: string, options: SoftWrapOptions): string {
+    // 往前 / 往后找最近的可见字符（跳过 § 码）
+    const before = (s: string, i: number) => { while (i > 0) { if (i >= 2 && s[i - 2] === '§') { i -= 2; continue } return s[i - 1] } return '' }
+    const after = (s: string, i: number) => { while (i < s.length) { if (s[i] === '§' && i + 1 < s.length) { i += 2; continue } return s[i] } return '' }
+    // 交界处的空格（两边至少有一边是全宽字符）切出来，其余原样
+    const parts: string[] = []          // 偶数位 = 原文片段，奇数位 = 交界处
+    let last = 0
+    for (const m of src.matchAll(/ +/g)) {
+        const a = before(src, m.index!), b = after(src, m.index! + m[0].length)
+        if (!((a && isWide(a)) || (b && isWide(b)))) continue
+        parts.push(src.slice(last, m.index!), ' ')
+        last = m.index! + m[0].length
+    }
+    parts.push(src.slice(last))
+    // 每处交界的间隔：0 = 不留，1 = 不换行空格，2 = 普通空格（真正的断点：后面的英文单词放不下时整个换行）
+    const GAP = ['', NBSP, ' ']
+    const join = (choice: number[]) => parts.map((p, k) => (k % 2 ? GAP[choice[(k - 1) / 2]] : p)).join('')
+    const n = (parts.length - 1) / 2
+    const spacing = options.spacing ?? (options.width === undefined ? 'nbsp' : 'auto')
+    if (spacing !== 'auto' || n === 0 || options.width === undefined) return join(new Array(n).fill(spacing === 'none' ? 0 : 1))
+    const width = options.width, scale = options.scale ?? 1, profiles = options.profiles ?? ['pc', 'android']
+    // 快速路径：留普通空格时在各平台都只有一行 → 不用搜
+    const spaced = new Array(n).fill(2)
+    if (profiles.every((p) => withMetricsProfile(p, () => measureText(join(spaced), scale, width).lines.length) <= 1)) return join(spaced)
+    // 择优：按各平台的折行模拟打分（越小越好）；同一组合只算一次
+    const plain = (s: string) => s.replace(/§./g, '').replace(/\u00A0/g, ' ')
+    const memo = new Map<string, number>()
+    const score = (choice: number[]) => {
+        const key = choice.join('')
+        const hit = memo.get(key)
+        if (hit !== undefined) return hit
+        const t = join(choice), whole = plain(t)
+        // 排版效果一样时，偏好留间隔（「英文 Minecraft」比「英文Minecraft」好读）：不留 +2、不换行空格 +1、普通空格 0
+        let sc = choice.reduce((a, v) => a + [2, 1, 0][v], 0)
+        for (const p of profiles) {
+            const lines = withMetricsProfile(p, () => measureText(t, scale, width).lines)
+            sc += lines.length * 10
+            lines.forEach((l, k) => {
+                const v = l.replace(/§./g, '')
+                if (k > 0 && NO_LINE_START.includes(v.replace(/^\u00A0+/, '')[0] ?? '')) sc += 100     // 标点落到行首
+                if (k > 0 && v.startsWith(NBSP)) sc += 20                                                // 行首缩进
+                if (k < lines.length - 1 && withMetricsProfile(p, () => textWidth(l, scale)) < width - 18 * scale) sc += 5   // 没排满
+                // 英文单词被从中间断开：上一行以字母数字结尾、这一行以字母数字开头，且原文里这两段是连着的（中间没有空格）
+                if (k > 0) {
+                    const prev = plain(lines[k - 1]), cur = plain(l)
+                    if (/[A-Za-z0-9_]$/.test(prev) && /^[A-Za-z0-9_]/.test(cur) && whole.includes(prev.slice(-4) + cur.slice(0, 4))) sc += 60
+                }
+            })
+        }
+        memo.set(key, sc)
+        return sc
+    }
+    if ((options.effort ?? 'full') === 'fast') return join(repair(parts, n, join, score, width, scale, profiles))
+    let best: number[] = new Array(n).fill(0), bestScore = score(best)
+    for (let round = 0; round < 2 * n; round++) {
+        let improved: number[] | undefined, improvedScore = bestScore
+        for (let k = 0; k < n; k++) for (const v of [0, 1, 2]) {
+            if (v === best[k]) continue
+            const c = best.slice(); c[k] = v
+            const sc = score(c)
+            if (sc < improvedScore) { improved = c; improvedScore = sc }
+        }
+        if (!improved) break
+        best = improved; bestScore = improvedScore
+    }
+    return join(best)
+}
+
+/**
+ * 'fast' 择优：按规则给初值（交界另一边是英文单词 → 普通空格，是数字或别的 → 不留），模拟一次，找出两个平台上「行首是标点 / 不换行空格、
+ * 英文单词被拆开」的行，只试这一行开头前面最近的两处交界，取能改善的；最多几轮。
+ */
+function repair(parts: string[], n: number, join: (c: number[]) => string, score: (c: number[]) => number, width: number, scale: number, profiles: MetricsProfile[]): number[] {
+    const visible = (s: string) => s.replace(/§./g, '')
+    let best: number[] = Array.from({ length: n }, (_, k) => (/^[A-Za-z]/.test(visible(parts[2 * k + 2])) || /[A-Za-z]$/.test(visible(parts[2 * k])) ? 2 : 0))
+    let bestScore = score(best)
+    // 交界 k 在拼好的文字里的位置
+    const positions = (c: number[]) => { const out: number[] = []; let pos = 0; for (let k = 0; k < n; k++) { pos += parts[2 * k].length; out.push(pos); pos += [0, 1, 1][c[k]] } return out }
+    // 有问题的行在拼好的文字里的起点
+    const problems = (c: number[]) => {
+        const t = join(c), out: number[] = []
+        for (const p of profiles) {
+            const lines = withMetricsProfile(p, () => measureText(t, scale, width).lines)
+            let cursor = 0
+            lines.forEach((l, k) => {
+                const at = t.indexOf(l, cursor)
+                if (at >= 0) cursor = at + l.length
+                if (k === 0) return
+                const v = visible(l), prev = visible(lines[k - 1])
+                if (NO_LINE_START.includes(v.replace(/^\u00A0+/, '')[0] ?? '') || v.startsWith(NBSP) || (/[A-Za-z0-9_]$/.test(prev) && /^[A-Za-z0-9_]/.test(v))) out.push(at >= 0 ? at : cursor)
+            })
+        }
+        return out.sort((a, b) => a - b)
+    }
+    for (let round = 0; round < 4; round++) {
+        const probs = problems(best)
+        if (!probs.length) break
+        const pos = positions(best)
+        let k = pos.length - 1
+        while (k >= 0 && pos[k] > probs[0]) k--
+        let improved: number[] | undefined, improvedScore = bestScore
+        for (const kk of [k, k - 1]) {
+            if (kk < 0) continue
+            for (const v of [0, 1, 2]) {
+                if (v === best[kk]) continue
+                const c = best.slice(); c[kk] = v
+                const sc = score(c)
+                if (sc < improvedScore) { improved = c; improvedScore = sc }
+            }
+        }
+        if (!improved) break
+        best = improved; bestScore = improvedScore
+    }
+    void width
+    return best
 }
 
 export interface WrapOptions {
@@ -101,7 +256,10 @@ export interface WrapOptions {
     kinsoku?: boolean
     /** 中英文自动留空（缺省 true） */
     autoSpace?: boolean
-    /** 给挂在行尾的标点留的像素（缺省 8：保证引擎不会再折一次） */
+    /**
+     * 行尾标点允许超出宽度的像素（缺省 0：每一行都不超宽，游戏不会再折一次）。行首不能放的标点（，。等）放不下时，
+     * 把上一个字一起推到下一行（「推出」式避头尾）——每行都用满宽度（先前每行预留 8 像素给标点，平白少放将近一个字）
+     */
     hang?: number
     /** 字体（缺省按整段内容决定：含非 ASCII ⇒ Unifont） */
     unifont?: boolean
@@ -118,67 +276,102 @@ export function wrapText(text: string, width: number, options: WrapOptions = {})
 export function wrapDetailed(text: string, width: number, options: WrapOptions = {}): { lines: string[], starts: Set<number> } {
     const starts = new Set<number>()
     const scale = options.scale ?? 1
-    const target = width - (options.hang ?? 8) * scale
+    const overhang = (options.hang ?? 0) * scale
     const kinsoku = options.kinsoku ?? true
     const src = (options.autoSpace ?? true) ? autoSpace(text) : text
     // 字体由整段内容决定（含汉字 ⇒ 整段 Unifont，英文也按 Unifont 的字距）
     const uni = options.unifont ?? usesUnifont(src)
-    const rw = (s: string, st: RunStyle) => richWidth(s, scale, st, uni)
     const out: string[] = []
     let style = PLAIN
+    /** 词元：前面的格式码 + 文字；before = 格式码生效前的样式（行首补样式码用） */
+    type Tok = { codes: string, text: string, w: number, space: boolean, before: RunStyle }
+    const single = (t: Tok) => [...t.text].length === 1
     for (const para of src.split('\n')) {
-        const startCount = out.length
-        starts.add(startCount)
-        // 词元：§ 码（零宽，粘在后面的词元上）、英文单词、空白、单个字符
-        const tokens = para.match(/§.|[A-Za-z0-9_\-'.]+|\s+|./gu) ?? []
-        let line = styleCodes(style)
-        let lineStyle = style
-        let w = 0
-        let empty = true
-        const flush = () => { out.push(line.replace(/\s+$/, '')); line = styleCodes(style); lineStyle = style; w = 0; empty = true }
-        void lineStyle
-        let pendingCodes = ''
-        for (const tok of tokens) {
-            if (tok.startsWith('§') && tok.length === 2) { pendingCodes += tok; style = applyCode(style, tok[1]); continue }
-            const tokStyle = style
-            const tw = rw(tok, tokStyle)
-            if (!empty && w + tw > target && !/^\s+$/.test(tok)) {
-                if (kinsoku && [...tok].length === 1 && NO_LINE_START.includes(tok)) {
-                    line += pendingCodes + tok; pendingCodes = ''; flush(); continue
-                }
-                let carry = ''
-                if (kinsoku) {
-                    while (line.length && NO_LINE_END.includes(line[line.length - 1]) && !/§.$/.test(line.slice(-2))) { carry = line[line.length - 1] + carry; line = line.slice(0, -1) }
-                }
-                flush()
-                const lead = carry + pendingCodes + tok.replace(/^\s+/, '')
-                line += lead
-                w = rw(carry, tokStyle) + tw
-                pendingCodes = ''
-                empty = false
-                continue
-            }
-            // 行首空白丢掉，但前面待输出的格式码要留着
-            if (empty && /^\s+$/.test(tok)) continue
-            if (tw > target) {
-                // 超长的词：逐字断开
-                line += pendingCodes; pendingCodes = ''
-                for (const ch of tok) {
-                    const cw = rw(ch, tokStyle)
-                    if (!empty && w + cw > target) flush()
-                    line += ch; w += cw; empty = false
-                }
-                continue
-            }
-            line += pendingCodes + tok; pendingCodes = ''
-            w += tw
-            empty = false
+        starts.add(out.length)
+        // 切成词元：单词（连续的非汉字、非全角标点、非空白字符——「×3」「diamond_sword」「1.22.0」「(line_padding),」都不拆开）、
+        // 空白、单个汉字 / 全角标点；格式码粘在后面的词元上。先前单词只含字母数字，「×3」被拆成「×」/「3」两行
+        const toks: Tok[] = []
+        let codes = '', before = style
+        for (const m of para.match(WORD_TOKENS) ?? []) {
+            if (m.length === 2 && m[0] === '§') { if (!codes) before = style; codes += m; style = applyCode(style, m[1]); continue }
+            if (!codes) before = style
+            toks.push({ codes, text: m, w: richWidth(m, scale, style, uni), space: /^\s+$/.test(m), before })
+            codes = ''
         }
-        line += pendingCodes
-        // 段落末尾只剩样式码（例如最后一个字是挂到上一行末尾的句号）：不另起空行
-        if (!(empty && out.length > startCount)) out.push(line.replace(/\s+$/, ''))
+        const tail = codes                      // 段末剩下的格式码
+        const lines: Tok[][] = []
+        let line: Tok[] = [], w = 0
+        const sum = (ts: Tok[]) => ts.reduce((a, t) => a + t.w, 0)
+        const flush = () => {
+            while (line.length && line[line.length - 1].space) line.pop()      // 行尾空白去掉（它的格式码由下一行行首的样式码补上）
+            lines.push(line); line = []; w = 0
+        }
+        const push = (t: Tok) => {
+            if (!line.length && t.space) {                                         // 行首空白丢掉，格式码留给下一个词元
+                const next = toks[toks.indexOf(t) + 1]
+                // 格式码连同「生效前的样式」一起转交（否则行首补的样式码与转来的格式码重复：「§9 你好」→「§9§9你好」）
+                if (next && t.codes) { next.codes = t.codes + next.codes; next.before = t.before }
+                return
+            }
+            line.push(t); w += t.w
+        }
+        for (const t of toks) {
+            if (!line.length || t.space || w + t.w <= width) {
+                if (line.length || t.w <= width || t.space) { push(t); continue }
+            }
+            // 放不下
+            if (line.length && kinsoku && single(t) && NO_LINE_START.includes(t.text)) {
+                if (w + t.w <= width + overhang) { push(t); flush(); continue }    // 允许的悬挂
+                // 推出：把本行最后一个词元带到下一行，标点跟在它后面（本行只剩它一个时只好挂着）
+                let k = line.length - 1
+                while (k > 0 && line[k].space) k--
+                if (k > 0) {
+                    const moved = line.slice(k).filter((x) => !x.space)
+                    line = line.slice(0, k); flush()
+                    for (const x of moved) push(x)
+                    push(t)
+                } else { push(t); flush() }
+                continue
+            }
+            // 避尾：本行末尾的开括号等带到下一行
+            let carry: Tok[] = []
+            if (line.length && kinsoku) {
+                while (line.length > 1 && single(line[line.length - 1]) && NO_LINE_END.includes(line[line.length - 1].text)) carry = [line.pop()!, ...carry]
+            }
+            if (line.length) flush()
+            for (const x of carry) push(x)
+            if (t.w > width - w && t.w > width) {
+                // 超长的词（一整行都放不下）：逐字断开
+                let first = true
+                for (const ch of t.text) {
+                    const piece: Tok = { codes: first ? t.codes : '', text: ch, w: richWidth(ch, scale, applyCodes(t.before, t.codes), uni), space: false, before: t.before }
+                    first = false
+                    if (line.length && w + piece.w > width) flush()
+                    push(piece)
+                }
+                continue
+            }
+            push(t)
+        }
+        if (line.length || !lines.length) flush()
+        // 拼成文字：行首补上这一行开头时的样式码
+        lines.forEach((ln, n) => {
+            const head = ln.length ? styleCodes(ln[0].before) : styleCodes(style)
+            let s = head + ln.map((t) => t.codes + t.text).join('')
+            if (n === lines.length - 1) s += tail
+            out.push(s)
+        })
     }
     return { lines: out, starts }
+}
+
+/** 词元：§ 码 | 单词（非汉字、非全角标点、非空白的连续字符）| 空白 | 单个字符 */
+const WORD_TOKENS = /§.|[^\s§\u2E80-\u9FFF\uF900-\uFAFF\u3000-\u303F\uFF00-\uFFEF]+|\s+|./gsu
+
+/** 依次套用一串格式码 */
+function applyCodes(st: RunStyle, codes: string): RunStyle {
+    for (let i = 0; i + 1 < codes.length; i += 2) st = applyCode(st, codes[i + 1])
+    return st
 }
 
 export interface PaginateOptions extends WrapOptions {
@@ -186,6 +379,11 @@ export interface PaginateOptions extends WrapOptions {
     height: number
     /** 第一页可用高度（例如第一页有标题） */
     firstHeight?: number
+    /**
+     * 按哪个平台的字宽排行（缺省 'android'——最宽：按它排好的每一行在 PC 上也放得下，两个平台都不会被游戏再折一次、一页装不下。
+     * 真机 1.28.0：按 PC 排的分页在安卓上每行超宽，底部越界 31–71 像素）
+     */
+    profile?: MetricsProfile
 }
 
 /**
@@ -193,7 +391,7 @@ export interface PaginateOptions extends WrapOptions {
  * 孤行控制：一页的最后一行若是段落的第一行（例如标题、或段落只有首行留在页底），挪到下一页。
  */
 export function paginate(text: string, width: number, options: PaginateOptions): string[] {
-    const { lines, starts } = wrapDetailed(text, width, options)
+    const { lines, starts } = withMetricsProfile(options.profile ?? 'android', () => wrapDetailed(text, width, options))
     const lh = LINE_HEIGHT * (options.scale ?? 1)
     const first = Math.max(1, Math.floor((options.firstHeight ?? options.height) / lh))
     const rest = Math.max(1, Math.floor(options.height / lh))

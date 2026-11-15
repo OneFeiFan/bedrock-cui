@@ -1,7 +1,7 @@
 // 富文本（基岩版 § 格式码）与长文本：解析、测宽、预折行、分页
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { parseRich, richWidth, textWidth, wrapText, paginate, autoSpace, styleCodes, Paragraph, Panel, Label, compileNamespace, finalize, layout, findBox, NO_LINE_START, NO_LINE_END } from '../dist/index.js'
+import { Anchor, parseRich, richWidth, textWidth, wrapText, paginate, autoSpace, styleCodes, Paragraph, Panel, Label, compileNamespace, finalize, layout, findBox, NO_LINE_START, NO_LINE_END } from '../dist/index.js'
 
 const plain = (s) => s.replace(/§./g, '')
 
@@ -62,14 +62,41 @@ test('分页：按每页行数切块；首页可单独设高度；页首不留�
     assert.equal(pages.map((p) => plain(p).replace(/\s/g, '')).join(''), plain(text).replace(/\s/g, ''))
 })
 
-test('Paragraph：预折行写进文字（显式换行）、宽度固定高度 default；排版高度 = 行数 × 10', () => {
-    const p = new Paragraph({ name: 'p', text: '§a绿色的一段比较长的文字，用来测试段落。', width: 60, anchor: 'top_left' })
+test('Paragraph hard 模式：CUI 排好每一行写进文字（显式换行）、宽度固定高度 default；排版高度 = 行数 × 10', () => {
+    const p = new Paragraph({ name: 'p', text: '§a绿色的一段比较长的文字，用来测试段落。', width: 60, anchor: 'top_left', wrap: 'hard' })
     assert.ok(p.lines.length > 1)
     assert.equal(p.props.text, p.lines.join('\n'))
     assert.deepEqual(p.props.size, [60, 'default'])
     const b = findBox(layout(finalize(new Panel({ size: [200, 100], anchor: 'top_left', children: [p] })), { viewport: [200, 100] }), 'p')
     assert.equal(b.rect.h, p.lines.length * 10)
     assert.deepEqual(b.lines, p.lines, '引擎不会再折（每行都在宽度内）')
+})
+
+test('Paragraph soft 模式（缺省）：文字不写换行、交给游戏；lines = 按当前字宽档案模拟的游戏折行；排版高度按模拟的行数', async () => {
+    const { withMetricsProfile } = await import('../dist/index.js')
+    const p = new Paragraph('§2背包里一共 11 种物品，其中钻石有 0 个，每 2 个钻石加 1 根木棍可以合成 1 把钻石剑。', 110).setName('p').setAnchor(Anchor.TOP_LEFT)
+    assert.equal(p.wrap, 'soft')
+    assert.ok(!p.props.text.includes('\n'), '不写换行')
+    const tree = finalize(new Panel().setSize(200, 200).setAnchor(Anchor.TOP_LEFT).add(p))
+    const box = () => findBox(layout(tree, { viewport: [200, 200] }), 'p')
+    assert.equal(box().rect.h, p.lines.length * 10)
+    const android = withMetricsProfile('android', () => box().rect.h)
+    assert.ok(android >= box().rect.h, '安卓字宽更宽：行数不少于 PC')
+    p.wrap = 'hard'
+    assert.ok(p.props.text.includes('\n'))
+})
+
+test('软换行与游戏折行模拟（真机 1.28.0）：不换行空格判断宽度按 9、画 4——PC 与安卓的 C 段逐字一致；auto 择优后两个平台都没有标点或空格落在行首', async () => {
+    const { measureText, withMetricsProfile, softWrapText } = await import('../dist/index.js')
+    const show = (l) => l.replace(/§./g, '').replace(/\u00A0/g, '⍽')
+    const C = '§2背包里一共 11 种物品，其中钻石有 0 个，每 2 个钻石加 1 根木棍可以合成 1 把钻石剑。'.replace(/ /g, '\u00A0')
+    assert.deepEqual(measureText(C, 1, 110).lines.map(show), ['背包里一共⍽11⍽种物品，其中', '钻石有⍽0⍽个，每⍽2⍽个钻', '石加⍽1⍽根木棍可以合成⍽1', '⍽把钻石剑。'], 'PC 真机')
+    assert.deepEqual(withMetricsProfile('android', () => measureText(C, 1, 110).lines.map(show)), ['背包里一共⍽11⍽种物品，', '其中钻石有⍽0⍽个，每⍽2', '⍽个钻石加⍽1⍽根木棍可', '以合成⍽1⍽把钻石剑。'], '安卓真机')
+    const s = softWrapText('§2背包里一共 11 种物品，其中钻石有 0 个，每 2 个钻石加 1 根木棍可以合成 1 把钻石剑。', { width: 110 })
+    for (const p of ['pc', 'android']) {
+        const lines = withMetricsProfile(p, () => measureText(s, 1, 110).lines.map(show))
+        for (const l of lines.slice(1)) assert.ok(!NO_LINE_START.includes(l[0]) && l[0] !== '⍽', `${p}：${JSON.stringify(lines)}`)
+    }
 })
 
 test('静态检查：固定高度的文字框放不下', () => {
@@ -83,8 +110,8 @@ test('静态检查：固定高度的文字框放不下', () => {
 test('格式码与自动留空 / 行首空白：§9 的 9 不算英文；行首空白丢掉但格式码保留', () => {
     assert.equal(autoSpace('§9这是'), '§9这是')
     assert.equal(autoSpace('a§c中'), 'a§c 中')
-    assert.equal(autoSpace('（例如Minecraft、Bedrock Edition、JSON UI）不'), '（例如 Minecraft、 Bedrock Edition、 JSON UI）不', '英文后面接中文标点不留空；标点后面接英文留空')
-    assert.equal(autoSpace('点击；Esc关闭'), '点击； Esc 关闭', '中文标点后面接英文留空（基岩版窄标点）')
+    assert.equal(autoSpace('（例如Minecraft、Bedrock Edition、JSON UI）不'), '（例如 Minecraft、Bedrock Edition、JSON UI）不', '只在汉字与英文之间留空，全角标点前后都不加')
+    assert.equal(autoSpace('点击；Esc关闭'), '点击；Esc 关闭', '全角标点后面不加，英文与汉字之间留空')
     assert.deepEqual(wrapText('§9 你好', 100), ['§9你好'])
     assert.ok(paginate('§9' + '这是用来分页的长文本。'.repeat(30), 110, { height: 100 }).every((p) => p.startsWith('§9')))
 })
@@ -126,11 +153,45 @@ test('静态检查 engine-wrap-short-line：交给游戏折行的静态文字折
     assert.deepEqual(rule(new Label('没有空格的一整段中文会在任意字之间断开所以不会出现过短的行').setName('fine').setSize(110, Length.auto())), [])
 })
 
-test('autoSpace：开括号 / 开引号后面不加空格（「（1.22.0」——之前误加成「（ 1.22.0」）；中英文之间照常留空', async () => {
+test('autoSpace：只在汉字与英文 / 数字之间留空，全角标点前后都不加（「（1.22.0」「×1、diamond」「上：emoji」）', async () => {
     const { autoSpace } = await import('../dist/font/rich.js')
     assert.equal(autoSpace('抢先出现（1.22.0 的'), '抢先出现（1.22.0 的')
     assert.equal(autoSpace('按「Esc」关闭'), '按「Esc」关闭')
     assert.equal(autoSpace('《Bedrock》'), '《Bedrock》')
     assert.equal(autoSpace('钻石剑Minecraft'), '钻石剑 Minecraft')
-    assert.equal(autoSpace('；Esc'), '； Esc')
+    assert.equal(autoSpace('；Esc'), '；Esc')
+    assert.equal(autoSpace('×1、diamond'), '×1、diamond')
+    assert.equal(autoSpace('上：emoji'), '上：emoji')
+})
+
+test('预折行：每行用满宽度；行首不能放的标点放不下时把上一个字一起推到下一行（不再每行预留 8 像素）；每行都不超宽', async () => {
+    const { wrapText, textWidth } = await import('../dist/index.js')
+    const han = '一二三四五六七八九十甲乙丙丁戊己庚辛壬癸子丑寅卯'
+    const lines = wrapText(han, 105)
+    assert.equal(lines[0], '一二三四五六七八九十甲乙', '12 个汉字 = 102 ≤ 105（先前目标宽 97，只放 11 个）')
+    for (const l of lines) assert.ok(textWidth(l) <= 105, `${l}：${textWidth(l)}`)
+    // 推出：宽度刚好放下十个字，第十一个是逗号 → 「十」带着逗号到下一行
+    const w = textWidth('一二三四五六七八九十')
+    const k = wrapText('一二三四五六七八九十，十一', w)
+    assert.deepEqual(k, ['一二三四五六七八九', '十，十一'])
+    for (const l of k) assert.ok(textWidth(l) <= w)
+    // 允许悬挂（hang）时，标点挂在行尾
+    assert.deepEqual(wrapText('一二三四五六七八九十，十一', w, { hang: 4 }), ['一二三四五六七八九十，', '十一'])
+})
+
+test('预折行：「×3」「diamond_sword」「1.22.0」这类连续的非汉字字符是一个单词，不拆开（先前「×3」被拆成「×」/「3」两行）', async () => {
+    const { wrapText } = await import('../dist/index.js')
+    const sample = '§8diamond_sword §0×1§8、§8diamond §0×3§8、§8stick §0×12§8、§8oak_planks §0×64'
+    for (const w of [80, 90, 100, 110, 120]) {
+        const lines = wrapText(sample, w).map((l) => l.replace(/§./g, ''))
+        for (let i = 0; i + 1 < lines.length; i++) assert.ok(!(lines[i].endsWith('×') && /^\d/.test(lines[i + 1])), `宽 ${w}：${JSON.stringify(lines)}`)
+    }
+    assert.ok(wrapText('版本 1.22.0 的说明', 40).some((l) => l.includes('1.22.0')), '「1.22.0」不拆开')
+})
+
+test('安卓字宽档案（真机 1.28.0，小米 14）：汉字与全角标点 9、粗体每字加 1——「折行对比」页游戏折行的 8 行逐行一致', async () => {
+    const { measureText, withMetricsProfile } = await import('../dist/index.js')
+    const SAMPLE = '§2绿色开头的一段文字会跨过好几行，看看§c红色§2在引擎自动折行后会不会延续。英文 Minecraft Bedrock 不应被拆开，标点「引号」、句号。逗号，都要看位置。§l粗体也要延续到下一行吗？§r最后恢复普通。'
+    assert.deepEqual(withMetricsProfile('android', () => measureText(SAMPLE, 1, 110).lines.map((l) => l.replace(/§./g, ''))),
+        ['绿色开头的一段文字会跨过', '好几行，看看红色在引擎自', '动折行后会不会延续。英文', 'Minecraft Bedrock 不应被拆', '开，标点「引号」、句号。', '逗号，都要看位置。粗体', '也要延续到下一行吗？最后', '恢复普通。'])
 })

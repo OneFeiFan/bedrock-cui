@@ -17,6 +17,7 @@
 import { isExpr, type Expr } from './expr.js'
 import type { Anchor, Dyn, Intrinsic, RGB, RNode, Size } from './node.js'
 import { Align, Anchor as AnchorValue, Color, Insets, Justify, Length, Size as SizeValue, Texture, TextStyle, Vec2, type LengthLike, type TextAlign } from './values.js'
+import type { Anchor as AnchorName } from './node.js'
 
 export interface LayoutOptions {
     /** 控件名（同级唯一；缺省 = 类型 + 序号）。开关的名字还要全局唯一（别的控件按名字读它的状态） */
@@ -174,8 +175,16 @@ export abstract class Element {
     }
 
     /** 合并原始属性（低层逃生口；平时用下面有类型的属性 / setXxx()） */
+    /**
+     * 一次设置多项：`el.set({ size: Size.full(), layer: 2, color: Color.WHITE })`。有同名属性的键走属性写入器（与 `el.size = …` 一样、
+     * 自动转换类型——有类型的值与早期写法的原始值都接受）；children 追加子元素；其余键原样并入（逃生口）。
+     */
     set(props: Record<string, unknown>): this {
-        Object.assign(this.props, props)
+        for (const [k, v] of Object.entries(props)) {
+            if (k === 'children') { if (v) this.add(...(v as Addable[])); continue }
+            if (hasSetter(this, k)) (this as Record<string, unknown>)[k] = v
+            else this.props[k] = v
+        }
         return this
     }
 
@@ -183,10 +192,10 @@ export abstract class Element {
 
     /** 尺寸 */
     get size(): SizeValue | undefined { return this.props.size ? SizeValue.from(this.props.size) : undefined }
-    set size(v: SizeValue | undefined) { this.props.size = v?.toJSON() }
+    set size(v: SizeValue | [LengthLike | string, LengthLike | string] | undefined) { this.props.size = v === undefined ? undefined : SizeValue.from(v as SizeValue).toJSON() }
     /** 偏移 */
     get offset(): Vec2 | undefined { return this.props.offset ? Vec2.from(this.props.offset) : undefined }
-    set offset(v: Vec2 | undefined) { this.props.offset = v?.toJSON() }
+    set offset(v: Vec2 | [LengthLike | string, LengthLike | string] | undefined) { this.props.offset = v === undefined ? undefined : Vec2.from(v as Vec2).toJSON() }
     /** 父控件上的锚点 */
     get anchorFrom(): AnchorValue | undefined { const a = this.props.anchorFrom ?? this.props.anchor; return a ? AnchorValue.from(a) : undefined }
     /** 自身的锚点 */
@@ -202,14 +211,52 @@ export abstract class Element {
     set alpha(v: number | undefined) { this.props.alpha = v }
     /** 内边距（安全区） */
     get padding(): Insets | undefined { return this.props.padding === undefined ? undefined : Insets.from(this.props.padding) }
-    set padding(v: Insets | undefined) { this.props.padding = v?.toJSON() }
+    set padding(v: Insets | number | [number, number, number, number] | undefined) { this.props.padding = v === undefined ? undefined : Insets.from(v).toJSON() }
     get minSize(): SizeValue | undefined { return this.props.minSize ? SizeValue.from(this.props.minSize) : undefined }
-    set minSize(v: SizeValue | undefined) { this.props.minSize = v?.toJSON() }
+    set minSize(v: SizeValue | [LengthLike | string, LengthLike | string] | undefined) { this.props.minSize = v === undefined ? undefined : SizeValue.from(v as SizeValue).toJSON() }
     get maxSize(): SizeValue | undefined { return this.props.maxSize ? SizeValue.from(this.props.maxSize) : undefined }
-    set maxSize(v: SizeValue | undefined) { this.props.maxSize = v?.toJSON() }
+    set maxSize(v: SizeValue | [LengthLike | string, LengthLike | string] | undefined) { this.props.maxSize = v === undefined ? undefined : SizeValue.from(v as SizeValue).toJSON() }
     /** 在 Row / Column 里沿主轴伸展 */
     get grow(): boolean { return Boolean(this.props.grow) }
     set grow(v: boolean) { this.props.grow = v || undefined }
+    /** 锚点（父控件上与自身上用同一个点；分开指定用 anchorFrom / anchorTo） */
+    get anchor(): AnchorValue | undefined { return this.props.anchor ? AnchorValue.from(this.props.anchor) : undefined }
+    set anchor(v: AnchorValue | AnchorName | undefined) {
+        delete this.props.anchorFrom; delete this.props.anchorTo
+        this.props.anchor = v === undefined ? undefined : AnchorValue.from(v).toJSON()
+    }
+    set anchorFrom(v: AnchorValue | AnchorName | undefined) {
+        const to = this.props.anchorTo ?? this.props.anchor
+        delete this.props.anchor
+        this.props.anchorFrom = v === undefined ? undefined : AnchorValue.from(v).toJSON()
+        if (to !== undefined) this.props.anchorTo = to
+    }
+    set anchorTo(v: AnchorValue | AnchorName | undefined) {
+        const from = this.props.anchorFrom ?? this.props.anchor
+        delete this.props.anchor
+        this.props.anchorTo = v === undefined ? undefined : AnchorValue.from(v).toJSON()
+        if (from !== undefined) this.props.anchorFrom = from
+    }
+    /** 裁掉越出自身的子控件（clips_children） */
+    get clip(): boolean { return Boolean(this.props.clip) }
+    set clip(v: boolean) { this.props.clip = v || undefined }
+    /** 能否交互（按钮 / 开关）：布尔或表达式 */
+    get enabled(): boolean | Expr | undefined { return this.props.enabled }
+    set enabled(v: boolean | Expr | undefined) { this.props.enabled = v }
+    /** 子孙不得越出本元素（含内边距）：静态检查 out-of-bounds */
+    get contain(): boolean { return Boolean(this.props.contain) }
+    set contain(v: boolean) { this.props.contain = v || undefined }
+    /** 允许越界（提示框、弹出物）：contain 检查跳过 */
+    get overflow(): boolean { return Boolean(this.props.overflow) }
+    set overflow(v: boolean) { this.props.overflow = v || undefined }
+    /** 在 grid 里的格位 [列, 行] */
+    get gridPos(): [number, number] | undefined { return this.props.gridPos }
+    set gridPos(v: [number, number] | undefined) { this.props.gridPos = v }
+    /** JSON UI 变量（$name → 值） */
+    get variables(): Record<string, unknown> | undefined { return this.props.variables }
+    set variables(v: Record<string, unknown> | undefined) {
+        this.props.variables = v === undefined ? undefined : Object.fromEntries(Object.entries(v).map(([k, x]) => [k.startsWith('$') ? k : `$${k}`, x]))
+    }
 
     // ───────── 链式方法 ─────────
 
@@ -234,6 +281,10 @@ export abstract class Element {
         this.props.anchor = a.toJSON(); delete this.props.anchorFrom; delete this.props.anchorTo
         return this
     }
+    /** 父控件上的锚点（自身上的锚点不变） */
+    setAnchorFrom(a: AnchorValue): this { this.anchorFrom = a; return this }
+    /** 自身上的锚点（父控件上的锚点不变） */
+    setAnchorTo(a: AnchorValue): this { this.anchorTo = a; return this }
     /** 分别指定父控件上的点（from）与自身上的点（to）：例如 from 右上、to 左上 = 贴在父控件右边外侧 */
     setPlacement(from: AnchorValue, to: AnchorValue): this {
         delete this.props.anchor; this.props.anchorFrom = from.toJSON(); this.props.anchorTo = to.toJSON()
@@ -250,7 +301,9 @@ export abstract class Element {
     /** 子孙不得越出本元素（含内边距）：静态检查 out-of-bounds */
     setContain(on = true): this { this.props.contain = on || undefined; return this }
     /** 允许越界（提示框、弹出物）：contain 检查跳过 */
-    allowOverflow(on = true): this { this.props.overflow = on || undefined; return this }
+    setOverflow(on = true): this { this.overflow = on; return this }
+    /** 同 setOverflow */
+    allowOverflow(on = true): this { return this.setOverflow(on) }
     setMinSize(size: SizeValue): this
     setMinSize(width: LengthLike, height: LengthLike): this
     setMinSize(a: SizeValue | LengthLike, b?: LengthLike): this { this.minSize = a instanceof SizeValue ? a : SizeValue.of(a, b ?? a); return this }
@@ -259,9 +312,13 @@ export abstract class Element {
     setMaxSize(a: SizeValue | LengthLike, b?: LengthLike): this { this.maxSize = a instanceof SizeValue ? a : SizeValue.of(a, b ?? a); return this }
     setGrow(on = true): this { this.grow = on; return this }
     /** 在 grid 里的格位 */
-    setGridPosition(col: number, row: number): this { this.props.gridPos = [col, row]; return this }
+    setGridPos(col: number, row: number): this { this.gridPos = [col, row]; return this }
+    /** 同 setGridPos */
+    setGridPosition(col: number, row: number): this { return this.setGridPos(col, row) }
     /** JSON UI 变量（$name） */
     setVariable(name: string, value: unknown): this { this.props.variables = { ...this.props.variables, [name.startsWith('$') ? name : `$${name}`]: value }; return this }
+    /** 一次设置多个 JSON UI 变量（替换原有的） */
+    setVariables(vars: Record<string, unknown>): this { this.variables = vars; return this }
     /** 逃生口：原样并入输出 JSON 的属性 */
     setRaw(key: string, value: unknown): this { this.props.raw = { ...this.props.raw, [key]: value }; return this }
     /** 本元素的绑定一律 binding_condition: always（要在别的控件后来才出现时重新读取，例如读路由界面里的标记） */
@@ -331,6 +388,10 @@ export class Stack extends Element {
     /** @deprecated 用 new Stack('vertical') */
     constructor(options: StackOptions)
     constructor(a: 'vertical' | 'horizontal' | StackOptions = {}) { super(isOptions(a) ? a : { orientation: a }) }
+    /** 排列方向（缺省 vertical） */
+    get orientation(): 'vertical' | 'horizontal' | undefined { return this.props.orientation }
+    set orientation(v: 'vertical' | 'horizontal' | undefined) { this.props.orientation = v }
+    setOrientation(v: 'vertical' | 'horizontal'): this { this.orientation = v; return this }
 }
 
 /** 网格 */
@@ -340,6 +401,10 @@ export class Grid extends Element {
     /** @deprecated 用 new Grid(列, 行) */
     constructor(options: GridOptions)
     constructor(a: number | GridOptions, rows?: number) { super(isOptions(a) ? a as GridOptions : { dims: [a as number, rows ?? 1] } as GridOptions) }
+    /** [列, 行] */
+    get dims(): [number, number] { return this.props.dims }
+    set dims(v: [number, number]) { this.props.dims = v }
+    setDims(columns: number, rows: number): this { this.dims = [columns, rows]; return this }
 }
 
 /** 图片 */
@@ -357,13 +422,50 @@ export class Image extends Element {
     set texture(v: Texture | string | Expr) { this.props.texture = isExpr(v) ? v : Texture.from(v).path }
     setTexture(v: Texture | string | Expr): this { this.texture = v; return this }
     /** 保持宽高比（JSON UI 缺省 true；拉伸纯色贴图要关掉） */
-    setKeepRatio(on: boolean): this { this.props.keepRatio = on; return this }
+    get keepRatio(): boolean | undefined { return this.props.keepRatio }
+    set keepRatio(v: boolean | undefined) { this.props.keepRatio = v }
+    setKeepRatio(on: boolean): this { this.keepRatio = on; return this }
+    /** 九宫格边宽（贴图 .json 的 nineslice_size；通常跟着贴图走：Texture.withNineslice） */
+    get nineslice(): number | [number, number, number, number] | undefined { return this.props.nineslice }
+    set nineslice(v: number | [number, number, number, number] | undefined) { this.props.nineslice = v }
+    setNineslice(v: number | [number, number, number, number]): this { this.nineslice = v; return this }
+    /** 九宫格的基准尺寸（贴图 .json 的 base_size；通常跟着贴图走：Texture.withBaseSize） */
+    get baseSize(): [number, number] | undefined { return this.props.baseSize }
+    set baseSize(v: [number, number] | undefined) { this.props.baseSize = v }
+    setBaseSize(w: number, h: number): this { this.baseSize = [w, h]; return this }
+    /** 贴图上取样区域的左上角（像素） */
+    get uv(): [number, number] | undefined { return this.props.uv }
+    set uv(v: [number, number] | undefined) { this.props.uv = v }
+    setUv(u: number, v: number): this { this.uv = [u, v]; return this }
+    /** 贴图上取样区域的大小（像素） */
+    get uvSize(): [number, number] | undefined { return this.props.uvSize }
+    set uvSize(v: [number, number] | undefined) { this.props.uvSize = v }
+    setUvSize(w: number, h: number): this { this.uvSize = [w, h]; return this }
+    /** 同时设取样区域的位置与大小 */
+    setUV(u: number, v: number, w: number, h: number): this { return this.setUv(u, v).setUvSize(w, h) }
     /** 染色 */
-    setColor(c: Color): this { this.props.color = c.toJSON(); return this }
-    /** 贴图上的取样区域（像素） */
-    setUV(u: number, v: number, w: number, h: number): this { this.props.uv = [u, v]; this.props.uvSize = [w, h]; return this }
-    /** 按比例裁剪（进度条）：方向 + 比例（数字或表达式） */
-    setClipRatio(direction: 'left' | 'right' | 'up' | 'down' | 'center', ratio: number | Expr): this { this.props.clipDirection = direction; this.props.clipRatio = ratio; return this }
+    get color(): Color | undefined { return this.props.color ? Color.fromJSON(this.props.color) : undefined }
+    set color(v: Color | RGB | undefined) { this.props.color = v === undefined ? undefined : v instanceof Color ? v.toJSON() : v }
+    setColor(c: Color): this { this.color = c; return this }
+    /** 按比例裁剪的方向（进度条） */
+    get clipDirection(): 'left' | 'right' | 'up' | 'down' | 'center' | undefined { return this.props.clipDirection }
+    set clipDirection(v: 'left' | 'right' | 'up' | 'down' | 'center' | undefined) { this.props.clipDirection = v }
+    setClipDirection(d: 'left' | 'right' | 'up' | 'down' | 'center'): this { this.clipDirection = d; return this }
+    /** 按比例裁剪的比例（数字或表达式） */
+    get clipRatio(): number | Expr | undefined { return this.props.clipRatio }
+    set clipRatio(v: number | Expr | undefined) { this.props.clipRatio = v }
+    /** setClipRatio(比例)，或 setClipRatio(方向, 比例) 一次设两项 */
+    setClipRatio(ratio: number | Expr): this
+    setClipRatio(direction: 'left' | 'right' | 'up' | 'down' | 'center', ratio: number | Expr): this
+    setClipRatio(a: number | Expr | 'left' | 'right' | 'up' | 'down' | 'center', b?: number | Expr): this {
+        if (b === undefined) { this.clipRatio = a as number | Expr; return this }
+        this.clipDirection = a as 'left' | 'right' | 'up' | 'down' | 'center'; this.clipRatio = b
+        return this
+    }
+    /** 动画（JSON UI anims：动画定义的引用，例如 '@my_ns.fade_in'） */
+    get anims(): string[] | undefined { return this.props.anims }
+    set anims(v: string[] | undefined) { this.props.anims = v }
+    setAnims(...anims: string[]): this { this.anims = anims; return this }
 }
 
 /** 文字 */
@@ -388,18 +490,34 @@ export class Label extends Element {
         if (st.align) this.props.align = st.align
         return this
     }
-    setColor(c: Color): this { this.props.color = c.toJSON(); return this }
-    setShadow(on = true): this { this.props.shadow = on; return this }
-    setFontScale(n: number): this { this.props.fontScale = n; return this }
-    setAlign(a: TextAlign): this { this.props.align = a; return this }
+    /** 颜色 */
+    get color(): Color | undefined { return this.props.color ? Color.fromJSON(this.props.color) : undefined }
+    set color(v: Color | RGB | undefined) { this.props.color = v === undefined ? undefined : v instanceof Color ? v.toJSON() : v }
+    setColor(c: Color): this { this.color = c; return this }
+    /** 阴影 */
+    get shadow(): boolean | undefined { return this.props.shadow }
+    set shadow(v: boolean | undefined) { this.props.shadow = v }
+    setShadow(on = true): this { this.shadow = on; return this }
+    /** 字号倍数（font_scale_factor） */
+    get fontScale(): number | undefined { return this.props.fontScale }
+    set fontScale(v: number | undefined) { this.props.fontScale = v }
+    setFontScale(n: number): this { this.fontScale = n; return this }
+    /** 对齐 */
+    get align(): TextAlign | undefined { return this.props.align }
+    set align(v: TextAlign | undefined) { this.props.align = v }
+    setAlign(a: TextAlign): this { this.align = a; return this }
     /** 文字是语言键，按玩家语言显示 */
-    setLocalize(on = true): this { this.props.localize = on; return this }
+    get localize(): boolean | undefined { return this.props.localize }
+    set localize(v: boolean | undefined) { this.props.localize = v }
+    setLocalize(on = true): this { this.localize = on; return this }
+    /** 行距（line_padding） */
+    get lineSpacing(): number | undefined { return this.props.lineSpacing }
+    set lineSpacing(v: number | undefined) { this.props.lineSpacing = v }
     /**
      * 行距（line_padding，原版聊天栏用它调行距）。真机 1.20.0：**每一行都多占 n**，文字在行里居中（上下各 n/2，第一行也下移 n/2），
      * 控件高 = 行数 × (10 + n)。运行期文字里放 emoji 字形图标（16 高、以文字行为中心）时设 ≥ 6，图标就不会压到上下行
      */
-    setLineSpacing(n: number): this { this.props.lineSpacing = n; return this }
-    get color(): Color | undefined { return this.props.color ? Color.fromJSON(this.props.color) : undefined }
+    setLineSpacing(n: number): this { this.lineSpacing = n; return this }
 }
 
 /** 原样输出的 JSON（逃生口） */
@@ -411,6 +529,14 @@ export class Raw extends Element {
     constructor(a: Record<string, unknown> | RawOptions, template?: string) {
         super(isOptions(a) && 'json' in a ? a as RawOptions : { json: a, template })
     }
+    /** 原样输出的 JSON */
+    get json(): Record<string, unknown> { return this.props.json }
+    set json(v: Record<string, unknown>) { this.props.json = v }
+    setJson(v: Record<string, unknown>): this { this.json = v; return this }
+    /** 继承的模板（name@模板） */
+    get template(): string | undefined { return this.props.template }
+    set template(v: string | undefined) { this.props.template = v }
+    setTemplate(v: string): this { this.template = v; return this }
 }
 
 const statePanel = () => new Panel().setSize(SizeValue.full())
@@ -427,13 +553,21 @@ export class Button extends Element {
     constructor(options: ButtonOptions = {}) { super(options) }
     slots() { return { default: this.default, hover: this.hover, pressed: this.pressed } }
     /** 按下时发出的按钮事件（缺省 button.form_button_click） */
-    setPressedName(name: string): this { this.props.pressedName = name; return this }
+    get pressedName(): string | undefined { return this.props.pressedName }
+    set pressedName(v: string | undefined) { this.props.pressedName = v }
+    setPressedName(name: string): this { this.pressedName = name; return this }
     /** 继承的原版模板（缺省 common.button） */
-    setTemplate(t: string): this { this.props.template = t; return this }
+    get template(): string | undefined { return this.props.template }
+    set template(v: string | undefined) { this.props.template = v }
+    setTemplate(t: string): this { this.template = t; return this }
     /** 默认聚焦优先级（服务端重开表单、鼠标没动时，点击交给默认聚焦的控件） */
-    setFocusPrecedence(n: number): this { this.props.focusPrecedence = n; return this }
+    get focusPrecedence(): number | undefined { return this.props.focusPrecedence }
+    set focusPrecedence(v: number | undefined) { this.props.focusPrecedence = v }
+    setFocusPrecedence(n: number): this { this.focusPrecedence = n; return this }
     /** 仅预览：点击回调 */
-    onPress(fn: () => void): this { this.props.onPress = fn; return this }
+    setOnPress(fn: () => void): this { this.props.onPress = fn; return this }
+    /** 同 setOnPress */
+    onPress(fn: () => void): this { return this.setOnPress(fn) }
 }
 
 /**
@@ -453,19 +587,38 @@ export class Toggle extends Element {
     constructor(options: ToggleOptions)
     constructor(a: string | ToggleOptions, index?: number) { super(isOptions(a) ? a as ToggleOptions : { group: a, index: index ?? 0 }) }
     slots() { return { unchecked: this.unchecked, checked: this.checked, unchecked_hover: this.uncheckedHover, checked_hover: this.checkedHover } }
+    /** 单选组名 */
     get group(): string { return this.props.group }
+    set group(v: string) { this.props.group = v }
+    setGroup(v: string): this { this.group = v; return this }
+    /** 组里的序号 */
     get index(): number { return this.props.index }
+    set index(v: number) { this.props.index = v }
+    setIndex(v: number): this { this.index = v; return this }
     /** 单选（缺省 true）；false = 各自独立的勾选框 */
-    setRadio(on: boolean): this { this.props.radio = on; return this }
+    get radio(): boolean | undefined { return this.props.radio }
+    set radio(v: boolean | undefined) { this.props.radio = v }
+    setRadio(on: boolean): this { this.radio = on; return this }
     /** 单选组初始选中的序号（同组应一致） */
-    setDefaultSelected(i: number): this { this.props.defaultSelected = i; return this }
+    get defaultSelected(): number | undefined { return this.props.defaultSelected }
+    set defaultSelected(v: number | undefined) { this.props.defaultSelected = v }
+    setDefaultSelected(i: number): this { this.defaultSelected = i; return this }
     /** 非单选时的初始状态 */
-    setDefaultState(on: boolean): this { this.props.defaultState = on; return this }
+    get defaultState(): boolean | undefined { return this.props.defaultState }
+    set defaultState(v: boolean | undefined) { this.props.defaultState = v }
+    setDefaultState(on: boolean): this { this.defaultState = on; return this }
     /** 禁用（locked）时是否照常显示 */
-    setLockedVisible(on: boolean): this { this.props.lockedVisible = on; return this }
-    setFocusPrecedence(n: number): this { this.props.focusPrecedence = n; return this }
+    get lockedVisible(): boolean | undefined { return this.props.lockedVisible }
+    set lockedVisible(v: boolean | undefined) { this.props.lockedVisible = v }
+    setLockedVisible(on: boolean): this { this.lockedVisible = on; return this }
+    /** 默认聚焦优先级 */
+    get focusPrecedence(): number | undefined { return this.props.focusPrecedence }
+    set focusPrecedence(v: number | undefined) { this.props.focusPrecedence = v }
+    setFocusPrecedence(n: number): this { this.focusPrecedence = n; return this }
     /** 用表达式设定开关状态（只读全局绑定的条件 → 开关状态，别处再按开关名读） */
-    setStateFrom(e: Expr): this { this.props.stateFrom = e; return this }
+    get stateFrom(): Expr | undefined { return this.props.stateFrom }
+    set stateFrom(v: Expr | undefined) { this.props.stateFrom = v }
+    setStateFrom(e: Expr): this { this.stateFrom = e; return this }
 }
 
 /** 集合项：子树绑定到某个集合（如 form_buttons）的第 index 项 */
@@ -475,6 +628,14 @@ export class CollectionItem extends Element {
     /** @deprecated 用 new CollectionItem(集合名, 序号) */
     constructor(options: CollectionItemOptions)
     constructor(a: string | CollectionItemOptions, index?: number) { super(isOptions(a) ? a as CollectionItemOptions : { collection: a, index: index ?? 0 }) }
+    /** 集合名（例如 form_buttons） */
+    get collection(): string { return this.props.collection }
+    set collection(v: string) { this.props.collection = v }
+    setCollection(v: string): this { this.collection = v; return this }
+    /** 集合里的第几项 */
+    get index(): number { return this.props.index }
+    set index(v: number) { this.props.index = v }
+    setIndex(v: number): this { this.index = v; return this }
 }
 
 /**
@@ -604,6 +765,15 @@ export function _applyOptions(el: Element, options: LayoutOptions): void {
     if (name !== undefined) el.name = name
     for (const [k, v] of Object.entries(rest)) if (v !== undefined) el.props[k] = v
     if (children) el.add(...children)
+}
+
+/** 对象（沿原型链）有没有名为 key 的属性写入器 */
+function hasSetter(obj: object, key: string): boolean {
+    for (let p = Object.getPrototypeOf(obj); p && p !== Object.prototype; p = Object.getPrototypeOf(p)) {
+        const d = Object.getOwnPropertyDescriptor(p, key)
+        if (d) return typeof d.set === 'function'
+    }
+    return false
 }
 
 /** @internal 给自己展开子树的组件（Text）用 */

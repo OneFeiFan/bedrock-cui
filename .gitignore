@@ -1,4 +1,6 @@
 node_modules/
 dist/
 dist-preview/
+out/
 preview-src/public/font/
+*.tgz

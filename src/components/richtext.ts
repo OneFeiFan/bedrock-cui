@@ -14,7 +14,7 @@ import { Element, Image, Label, Panel, Stack, _snapshot } from '../core/element.
 import { InlineIcon } from '../core/inline.js'
 import type { RNode } from '../core/node.js'
 import type { TextStyle } from '../core/values.js'
-import { GLYPH_TOP, LINE_HEIGHT, textWidth } from '../font/metrics.js'
+import { GLYPH_TOP, LINE_HEIGHT, textWidth, withMetricsProfile } from '../font/metrics.js'
 import { NO_LINE_END, NO_LINE_START, parseRich, PLAIN, styleCodes, type RunStyle } from '../font/rich.js'
 
 /** 排版单位：一段文字（单词 / 一个字 / 一个空格，前面可能带格式码）或一个图标 */
@@ -33,9 +33,11 @@ function tokenize(paragraph: string): Unit[] {
         if (ch === '§' && i + 1 < chars.length) { codes += ch + chars[++i]; continue }
         const icon = InlineIcon.lookup(ch)
         if (icon) { if (codes) { units.push({ text: codes }); codes = '' } units.push({ icon }); continue }
-        if (/[A-Za-z0-9]/.test(ch)) {
+        // 单词：连续的非汉字、非全角标点、非空白字符（「×3」「diamond_sword」「1.22.0」不拆开）；行内图标与 § 码另算
+        const isWordChar = (c: string) => !/[\s§\u2E80-\u9FFF\uF900-\uFAFF\u3000-\u303F\uFF00-\uFFEF]/u.test(c) && !InlineIcon.lookup(c)
+        if (isWordChar(ch)) {
             let word = ch
-            while (i + 1 < chars.length && /[A-Za-z0-9'_-]/.test(chars[i + 1])) word += chars[++i]
+            while (i + 1 < chars.length && isWordChar(chars[i + 1])) word += chars[++i]
             units.push({ text: codes + word }); codes = ''
             continue
         }
@@ -132,7 +134,9 @@ export class Text extends Element {
         this.content = content
         this.width = width
         this.style = style
-        this.lines = layoutInline(content, width)
+        // 换行按最宽的平台（安卓：汉字与全角标点 9）算：每行在 PC 上也放得下。各段的位置交给游戏（横向堆叠、文字段宽度 100%c），
+        // 所以按实际字宽排列。真机 1.28.0：按 PC 字宽算的行在安卓上越过书页中缝
+        this.lines = withMetricsProfile('android', () => layoutInline(content, width))
         this.props.size = [width ?? '100%cm', '100%c']
     }
 

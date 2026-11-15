@@ -5,6 +5,7 @@
  */
 import fs from 'node:fs'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import zlib from 'node:zlib'
 import type { TextureInfo } from '../layout/engine.js'
 import type { GlyphSheet } from '../core/glyphs.js'
@@ -179,3 +180,34 @@ export function renderGlyphSheet(sheet: GlyphSheet, resolve: (texturePath: strin
     }
     return { file: sheet.fileName, png: encodePng(W, W, px), issues }
 }
+
+// ───────────── 脚本端运行时：复制进行为包 ─────────────
+
+/** 运行时用到的文件（相对 dist；保持目录结构，相对 import 才找得到）。runtime/serverPages 依赖 @minecraft/server、server-ui（行为包里有） */
+const RUNTIME_FILES = ['runtime/index', 'runtime/serverPages', 'core/serverPagesShared', 'font/rich', 'font/metrics', 'font/gameGlyphs', 'font/unifontWidths']
+
+/** 运行时的文件：[相对路径, 内容]（Addon.addRuntime 用） */
+export function runtimeFiles(): [string, Buffer][] {
+    const dist = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
+    return RUNTIME_FILES.map((f) => [`${f}.js`, fs.readFileSync(path.join(dist, f + '.js'))])
+}
+
+/**
+ * 把脚本端运行时（cui/runtime：preWrap 等）复制进行为包的脚本目录，例如 `copyRuntime(path.join(bp, 'scripts', 'cui'))`，
+ * 脚本里 `import { preWrap } from './cui/runtime/index.js'`。types = 同时复制 .d.ts（给脚本做类型检查用；行为包里不需要）。
+ */
+export function copyRuntime(dest: string, options: { types?: boolean } = {}): string[] {
+    const dist = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
+    const out: string[] = []
+    for (const f of RUNTIME_FILES) {
+        for (const ext of options.types ? ['.js', '.d.ts'] : ['.js']) {
+            const src = path.join(dist, f + ext), to = path.join(dest, f + ext)
+            fs.mkdirSync(path.dirname(to), { recursive: true })
+            fs.copyFileSync(src, to)
+            out.push(to)
+        }
+    }
+    return out
+}
+
+export { Addon, PackFiles, zip } from './addon.js'

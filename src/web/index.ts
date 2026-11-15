@@ -367,3 +367,4 @@ export function mountDevtools(el: HTMLElement, preview: Preview): void {
         : '<li style="color:#8f8">没有问题</li>'
     q('json').textContent = JSON.stringify(preview.compiled(), null, 1)
 }
+export { ServerPagesPreview } from './serverPages.js'
