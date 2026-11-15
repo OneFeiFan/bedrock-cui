@@ -1,6 +1,21 @@
-# bedrock-cui 设计说明（v0.23）
+# bedrock-cui 设计说明（v0.24）
 
 > 这份文档按版本记录设计决策与全部真机测试（PC 与安卓）。较新的结论在后面的章节里会更正较早的；以「✅ 真机确认」标注的为准。
+
+## 0.1 打包：CuiApp——独立打包，或嵌入 sapdon 的构建（v0.24，测试包 1.31.0）
+
+先前打包还要靠例子里的一大段流程（挂界面、复制贴图、生成字形图、拼脚本、打包、类型检查）。现在 `CuiApp`（`bedrock-cui/node`）原生负责：
+`screen(界面 id, 根元素)`、`setTextures()`、`glyphSheet()`；`compile()` 只编译（界面文件、**每个界面的翻页路由自动导出**、字形图、检查结果，可反复调用）；然后二选一：
+- `build({ out, title, version, uuidFile, scripts, resources })`：独立打包（Addon：清单、UUID 文件、运行时复制进行为包、脚本里 `bedrock-cui/runtime…` 改写成相对路径、
+  `scripts/cui.generated.js`、`.mcaddon`、checkScripts）。
+- `useSapdon(sapdon)`：**嵌入 sapdon 运行**（用户的意见：打包体系不要太重，结构化、框架化交给 sapdon）。sapdon 的构建顺序是 清单 → 同步 res/ → 运行项目入口
+  （注册表）→ rollup 打包脚本 → 部署；CuiApp 在注册表的 `beforeSubmit` 钩子里编译、打印检查结果（有错误就构建失败）、用 `GRegistry.register` 登记界面 JSON、
+  `_ui_defs` 交给 `UISystemRegistry.addOuterUIdefs` 合并，把 `cui.generated.js` 与 `.d.ts` 写进项目脚本目录——之后 sapdon 的 rollup 连同 `bedrock-cui/runtime`
+  一起打包（`@minecraft/*` 是外部模块）。字形图写进 `res/`（res 在项目代码运行前同步，变了要再构建一次）。sapdon 的 ServerFormUI 也写 `ui/server_form.json`：
+  同时用会报错。bedrock-cui 不依赖 sapdon：`@sapdon/core` 由使用者传进来。
+**用户脚本在两种用法下写法相同**：`import { ServerPagesForm } from 'bedrock-cui/runtime/server-pages'`、`import { paging } from './cui.generated.js'`。
+✅ 在 sapdon 3.7.1 上实测（用它的 JS 项目模板，`sapdon lib` 后 `sapdon compile`）：界面文件、合并后的 `_ui_defs`、打包进脚本的运行时与路由表都对。
+实测还暴露了 bedrock-cui/node 的循环依赖（入口 ↔ addon / app，rollup 警告）——工具函数移到 `node/tools.ts`，入口只做重新导出。
 
 ## 0. 开源准备：经验全部收进库；包名 bedrock-cui；MIT（v0.23，测试包 1.30.0）
 

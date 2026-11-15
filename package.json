@@ -1,6 +1,6 @@
 {
   "name": "bedrock-cui",
-  "version": "0.23.0",
+  "version": "0.24.0",
   "description": "Minecraft 基岩版 JSON UI 的面向对象 UI 框架：一棵组件树 → 基岩版 JSON UI ＋ 浏览器预览（按游戏的排版规则画）＋ 静态检查；附带服务端表单的混合翻页、跨平台软换行与附加包打包",
   "keywords": [
     "minecraft",

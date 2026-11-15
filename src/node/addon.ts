@@ -17,7 +17,7 @@ import zlib from 'node:zlib'
 import { randomUUID } from 'node:crypto'
 import os from 'node:os'
 import { fileURLToPath } from 'node:url'
-import { runtimeFiles } from './index.js'
+import { runtimeFiles } from './tools.js'
 
 type Version = [number, number, number]
 

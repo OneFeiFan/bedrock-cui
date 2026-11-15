@@ -8,8 +8,8 @@
  */
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { Anchor, Color, FormButton, Image, Label, Length, Pages, Panel, Paragraph, Size, serverForm } from 'bedrock-cui'
-import { Addon, checkScripts } from 'bedrock-cui/node'
+import { Anchor, Color, FormButton, Image, Label, Pages, Panel, Paragraph, Size } from 'bedrock-cui'
+import { CuiApp } from 'bedrock-cui/node'
 
 const ID = 'cui_ui:hello_book'                       // 界面 id：表单标题以它开头时显示这个界面
 const outDir = path.resolve(process.argv[2] ?? path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'out'))
@@ -40,18 +40,13 @@ close.default.add(new Label('§4x'))
 close.hover.add(new Label('§cx'))
 root.add(close)
 
-const { files, issues } = serverForm({ namespace: 'hello_book', panelId: ID, content: root })
-for (const i of issues) console.warn(`[${i.level}] ${i.rule} ${i.path}：${i.message}`)
-if (issues.some((i) => i.level === 'error')) process.exit(1)
-
-// ───────── 脚本 ─────────
+// ───────── 脚本（独立打包与嵌入 sapdon 时写法相同） ─────────
 
 const script = `import { system, world } from '@minecraft/server'
-import { ServerPagesForm, lockCamera } from './cui/runtime/serverPages.js'
+import { ServerPagesForm, lockCamera } from 'bedrock-cui/runtime/server-pages'
+import { paging } from './cui.generated.js'          // 构建时生成：界面 id → 翻页路由表
 
-/** @type {import('./cui/runtime/serverPages.js').ServerPaging} */
-const PAGING = ${JSON.stringify(pages.serverPaging(ID))}
-const book = new ServerPagesForm(PAGING)
+const book = new ServerPagesForm(paging['${ID}'])
     .setButtons(() => ({ 0: 'close|' }))
     .onSelect((player, index) => { if (index === 0) player.sendMessage('§7合上了书') })
 
@@ -63,16 +58,8 @@ system.afterEvents.scriptEventReceive.subscribe((e) => {
 })
 `
 
-// ───────── 打包 ─────────
+// ───────── 打包：挂界面、导出翻页路由、清单与 UUID、.mcaddon、脚本类型检查，一步完成 ─────────
 
-const addon = new Addon('hello_book').setTitle('CUI 小书').setVersion(1, 0, 0)
-    .useUuidFile(path.join(outDir, 'hello_book.uuid.json'))   // 首次生成，之后不变
-    .setScript('scripts/main.js').addRuntime()
-addon.resources.addAll(files)
-addon.behavior.add('scripts/main.js', script)
-console.log('输出：', addon.pack(outDir))
-
-// 进游戏之前，对生成的脚本做类型检查（需要 typescript 与 @minecraft/server、@minecraft/server-ui）
-const errors = await checkScripts(path.join(outDir, 'hello_book_BP'))
-if (errors.length) { console.error('脚本类型检查失败：\n' + errors.join('\n')); process.exit(1) }
-console.log('脚本类型检查：通过')
+const file = await new CuiApp('hello_book').screen(ID, root)
+    .build({ out: outDir, title: 'CUI 小书', version: [1, 0, 0], scripts: { 'main.js': script } })
+console.log('输出：', file)
