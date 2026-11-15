@@ -157,7 +157,8 @@ export function mountPreview(el: HTMLElement, options: PreviewOptions): Preview 
 
     const screen = document.createElement('div')
     Object.assign(screen.style, {
-        position: 'relative', width: `${viewport.value[0] * scale}px`, height: `${viewport.value[1] * scale}px`, overflow: 'hidden',
+        // isolation：预览内部按层级设置的 z-index（可达上千）只在预览里比较，不会盖到宿主页面的导航栏等元素上
+        position: 'relative', isolation: 'isolate', width: `${viewport.value[0] * scale}px`, height: `${viewport.value[1] * scale}px`, overflow: 'hidden',
         background: 'repeating-conic-gradient(#3a3a3a 0% 25%, #333 0% 50%) 0 0 / 24px 24px', imageRendering: 'pixelated', userSelect: 'none',
         fontFamily: '"Minecraft", "Unifont", "Zpix", monospace',
     })
