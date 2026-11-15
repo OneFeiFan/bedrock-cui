@@ -210,4 +210,4 @@ export function copyRuntime(dest: string, options: { types?: boolean } = {}): st
     return out
 }
 
-export { Addon, PackFiles, zip } from './addon.js'
+export { Addon, PackFiles, checkScripts, zip } from './addon.js'

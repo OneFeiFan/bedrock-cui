@@ -1,15 +1,21 @@
 /**
  * 从 GNU Unifont 生成字距表 → src/font/unifontWidths.ts
- *   node scripts/gen-unifont-widths.mjs path/to/unifont.hex
+ *   node scripts/gen-unifont-widths.mjs [unifont.hex 或 unifont.hex.gz]
+ * 缺省读 preview-src/public/font/unifont.hex.gz（node scripts/fetch-fonts.mjs 准备的）
  *
  * 真机（2026-11，字宽标尺）：基岩版的非 ASCII 字形就是 Unifont 点阵（16 像素，按半像素画），
  * 字距 = 点阵墨迹宽 / 2 + 1（与 Java 版 unicode 字体同一规则）。「中」6.5、「钻」8.5、「，」2、「。」3 均与实测一致。
  * Unifont：GNU GPLv2+（字体嵌入例外）/ SIL OFL 1.1 双许可；这里只取各字形的宽度。
  */
 import fs from 'node:fs'
-const file = process.argv[2] ?? '/tmp/unifont.hex'
+import path from 'node:path'
+import zlib from 'node:zlib'
+import { fileURLToPath } from 'node:url'
+const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
+const file = process.argv[2] ?? path.join(root, 'preview-src', 'public', 'font', 'unifont.hex.gz')
+const text = file.endsWith('.gz') ? zlib.gunzipSync(fs.readFileSync(file)).toString('utf8') : fs.readFileSync(file, 'utf8')
 const half = new Uint8Array(0x10000) // 字距（半像素），0 = 未收录
-for (const line of fs.readFileSync(file, 'utf8').split('\n')) {
+for (const line of text.split('\n')) {
     if (!line.includes(':')) continue
     const [cpHex, bits] = line.trim().split(':')
     const cp = parseInt(cpHex, 16)

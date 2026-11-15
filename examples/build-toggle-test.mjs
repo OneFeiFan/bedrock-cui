@@ -5,10 +5,9 @@
  */
 import fs from 'node:fs'
 import path from 'node:path'
-import { execSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { serverForm } from 'bedrock-cui'
-import { Addon, renderGlyphSheet, runtimeFiles } from 'bedrock-cui/node'
+import { Addon, checkScripts, renderGlyphSheet } from 'bedrock-cui/node'
 import { buildBook, FORM, GLYPHS, PAGING, T, TEXTURE_INFO } from './toggle-book.mjs'
 import { buildResponsiveDemo, RESPONSIVE_FORM } from './responsive-demo.mjs'
 
@@ -114,18 +113,7 @@ system.afterEvents.scriptEventReceive.subscribe((e) => {
 const mcaddon = addon.pack(outRoot)
 console.log('输出：', mcaddon, fs.statSync(mcaddon).size, '字节；界面 JSON', JSON.stringify(files[`ui/${NAME}.json`]).length, '字节')
 
-// 生成的脚本：用 TypeScript 做语法与 API 检查（类型来自 CUI 的开发依赖 @minecraft/server、server-ui；运行时连同 .d.ts）
-{
-    const tc = path.join(outRoot, '.typecheck')
-    fs.rmSync(tc, { recursive: true, force: true }); fs.mkdirSync(tc, { recursive: true })
-    fs.copyFileSync(path.join(outRoot, `${NAME}_BP`, 'scripts', 'main.js'), path.join(tc, 'main.js'))
-    const dist = path.join(here, '..', 'dist')
-    for (const [rel] of runtimeFiles()) for (const ext of ['.js', '.d.ts']) {
-        const to = path.join(tc, 'cui', rel.replace(/\.js$/, ext)); fs.mkdirSync(path.dirname(to), { recursive: true }); fs.copyFileSync(path.join(dist, rel.replace(/\.js$/, ext)), to)
-    }
-    fs.symlinkSync(path.join(here, '..', 'node_modules'), path.join(tc, 'node_modules'))
-    fs.writeFileSync(path.join(tc, 'tsconfig.json'), JSON.stringify({ compilerOptions: { allowJs: true, checkJs: true, noEmit: true, target: 'ES2022', module: 'ESNext', moduleResolution: 'bundler', skipLibCheck: true }, files: ['main.js'] }))
-    try { execSync(`${JSON.stringify(path.join(here, '..', 'node_modules', '.bin', 'tsc'))} -p tsconfig.json`, { cwd: tc, stdio: 'pipe' }); console.log('脚本类型检查：通过') }
-    catch (e) { console.error('脚本类型检查失败：\n' + e.stdout); process.exit(1) }
-    fs.rmSync(tc, { recursive: true, force: true })
-}
+// 生成的脚本做类型检查（库的 checkScripts：TypeScript 编译器接口，Windows 上也能用；类型来自 @minecraft/server、server-ui）
+const errors = await checkScripts(path.join(outRoot, `${NAME}_BP`), { nodeModules: path.join(here, '..', 'node_modules') })
+if (errors.length) { console.error('脚本类型检查失败：\n' + errors.join('\n')); process.exit(1) }
+console.log('脚本类型检查：通过')

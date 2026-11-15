@@ -36,7 +36,7 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "test": "tsc -p tsconfig.json && node --test tests/*.test.mjs",
+    "test": "tsc -p tsconfig.json && node scripts/run-tests.mjs",
     "dev": "vite",
     "preview:build": "vite build",
     "prepublishOnly": "npm test"

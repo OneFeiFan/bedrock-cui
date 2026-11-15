@@ -132,7 +132,8 @@ npm run dev                      # 预览：?scale=5 放大、?platform=android 
 ### 打包
 
 `Addon`（`bedrock-cui/node`）：生成资源包与行为包的清单、把 UUID 存进项目文件（之后不变）、`addRuntime()` 放入脚本端运行时、`pack()` 打成 `.mcaddon`
-（不依赖第三方压缩库）。另有 `textureInfoFrom()`（读贴图尺寸与九宫格）、`renderGlyphSheet()`（生成字形图）。
+（不依赖第三方压缩库）。`checkScripts(行为包目录)`：进游戏之前对脚本做类型检查（TypeScript 编译器接口；需要 typescript 与 @minecraft 的类型包）。
+另有 `textureInfoFrom()`（读贴图尺寸与九宫格）、`renderGlyphSheet()`（生成字形图）。构建工具与测试在 Windows、macOS、Linux 上都只要 Node.js。
 
 ## 真机规则摘要
 
@@ -166,7 +167,7 @@ docs            DESIGN.md（设计与全部真机测试记录）
 
 ```bash
 npm install
-npm test                                   # 编译 + 测试（包括 PC 与安卓折行的真机回归）
+npm test                                   # 编译 + 测试（包括 PC 与安卓折行的真机回归）；CI 在 Ubuntu 与 Windows、Node 20 / 22 上跑
 node examples/build-toggle-test.mjs out    # 真机测试包 out/cui_toggle_test.mcaddon（书 = 测试书，纸 = 响应式演示）
 ```
 

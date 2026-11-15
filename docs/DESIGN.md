@@ -14,6 +14,9 @@
 - 包名 `bedrock-cui`（`cui` 在 npm 上已被占用）；例子与预览用包自引用 `import 'bedrock-cui'`（不再要手工建的 node_modules/cui 链接）。
   MIT 许可证；THIRD_PARTY_NOTICES.md 列出 sapdon、GNU Unifont 字距表、从游戏还原的 48 个字形。
 - 源码包改用 `git archive`（先前直接压缩文件夹，混进了一个早期 shell 不支持花括号展开留下的空目录 `{src/{core,…},tests,preview`）。
+- **Windows 可用**（用户在 Windows 上开发）：测试不再调用 unzip（Node 自己解压校验 CRC）；「生成的脚本做类型检查」收进库（`checkScripts`：TypeScript
+  编译器接口，不经过命令行、不建符号链接——先前例子调 node_modules/.bin/tsc 并建 node_modules 链接，Windows 上都不行）；`npm test` 用 scripts/run-tests.mjs
+  列出测试文件（cmd 与 Node 20 都不展开通配符）；GitHub Actions 在 Ubuntu 与 Windows、Node 20 / 22 上跑测试与最小例子。
 
 ## 1. 要解决的问题
 

@@ -9,7 +9,7 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { Anchor, Color, FormButton, Image, Label, Length, Pages, Panel, Paragraph, Size, serverForm } from 'bedrock-cui'
-import { Addon } from 'bedrock-cui/node'
+import { Addon, checkScripts } from 'bedrock-cui/node'
 
 const ID = 'cui_ui:hello_book'                       // 界面 id：表单标题以它开头时显示这个界面
 const outDir = path.resolve(process.argv[2] ?? path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'out'))
@@ -71,3 +71,8 @@ const addon = new Addon('hello_book').setTitle('CUI 小书').setVersion(1, 0, 0)
 addon.resources.addAll(files)
 addon.behavior.add('scripts/main.js', script)
 console.log('输出：', addon.pack(outDir))
+
+// 进游戏之前，对生成的脚本做类型检查（需要 typescript 与 @minecraft/server、@minecraft/server-ui）
+const errors = await checkScripts(path.join(outDir, 'hello_book_BP'))
+if (errors.length) { console.error('脚本类型检查失败：\n' + errors.join('\n')); process.exit(1) }
+console.log('脚本类型检查：通过')
