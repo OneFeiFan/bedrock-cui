@@ -43,3 +43,4 @@
 |---|---|---|
 | `ServerPaging` | 接口 | 一个界面的翻页路由表。 |
 | `ServerArrowRoute` | 接口 | 路由表中的一个翻页箭头。 |
+| `FormButtonSpec` | 类型 | setButtons() 中的一个按钮：文字，或 { text, icon }。 |

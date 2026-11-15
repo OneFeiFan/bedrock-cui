@@ -23,7 +23,7 @@ const SITE_TITLE = 'bedrock-cui'
 const sections = []          // [{ title, pages: [{ file, title }] }]
 for (const line of fs.readFileSync(path.join(guide, 'index.md'), 'utf8').split('\n')) {
     const h = line.match(/^#{2,3} (.+)/)
-    if (h && h[1] !== '学习') { sections.push({ title: h[1], pages: [] }); continue }
+    if (h && h[1] !== '学习' && h[1] !== '组件' || (h && h[0].startsWith('### '))) { if (h[1] === '学习') continue; sections.push({ title: h[1], pages: [] }); continue }
     const l = line.match(/^- \[(.+?)\]\((.+?\.md)\)/)
     if (l && sections.length) sections.at(-1).pages.push({ file: l[2], title: l[1].replace(/`/g, '') })
 }
@@ -65,11 +65,12 @@ function lineSet(spec) {
  * 在线示例：```js preview=变量名 宽x高 —— 显示代码，并在下方用像素预览显示该变量（模拟屏幕 宽×高）。
  * 代码只能从 'bedrock-cui' 导入（改写成从 window.CUI 取用）。
  */
-function previewScript(code, id, name, w, h, base) {
+function previewScript(code, id, name, w, h, base, form) {
     const body = code.replace(/^import\s*\{([^}]*)\}\s*from\s*'bedrock-cui'\s*;?\s*$/gm, (_, names) => `const {${names}} = CUI`)
+        .replace(/^export\s+(?=(function|const|class|let)\b)/gm, '')
     if (/^\s*import\s/m.test(body)) throw new Error(`在线示例只能从 'bedrock-cui' 导入：${id}`)
-    return `<div class="cui-preview" id="${id}"></div>\n<p class="cui-preview-note">预览：按游戏的排版规则绘制。英文字母的字形与游戏不同，原版贴图以替代图显示。</p>\n` +
-        `<script>(() => {\n${body.replace(/<\/script/g, '<\\/script')}\nCUI_PREVIEW('${id}', ${name}, { w: ${w}, h: ${h}, base: '${base}' })\n})()</script>\n`
+    return `<div class="cui-preview" id="${id}"></div>\n<p class="cui-preview-note">预览：按游戏的排版规则绘制。英文字母的字形与游戏不同；界面贴图以近似的替代图显示，物品图标以紫黑格占位（游戏中显示实际的贴图）。</p>\n` +
+        `<script>(() => {\n${body.replace(/<\/script/g, '<\\/script')}\nCUI_PREVIEW('${id}', ${name}, { w: ${w}, h: ${h}, base: '${base}'${form ? `, form: ${form}` : ''} })\n})()</script>\n`
 }
 
 function renderMarkdown(src, file) {
@@ -90,9 +91,10 @@ function renderMarkdown(src, file) {
                 const lines = highlight(text, language).split('\n').map((l, i) => `<span class="line${marks.has(i + 1) ? ' hl' : ''}">${l || ' '}</span>`)
                 const note = marks.size ? '<p class="code-note">绿色背景的行是相对上一段代码新增或修改的部分。</p>\n' : ''
                 const pre = `<pre class="code" data-lang="${language}"><code>${lines.join('')}</code></pre>\n${note}`
-                const pv = lang.match(/preview=(\w+)(?:\s+(\d+)x(\d+))?/)
+                const pv = lang.match(/preview=(\w+(?:\(\))?)(?:\s+(\d+)x(\d+))?/)
                 if (!pv) return pre
-                return pre + previewScript(text, `pv-${++previews}`, pv[1], Number(pv[2] ?? 240), Number(pv[3] ?? 140), base)
+                const form = (lang.match(/form=(\w+)/) ?? [])[1]
+                return pre + previewScript(text, `pv-${++previews}`, pv[1], Number(pv[2] ?? 240), Number(pv[3] ?? 140), base, form)
             },
             link({ href, title, tokens }) {
                 const text = this.parser.parseInline(tokens)
@@ -127,6 +129,7 @@ function frame(page, current, prefix) {
         link('index.html', SITE_TITLE, 'brand'),
         new Panel().setGrow(),
         link('introduction.html', '指南', 'nav'),
+        link('components/panel.html', '组件', 'nav'),
         link('reference/api-core.html', '参考', 'nav'),
         new Link(REPO, 'GitHub').setClassName('nav'),
     )
@@ -206,17 +209,9 @@ fs.writeFileSync(path.join(tex, 'dialog.png'), png(16, 16, (x, y) => {
 }))
 fs.writeFileSync(path.join(tex, 'purple.png'), png(16, 16, (x, y) => (edge(x, y) === 1 ? [80, 10, 170, 255] : [16, 0, 16, 255])))
 fs.writeFileSync(path.join(tex, 'white.png'), png(2, 2, () => [255, 255, 255, 255]))
-fs.writeFileSync(path.join(tex, 'diamond.png'), png(16, 16, (x, y) => {
-    const d = Math.abs(x - 7.5) + Math.abs(y - 7.5)
-    return d < 5.5 ? (x + y < 14 ? [160, 250, 245, 255] : [40, 200, 200, 255]) : d < 6.6 ? [20, 90, 100, 255] : null
-}))
-fs.writeFileSync(path.join(tex, 'stick.png'), png(16, 16, (x, y) => (Math.abs(x + y - 15) <= 1 && x > 2 && x < 13 ? [120, 80, 40, 255] : null)))
-fs.writeFileSync(path.join(tex, 'sword.png'), png(16, 16, (x, y) => {
-    if (Math.abs(x + y - 15) <= 1 && x >= 5 && x <= 14) return [120, 230, 230, 255]
-    if (Math.abs(x - y) <= 1 && x >= 2 && x <= 6 && y >= 8) return [40, 40, 40, 255]
-    if (Math.abs(x + y - 15) <= 0 && x >= 1 && x <= 4) return [110, 75, 40, 255]
-    return null
-}))
+// 物品图标：不模仿原版的样子，统一用紫黑格（游戏中贴图缺失时的样子），一看就知道是占位
+const missing = png(16, 16, (x, y) => ((x < 8) === (y < 8) ? [248, 0, 248, 255] : [0, 0, 0, 255]))
+for (const f of ['diamond.png', 'stick.png', 'sword.png']) fs.writeFileSync(path.join(tex, f), missing)
 const unifont = path.join(root, 'preview-src', 'public', 'font', 'unifont.hex.gz')
 if (fs.existsSync(unifont)) {
     fs.mkdirSync(path.join(out, 'font'), { recursive: true })

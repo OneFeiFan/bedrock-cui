@@ -15,8 +15,7 @@ bedrock-cui 提供两个可在行为包脚本中使用的模块：
 
 游戏的脚本环境不支持 `import 'bedrock-cui/runtime'` 这样的模块名，运行时的文件需要放入行为包，并以相对路径导入。按使用方式不同：
 
-- **`CuiApp.build()`**：运行时自动复制到行为包的 `scripts/cui/`，脚本中的 `'bedrock-cui/runtime'`、`'bedrock-cui/runtime/server-pages'` 自动改写为相对路径。脚本按模块名书写即可。
-- **sapdon**：sapdon 用 rollup 打包脚本，运行时随之打包进脚本文件。脚本同样按模块名书写。
+- **bedrock-cui 的项目（sapdon）**：sapdon 用 rollup 打包脚本，运行时随之打包进脚本文件。脚本按模块名书写即可。
 - **其他构建方式**：`copyRuntime(目录)`（`bedrock-cui/node`）将运行时复制到指定目录，脚本以相对路径导入：
 
 ```js

@@ -24,6 +24,7 @@
 
 ### 挂到游戏里
 
+- [附加包与服务端表单基础](addon-basics.md)
 - [服务端表单](server-form.md)
 - [翻页](paging.md)
 - [脚本端](runtime.md)
@@ -33,14 +34,39 @@
 
 - [浏览器预览](preview.md)
 - [静态检查](lint.md)
-- [打包](packaging.md)
+- [构建与打包](packaging.md)
 - [在 sapdon 中使用](sapdon.md)
-- [网页输出](web-output.md)
 
 ### 进阶
 
 - [跨平台](cross-platform.md)
 - [脚本端的性能](performance.md)
+- [生成普通网页](web-output.md)
+
+## 组件
+
+### 控件
+
+- [Element（通用）](components/element.md)
+- [Panel](components/panel.md)
+- [Image](components/image.md)
+- [Label](components/label.md)
+- [Stack](components/stack.md)
+- [Row 与 Column](components/row-column.md)
+- [Grid](components/grid.md)
+- [Scroll](components/scroll.md)
+- [Button](components/button.md)
+- [Toggle](components/toggle.md)
+- [CollectionItem](components/collection-item.md)
+
+### 组件
+
+- [Paragraph](components/paragraph.md)
+- [Text 与 InlineIcon](components/text.md)
+- [Pages](components/pages.md)
+- [FormButton](components/form-button.md)
+- [FormGate](components/form-gate.md)
+- [GlyphSheet](components/glyph-sheet.md)
 
 ## 参考
 

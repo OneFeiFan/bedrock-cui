@@ -7,6 +7,9 @@ import path from 'node:path'
 import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 
+// 部分测试要用原版贴图（不随源码分发）：缺少时先下载
+await import('./fetch-vanilla-textures.mjs')
+
 const dir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'tests')
 const files = fs.readdirSync(dir).filter((f) => f.endsWith('.test.mjs')).sort().map((f) => path.join(dir, f))
 const r = spawnSync(process.execPath, ['--test', ...files], { stdio: 'inherit' })

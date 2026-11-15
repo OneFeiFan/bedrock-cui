@@ -13,9 +13,9 @@
  */
 import { InputPermissionCategory, type Player } from '@minecraft/server'
 import { ActionFormData } from '@minecraft/server-ui'
-import { pageTitle, pagingButtons, pagingResponse, type ServerPaging } from '../core/serverPagesShared.js'
+import { buttonIconOf, pageTitle, pagingButtons, pagingResponse, type FormButtonSpec, type ServerPaging } from '../core/serverPagesShared.js'
 
-export type { ServerArrowRoute, ServerPaging } from '../core/serverPagesShared.js'
+export type { FormButtonSpec, ServerArrowRoute, ServerPaging } from '../core/serverPagesShared.js'
 
 /**
  * 书打开期间锁视角（混合翻页关表单再开的空档里，视角不随鼠标偏转）；状态已对就不再设置。
@@ -29,7 +29,7 @@ export function lockCamera(player: Player, lock: boolean): void {
 }
 
 export class ServerPagesForm {
-    private buttons: (player: Player, page: string) => Record<number, string> = () => ({})
+    private buttons: (player: Player, page: string) => Record<number, FormButtonSpec> = () => ({})
     private body: (player: Player, page: string) => string = () => ''
     private selected?: (player: Player, index: number, page: string) => void
     private closed?: (player: Player, page: string) => void
@@ -37,8 +37,8 @@ export class ServerPagesForm {
 
     constructor(readonly routes: ServerPaging) { }
 
-    /** 界面自己的表单按钮：序号 → 按钮文字（翻页箭头与「原地不动」的序号由路由表决定，不要占用） */
-    setButtons(fn: (player: Player, page: string) => Record<number, string>): this { this.buttons = fn; return this }
+    /** 界面自己的表单按钮：序号 → 按钮文字，或 { text, icon }（图标路径，界面里用 form.buttonTexture 显示）。翻页箭头与「原地不动」的序号由路由表决定，不要占用 */
+    setButtons(fn: (player: Player, page: string) => Record<number, FormButtonSpec>): this { this.buttons = fn; return this }
     /** 表单正文 */
     setBody(fn: (player: Player, page: string) => string): this { this.body = fn; return this }
     /** 点了非翻页按钮（表单已关） */
@@ -52,7 +52,8 @@ export class ServerPagesForm {
     open(player: Player, page: string = this.routes.start, dir: 'prev' | 'next' = 'next'): void {
         if (this.camera) lockCamera(player, true)
         const form = new ActionFormData().title(pageTitle(this.routes, page)).body(this.body(player, page))
-        for (const text of pagingButtons(this.routes, page, dir, this.buttons(player, page))) form.button(text)
+        const own = this.buttons(player, page)
+        pagingButtons(this.routes, page, dir, own).forEach((text, i) => { const icon = buttonIconOf(own[i]); if (icon) form.button(text, icon); else form.button(text) })
         form.show(player).then((r) => {
             if (r.canceled || r.selection === undefined) { if (this.camera) lockCamera(player, false); this.closed?.(player, page); return }
             const next = pagingResponse(this.routes, r.selection, page, dir)

@@ -2,7 +2,7 @@
 
 ## 检查时机
 
-静态检查在编译界面时进行。`CuiApp.build()` 与 `useSapdon()` 将结果输出到终端：
+静态检查在编译界面时进行。`bedrock-cui dev` 将结果显示在预览下方；构建时，`useSapdon()` 将结果输出到终端：
 
 ```
 [bedrock-cui] 警告 out-of-bounds root/panel0/card/intro：越出 root/panel0/card 的安全区（右 70 像素）

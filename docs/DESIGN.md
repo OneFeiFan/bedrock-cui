@@ -1,6 +1,22 @@
-# bedrock-cui 设计说明（v0.24）
+# bedrock-cui 设计说明（v0.25）
 
 > 这份文档按版本记录设计决策与全部真机测试（PC 与安卓）。较新的结论在后面的章节里会更正较早的；以「✅ 真机确认」标注的为准。
+
+## 0.00 v0.25：打包完全交给 sapdon（不兼容的改动）
+
+- 移除 CuiApp.build()、CuiBuildOptions、Addon、PackFiles、zip、rewriteRuntimeImports（与 sapdon 的打包重复）。checkScripts 保留（src/node/check.ts）。
+- 真机测试包改为 sapdon 项目 examples/cui_toggle_test/（mod.info 沿用原 UUID，游戏里仍是同一个包）：`npm run test-pack`（build.mjs：复制贴图 → 链接
+  node_modules/bedrock-cui → bedrock-cui build --pack）。最小例子 hello-book 删除（由 bedrock-cui create 的示例项目取代）；CI 改跑 scripts/e2e-create.mjs。
+- useSapdon 读 SAPDON_BUILD_CONTEXT（sapdon 4），把字形图同时写进本次构建输出的资源包——res/ 在运行构建入口之前就同步了，先前第一次构建的包里没有字形图。
+- 发现仓库里提交了 12 张原版贴图（与 bedrock-samples 逐字节相同）：移出版本库、加入 .gitignore，改由 scripts/fetch-vanilla-textures.mjs 下载；
+  scripts/run-tests.mjs 在测试前自动下载。
+
+## 0.0 按钮图标 form.buttonTexture（✅ 真机确认，测试包 1.32.0，PC 与安卓）
+
+Image(form.buttonTexture) 在集合项内部显示脚本 button(文字, 图标路径) 传来的贴图。编译照原版 server_form.json 的按钮图标：
+#form_button_texture → #texture、#form_button_texture_file_system → #texture_file_system（collection 绑定 + binding_name_override），
+空或 'loading' 时 #visible 为假。真机四行：原版物品（钻石）、原版方块（草方块侧面）、本包贴图（cui_test/book，整本书的背景缩到 16×16）都显示；
+没有图标的按钮只有文字，图片隐藏（不是紫黑格）。——动态显示任意物品（含其他附加包）用它；字形图标只用于夹在运行期文字中间的图标。
 
 ## 0.1 打包：CuiApp——独立打包，或嵌入 sapdon 的构建（v0.24，测试包 1.31.0）
 

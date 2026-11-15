@@ -5,3 +5,17 @@ out/
 preview-src/public/font/
 *.tgz
 site-dist/
+
+# 原版贴图（Mojang 的资源，node scripts/fetch-vanilla-textures.mjs 下载，不提交）
+preview-src/public/textures/book_normal.png
+preview-src/public/textures/book_writable.png
+preview-src/public/textures/diamond.png
+preview-src/public/textures/diamond_sword.png
+preview-src/public/textures/emerald.png
+preview-src/public/textures/map_empty.png
+preview-src/public/textures/name_tag.png
+preview-src/public/textures/paper.png
+preview-src/public/textures/stick.png
+preview-src/public/textures/cell_image.png
+preview-src/public/textures/highlight_slot.png
+preview-src/public/textures/purpleBorder.png

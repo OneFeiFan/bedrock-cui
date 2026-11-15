@@ -7,7 +7,7 @@
  *     · 贴图：像素风缩放；九宫格用 border-image；keep_ratio 按引擎算出的实际绘制矩形画
  */
 import { finalize, Panel, type Element } from '../core/element.js'
-import { asBool, evalExpr } from '../core/expr.js'
+import { asBool, evalExpr, isExpr } from '../core/expr.js'
 import { walk, type RNode } from '../core/node.js'
 import { effect, signal, type Signal } from '../core/reactivity.js'
 import { drawOrder, layout, type Box, type Rect, type TextureInfo } from '../layout/engine.js'
@@ -34,6 +34,8 @@ export interface PreviewOptions {
     /** 表单数据（不给就新建） */
     formText?: Signal<string>
     formButtons?: Signal<string[]>
+    /** 表单按钮的图标路径，按序号（form.buttonTexture 读它） */
+    formButtonIcons?: Signal<string[]>
     title?: Signal<string>
     /** 点击了第 index 个表单按钮（预览里模拟服务端：可以改 formText / formButtons） */
     onFormButton?: (index: number, text: string) => void
@@ -50,6 +52,7 @@ export interface PreviewOptions {
 export interface Preview {
     formText: Signal<string>
     formButtons: Signal<string[]>
+    formButtonIcons: Signal<string[]>
     title: Signal<string>
     outlines: Signal<boolean>
     /** 当前排版结果（测试 / 调试用） */
@@ -107,12 +110,40 @@ export function mountPreview(el: HTMLElement, options: PreviewOptions): Preview 
     const scale = options.scale ?? 3
     const formText = options.formText ?? signal('')
     const formButtons = options.formButtons ?? signal<string[]>([])
+    const formButtonIcons = options.formButtonIcons ?? signal<string[]>([])
     const title = options.title ?? signal('')
     const outlines = options.outlines ?? signal(false)
     const hover = signal<string | undefined>(undefined)
     const pressed = signal<string | undefined>(undefined)
     const textures = options.textures ?? {}
     const pixel = signal<PixelFonts | undefined>(undefined)
+    // 图片染色：游戏把贴图的颜色逐像素乘上 color。预览用画布生成一份染过色的贴图（按贴图与颜色缓存），生成后重画；
+    // 普通贴图与九宫格（border-image，CSS 混合模式对它不起作用）都用这份结果
+    const tintLoaded = signal(0)
+    const tinted = new Map<string, string>()
+    const tintUrl = (url: string, color: number[] | undefined): string => {
+        if (!color || color.slice(0, 3).every((c) => c >= 0.999)) return url
+        const key = `${url}|${color.join(',')}`
+        const hit = tinted.get(key)
+        if (hit) return hit
+        if (hit === undefined) {
+            tinted.set(key, '')
+            const img = new Image()
+            img.onload = () => {
+                const c = document.createElement('canvas')
+                c.width = img.naturalWidth; c.height = img.naturalHeight
+                const ctx = c.getContext('2d')!
+                ctx.drawImage(img, 0, 0)
+                const data = ctx.getImageData(0, 0, c.width, c.height)
+                for (let i = 0; i < data.data.length; i += 4) for (let k = 0; k < 3; k++) data.data[i + k] = Math.round(data.data[i + k] * color[k])
+                ctx.putImageData(data, 0, 0)
+                tinted.set(key, c.toDataURL())
+                tintLoaded.value++
+            }
+            img.src = url
+        }
+        return url
+    }
     // 字形图标的图片：按需加载，加载完重画
     const glyphLoaded = signal(0)
     const glyphImgs = new Map<string, HTMLImageElement>()
@@ -172,6 +203,7 @@ export function mountPreview(el: HTMLElement, options: PreviewOptions): Preview 
         if (name === '#form_text') return formText.value
         if (name === '#title_text') return title.value
         if (name === '#form_button_text') return formButtons.value[scope.collection?.index ?? -1] ?? ''
+        if (name === '#form_button_texture') return formButtonIcons.value[scope.collection?.index ?? -1] ?? ''
         return ''
     }
 
@@ -200,16 +232,18 @@ export function mountPreview(el: HTMLElement, options: PreviewOptions): Preview 
         if (cp) d.style.clipPath = cp
         if (n.type === 'image') {
             const t = textures[b.texture ?? '']
-            if (!t) {
+            if (!b.texture && isExpr(n.props.texture)) {
+                d.style.display = 'none'       // 贴图来自绑定且为空（例如按钮没有图标）：游戏中隐藏
+            } else if (!t) {
                 Object.assign(d.style, { background: 'repeating-linear-gradient(45deg,#f0f 0 4px,#000 4px 8px)', opacity: '0.6' })
                 d.title = `缺贴图：${b.texture}`
             } else if (b.nineslice !== undefined && !degenerate(b, t)) {
                 // 切图用贴图像素（高清贴图 = 边宽 × 像素 / base_size），画宽用界面像素
                 const [l, tp, r, bt] = b.nineslice
                 const [sl, st, sr, sb] = b.slice ?? b.nineslice
-                Object.assign(d.style, { borderStyle: 'solid', borderWidth: `${S(tp)} ${S(r)} ${S(bt)} ${S(l)}`, borderImage: `url("${t.url}") ${st} ${sr} ${sb} ${sl} fill stretch`, boxSizing: 'border-box' })
+                Object.assign(d.style, { borderStyle: 'solid', borderWidth: `${S(tp)} ${S(r)} ${S(bt)} ${S(l)}`, borderImage: `url("${tintUrl(t.url, n.props.color)}") ${st} ${sr} ${sb} ${sl} fill stretch`, boxSizing: 'border-box' })
             } else {
-                Object.assign(d.style, { backgroundImage: `url("${t.url}")`, backgroundSize: '100% 100%', backgroundRepeat: 'no-repeat' })
+                Object.assign(d.style, { backgroundImage: `url("${tintUrl(t.url, n.props.color)}")`, backgroundSize: '100% 100%', backgroundRepeat: 'no-repeat' })
             }
             if (b.clipRatio !== undefined && n.props.clipDirection) {
                 const k = Math.max(0, Math.min(1, b.clipRatio))
@@ -260,7 +294,7 @@ export function mountPreview(el: HTMLElement, options: PreviewOptions): Preview 
 
     const render = effect(() => {
         // 读信号 → 建立依赖
-        void formText.value; void formButtons.value; void title.value; void outlines.value; void groups.value; void flags.value; void pixel.value; void startOf.value; void scrolls.value; void glyphLoaded.value; void dpr.value
+        void formText.value; void formButtons.value; void formButtonIcons.value; void title.value; void outlines.value; void groups.value; void flags.value; void pixel.value; void startOf.value; void scrolls.value; void glyphLoaded.value; void tintLoaded.value; void dpr.value
         const vp = viewport.value
         screen.style.width = `${vp[0] * scale}px`; screen.style.height = `${vp[1] * scale}px`
         const st = { hover: hover.value, pressed: pressed.value }
@@ -334,7 +368,7 @@ export function mountPreview(el: HTMLElement, options: PreviewOptions): Preview 
     })
 
     return {
-        formText, formButtons, title, outlines,
+        formText, formButtons, formButtonIcons, title, outlines,
         boxes: () => current,
         issues: () => compileNamespace('preview', { root: rootEl() }, { textures: (p) => textures[p] }).issues,
         compiled: (ns = 'preview') => compileNamespace(ns, { root: rootEl() }, { textures: (p) => textures[p] }).json,

@@ -35,61 +35,65 @@ npm install && npm run build
 
 ## 快速开始
 
-[examples/hello-book.mjs](examples/hello-book.mjs) 是一个完整的最小例子：两页的小书、服务端翻页箭头、软换行的正文，界面、脚本、打包都在一个文件里。
+bedrock-cui 的项目就是一个 [sapdon](https://github.com/Meteage/sapdon) 项目：bedrock-cui 负责界面与预览，sapdon 负责项目结构、清单与打包。
 
-```js
-import { Anchor, Color, Label, Pages, Panel, Paragraph, Size } from 'bedrock-cui'
-import { CuiApp } from 'bedrock-cui/node'
-
-const ID = 'cui_ui:hello_book'                          // 表单标题以它开头时显示这个界面
-const pages = new Pages('hb').startAt('p1').setSize(Size.full())
-pages.page('p1').add(
-    new Paragraph('这是用 CUI 做的一本小书……', 210).setColor(Color.hex('#3c2814')).setAnchor(Anchor.TOP_LEFT).setOffset(15, 28),
-    pages.serverArrow('p1', 'p2', 'next', (hover) => new Label(hover ? '§e>' : '>'), 16, 12).setAnchor(Anchor.BOTTOM_RIGHT),
-)
-// ……第二页同理
-const root = new Panel().setSize(240, 150).add(pages, pages.stayButton())
-
-// 挂界面、导出翻页路由、清单与 UUID、运行时、.mcaddon、脚本类型检查，一步完成
-await new CuiApp('hello_book').screen(ID, root).build({ out: 'out', title: 'CUI 小书', scripts: 'scripts' })
+```bash
+npx bedrock-cui create my_ui     # 用 sapdon 的模板建项目，附带 bedrock-cui 的配置、示例界面与脚本
+cd my_ui
+npm install
+npm run dev                      # 浏览器中预览全部界面（首次运行自动准备字体）
+npm run build                    # 构建附加包（sapdon compile）；npm run pack 同时打成 .mcaddon
 ```
 
-行为包脚本（`scripts/main.js`）：
+项目配置 `cui.config.mjs`：
+
+```js
+import { defineConfig } from 'bedrock-cui'
+import { buildBook } from './ui/book.mjs'
+
+export default defineConfig({
+    namespace: 'book',
+    screens: { 'cui_ui:book': () => buildBook() },   // 界面 id → 根控件
+    textures: ['res'],
+})
+```
+
+行为包脚本（`scripts/index.js`）：
 
 ```js
 import { world } from '@minecraft/server'
 import { ServerPagesForm } from 'bedrock-cui/runtime/server-pages'
 import { paging } from './cui.generated.js'           // 构建时生成：界面 id → 翻页路由表
 
-const book = new ServerPagesForm(paging['cui_ui:hello_book'])
-    .setButtons(() => ({ 0: 'close|' }))                // 界面自己的表单按钮
-    .onSelect((player, index) => { /* 点了非翻页按钮 */ })
+const book = new ServerPagesForm(paging['cui_ui:book']).setButtons(() => ({ 0: 'close|' }))
 world.afterEvents.itemUse.subscribe((e) => { if (e.itemStack.typeId === 'minecraft:book') book.open(e.source) })
-```
-
-```bash
-node examples/hello-book.mjs out      # 克隆本仓库时先 npm install && npm run build
 ```
 
 ## 在 sapdon 项目里使用
 
 bedrock-cui 可以嵌入 [sapdon](https://github.com/Meteage/sapdon) 的构建：项目结构、清单、UUID、脚本打包、部署都由 sapdon 负责，bedrock-cui 只登记界面。
 
-```ts
-// main.ts（sapdon 项目的入口）
-import * as sapdon from '@sapdon/core'
-import { CuiApp } from 'bedrock-cui/node'
-import { buildBook } from './ui/book.js'
+已有的 sapdon 项目：`npm install bedrock-cui`，添加 `cui.config.mjs`，在入口文件中接入：
 
-new CuiApp('my_book').screen('cui_ui:my_book', buildBook()).useSapdon(sapdon)
+```js
+// main.mjs（sapdon 4）
+import { GRegistry, registry } from '@sapdon/core'
+import { UISystemRegistry } from '@sapdon/ui'
+import { useSapdon } from 'bedrock-cui/node'
+import config from './cui.config.mjs'
+
+useSapdon(config, { GRegistry, UISystemRegistry })
+registry.submit()
 ```
+
+预览同样使用 `npx bedrock-cui dev`。
 
 - 界面 JSON 在 sapdon 的提交前钩子里登记进注册表，`_ui_defs` 交给 `UISystemRegistry` 合并；
 - 翻页路由表写成 `scripts/cui.generated.js`（附 `.d.ts`），行为包脚本的写法与上面完全相同，sapdon 的 rollup 会连同 `bedrock-cui/runtime` 一起打包；
 - 字形图写进 `res/`（`res/` 在项目代码运行之前同步，字形图变了需要再构建一次）；
 - 不要同时使用 sapdon 自带的服务端表单界面（`ServerFormUI`）：两者都改写 `ui/server_form.json`，会报错提示。
 
-完整的接入步骤见 [examples/sapdon-project](examples/sapdon-project)（已在 sapdon 3.7.1 上实测）。
+完整的接入步骤见 [examples/sapdon-project](examples/sapdon-project)（已在 sapdon 4.0.0 与 3.7.1 上实测）。
 
 ## 核心概念
 
@@ -161,12 +165,9 @@ npm run dev                      # 预览：?scale=5 放大、?platform=android 
 
 ### 打包
 
-**`CuiApp`**（`bedrock-cui/node`）：`screen(界面 id, 根元素)` 挂界面，`setTextures()` 给贴图信息，`glyphSheet()` 生成字形图；然后二选一——
-`build({ out, title, version, uuidFile, scripts, resources })` 独立打包成 `.mcaddon`（清单、固定 UUID、运行时、脚本里 `bedrock-cui/runtime…` 改写成包内相对路径、
-`cui.generated.js`、脚本类型检查），或 `useSapdon(sapdon)` 嵌入 sapdon 的构建。`compile()` 只编译不写文件（界面文件、翻页路由、检查结果）。
-
-底层工具：`Addon`（清单、UUID 文件、`pack()`；不依赖第三方压缩库）、`checkScripts(行为包目录)`（TypeScript 编译器接口做类型检查）、
-`textureInfoFrom()`（读贴图尺寸与九宫格）、`renderGlyphSheet()`（生成字形图）。构建工具与测试在 Windows、macOS、Linux 上都只要 Node.js。
+构建交给 sapdon：`npm run build`（`bedrock-cui build`，即 sapdon compile），`npm run pack` 同时打成 `.mcaddon`。构建入口 `main.mjs` 中的
+`useSapdon(config, { GRegistry, UISystemRegistry })` 编译界面、输出静态检查结果、登记界面文件并生成 `scripts/cui.generated.js`；清单、UUID（`mod.info`）
+与脚本打包由 sapdon 完成。`checkScripts(行为包目录)`（`bedrock-cui/node`）用 TypeScript 编译器检查脚本中的 API 调用。构建工具与测试在 Windows、macOS、Linux 上都只要 Node.js。
 
 ## 真机规则摘要
 
@@ -190,8 +191,9 @@ src/font        字宽、折行模拟、软换行、Unifont 字距表
 src/mc          JSON UI 编译、服务端表单挂载、静态检查
 src/web         浏览器预览（像素字体渲染、ServerPagesPreview）
 src/runtime     脚本端运行时（softWrap、ServerPagesForm）
-src/node        构建：CuiApp（独立打包 / 嵌入 sapdon）、Addon、checkScripts、字形图、贴图信息
-examples        hello-book（最小例子）、sapdon-project（嵌入 sapdon）、toggle-book + build-toggle-test（真机测试包）、responsive-demo
+src/node        构建：CuiApp、useSapdon（接入 sapdon）、checkScripts、字形图、贴图信息
+src/cli         命令行：create、dev、build
+examples        sapdon-project（接入已有的 sapdon 项目）、cui_toggle_test（真机测试包，sapdon 项目）、toggle-book、responsive-demo
 preview-src     预览程序（npm run dev）
 docs            DESIGN.md（设计与全部真机测试记录）
 ```
@@ -202,7 +204,9 @@ docs            DESIGN.md（设计与全部真机测试记录）
 git clone https://github.com/OneFeiFan/bedrock-cui.git && cd bedrock-cui
 npm install
 npm test                                   # 编译 + 测试（包括 PC 与安卓折行的真机回归）；CI 在 Ubuntu 与 Windows、Node 20 / 22 上跑
-node examples/build-toggle-test.mjs out    # 真机测试包 out/cui_toggle_test.mcaddon（书 = 测试书，纸 = 响应式演示）
+npm run test-pack                          # 真机测试包 examples/cui_toggle_test/dev/cui_toggle_test.mcaddon（书 = 测试书，纸 = 响应式演示）
+npm run e2e                                # 端到端：create → build --pack
+node scripts/fetch-vanilla-textures.mjs    # 预览与测试用的原版贴图（Mojang 的资源，不随源码分发；npm test 会自动下载）
 ```
 
 ## 致谢

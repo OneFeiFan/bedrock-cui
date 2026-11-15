@@ -30,6 +30,11 @@ export interface ServerPaging {
     stay?: number
 }
 
+/** 一个表单按钮：文字，或文字加图标路径（ActionFormData.button(文字, 图标路径)；界面里用 form.buttonTexture 读图标） */
+export type FormButtonSpec = string | { text: string, icon?: string }
+export const buttonTextOf = (b: FormButtonSpec | undefined): string => (b === undefined ? '' : typeof b === 'string' ? b : b.text)
+export const buttonIconOf = (b: FormButtonSpec | undefined): string | undefined => (b !== undefined && typeof b !== 'string' ? b.icon : undefined)
+
 /** 箭头按钮文字的标记：普通版 / 聚焦版 */
 export const arrowTag = (index: number, focused = false) => `go${index}|${focused ? 'F' : ''}`
 /** 「原地不动」按钮文字的标记 */
@@ -41,12 +46,12 @@ export const pageTitle = (routes: Pick<ServerPaging, 'title' | 'prefix'>, page: 
  * 某一页的全部表单按钮文字（脚本端 ServerPagesForm 与预览 ServerPagesPreview 共用——行为一致）：
  * 翻页箭头写 go<序号>|，刚才点击方向、且在这一页上的箭头加 F；「原地不动」写 stay|；其余取 own（界面自己的按钮），没有的写空。
  */
-export function pagingButtons(paging: ServerPaging, page: string, dir: 'prev' | 'next', own: Record<number, string> = {}): string[] {
+export function pagingButtons(paging: ServerPaging, page: string, dir: 'prev' | 'next', own: Record<number, FormButtonSpec> = {}): string[] {
     const last = Math.max(-1, ...Object.keys(own).map(Number), ...paging.arrows.map((a) => a.index), paging.stay ?? -1)
     const out: string[] = []
     for (let i = 0; i <= last; i++) {
         const arrow = paging.arrows.find((a) => a.index === i)
-        out.push(arrow ? arrowTag(i, arrow.from === page && arrow.dir === dir) : i === paging.stay ? STAY_TAG : own[i] ?? '')
+        out.push(arrow ? arrowTag(i, arrow.from === page && arrow.dir === dir) : i === paging.stay ? STAY_TAG : buttonTextOf(own[i]))
     }
     return out
 }

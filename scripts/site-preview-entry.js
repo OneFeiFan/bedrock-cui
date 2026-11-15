@@ -17,9 +17,16 @@ const STANDINS = {
 }
 
 window.CUI = CUI
-window.CUI_PREVIEW = (id, root, { w, h, base }) => {
+/** form：模拟的表单数据 { title, text, buttons } */
+window.CUI_PREVIEW = (id, root, { w, h, base, form }) => {
     const el = document.getElementById(id)
     const textures = Object.fromEntries(Object.entries(STANDINS).map(([path, t]) => [path, { url: `${base}assets/textures/${t.file}`, size: t.size, ...(t.nineslice ? { nineslice: t.nineslice } : {}) }]))
     const scale = Math.max(1, Math.min(3, Math.floor((el.clientWidth || 600) / w)))
-    mountPreview(el, { root, viewport: [w, h], scale, textures, fonts: { unifont: `${base}font/unifont.hex.gz` } })
+    const buttons = form?.buttons ?? []
+    const data = form ? {
+        title: CUI.signal(form.title ?? ''), formText: CUI.signal(form.text ?? ''),
+        formButtons: CUI.signal(buttons.map((b) => (typeof b === 'string' ? b : b.text))),
+        formButtonIcons: CUI.signal(buttons.map((b) => (typeof b === 'string' ? '' : b.icon ?? ''))),
+    } : {}
+    mountPreview(el, { root, viewport: [w, h], scale, textures, fonts: { unifont: `${base}font/unifont.hex.gz` }, ...data })
 }

@@ -1,6 +1,6 @@
 # 静态检查规则
 
-`serverForm()`、`compileNamespace()` 与 `CuiApp.compile()` 返回的 `issues` 中，每一项包含规则名（`rule`）、级别（`level`）、控件路径（`path`）与说明（`message`）。`CuiApp.build()` 与 `useSapdon()` 将其输出到终端，存在错误时构建失败。
+`serverForm()`、`compileNamespace()` 与 `CuiApp.compile()` 返回的 `issues` 中，每一项包含规则名（`rule`）、级别（`level`）、控件路径（`path`）与说明（`message`）。`bedrock-cui dev` 将其显示在预览下方；构建时 `useSapdon()` 将其输出到终端，存在错误时构建失败。
 
 与排版有关的规则按 PC 与安卓两种字宽各检查一次，只在安卓上出现的问题在说明末尾注明「安卓字宽」。
 

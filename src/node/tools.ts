@@ -186,7 +186,7 @@ export function renderGlyphSheet(sheet: GlyphSheet, resolve: (texturePath: strin
 /** 运行时用到的文件（相对 dist；保持目录结构，相对 import 才找得到）。runtime/serverPages 依赖 @minecraft/server、server-ui（行为包里有） */
 const RUNTIME_FILES = ['runtime/index', 'runtime/serverPages', 'core/serverPagesShared', 'font/rich', 'font/metrics', 'font/gameGlyphs', 'font/unifontWidths']
 
-/** 运行时的文件：[相对路径, 内容]（Addon.addRuntime 用） */
+/** 运行时的文件：[相对路径, 内容]（copyRuntime 与 checkScripts 用） */
 export function runtimeFiles(): [string, Buffer][] {
     const dist = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
     return RUNTIME_FILES.map((f) => [`${f}.js`, fs.readFileSync(path.join(dist, f + '.js'))])

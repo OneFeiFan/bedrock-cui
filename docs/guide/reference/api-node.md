@@ -8,9 +8,8 @@
 
 | 名称 | 种类 | 说明 |
 |---|---|---|
-| `CuiApp` | 类 | 挂载界面、导出翻页路由、生成字形图；build() 独立打包，useSapdon() 接入 sapdon 的构建。 |
-| `Addon` | 类 | 附加包：清单、UUID 文件、资源包与行为包的文件、打包为 .mcaddon。 |
-| `PackFiles` | 类 | 一个包中的文件。 |
+| `useSapdon` | 函数 | 按项目配置接入 sapdon 的构建（在 sapdon 项目的入口文件中调用）。 |
+| `CuiApp` | 类 | 挂载界面、导出翻页路由、生成字形图；fromConfig() 由项目配置创建，compile() 只编译，useSapdon() 接入 sapdon 的构建。 |
 | `checkScripts` | 函数 | 对行为包中的脚本做类型检查，返回错误信息。 |
 
 ## 资源
@@ -25,6 +24,5 @@
 
 | 名称 | 种类 | 说明 |
 |---|---|---|
-| `CuiBuildOptions` | 接口 | CuiApp.build() 的选项。 |
 | `CuiCompiled` | 接口 | CuiApp.compile() 的结果。 |
 | `SapdonCore` | 接口 | useSapdon() 所需的 sapdon 模块成员。 |

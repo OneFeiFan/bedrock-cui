@@ -58,6 +58,9 @@ const PAGES = [
             ['Justify', '弹性布局主轴方向的分布方式。'],
             ['Align', '弹性布局交叉轴方向的对齐方式。'],
         ]],
+        ['项目配置', [
+            ['defineConfig', '定义项目配置（cui.config.mjs）：命名空间、界面、贴图目录、预览数据。bedrock-cui dev 与 useSapdon() 共用。'],
+        ]],
         ['表达式与响应式', [
             ['form', '服务端表单的数据：title、text、buttonText。'],
             ['toggleState', '某个开关是否选中的表达式。'],
@@ -97,12 +100,15 @@ const PAGES = [
         ['类型', [
             ['ServerPaging', '一个界面的翻页路由表。'],
             ['ServerArrowRoute', '路由表中的一个翻页箭头。'],
+            ['FormButtonSpec', '一个表单按钮：文字，或 { text, icon }。'],
             ['LintIssue', '静态检查的一项结果：rule、level、path、message。'],
             ['TextureInfo', '贴图信息：size、nineslice、baseSize。'],
             ['MetricsProfile', "字宽档案：'pc' 或 'android'。"],
             ['SoftWrapOptions', 'softWrapText() 的选项。'],
             ['WrapOptions', 'wrapText() 的选项。'],
             ['PaginateOptions', 'paginate() 的选项。'],
+            ['CuiConfig', '项目配置。'],
+            ['CuiPreviewForm', '预览中某个界面的表单数据：title、text、buttons。'],
             ['TextMetrics', 'measureText() 的结果：lines、width、height。'],
             ['LengthLike', '数字（像素）或 Length。'],
             ['ExprLike', '表达式，或字符串、数字、布尔等字面值。'],
@@ -116,9 +122,8 @@ const PAGES = [
     ]]] },
     { file: 'api-node.md', title: 'bedrock-cui/node', intro: '构建工具，只在 Node 中使用。', modules: [['bedrock-cui/node', 'src/node/index.ts', [
         ['构建', [
-            ['CuiApp', '挂载界面、导出翻页路由、生成字形图；build() 独立打包，useSapdon() 接入 sapdon 的构建。'],
-            ['Addon', '附加包：清单、UUID 文件、资源包与行为包的文件、打包为 .mcaddon。'],
-            ['PackFiles', '一个包中的文件。'],
+            ['useSapdon', '按项目配置接入 sapdon 的构建（在 sapdon 项目的入口文件中调用）。'],
+            ['CuiApp', '挂载界面、导出翻页路由、生成字形图；fromConfig() 由项目配置创建，compile() 只编译，useSapdon() 接入 sapdon 的构建。'],
             ['checkScripts', '对行为包中的脚本做类型检查，返回错误信息。'],
         ]],
         ['资源', [
@@ -127,7 +132,6 @@ const PAGES = [
             ['copyRuntime', '将脚本端运行时复制到指定目录。'],
         ]],
         ['类型', [
-            ['CuiBuildOptions', 'CuiApp.build() 的选项。'],
             ['CuiCompiled', 'CuiApp.compile() 的结果。'],
             ['SapdonCore', 'useSapdon() 所需的 sapdon 模块成员。'],
         ]],
@@ -152,7 +156,7 @@ const PAGES = [
                 ['ServerPagesForm', '按路由表打开服务端表单并处理翻页。'],
                 ['lockCamera', '锁定或解除玩家的视角。'],
             ]],
-            ['类型', [['ServerPaging', '一个界面的翻页路由表。'], ['ServerArrowRoute', '路由表中的一个翻页箭头。']]],
+            ['类型', [['ServerPaging', '一个界面的翻页路由表。'], ['ServerArrowRoute', '路由表中的一个翻页箭头。'], ['FormButtonSpec', 'setButtons() 中的一个按钮：文字，或 { text, icon }。']]],
         ]],
     ] },
     { file: 'api-web.md', title: 'bedrock-cui/web', intro: '浏览器预览。', modules: [['bedrock-cui/web', 'src/web/index.ts', [
@@ -183,7 +187,8 @@ const INTERNAL = new Set(['BEDROCK_COLORS', 'BOLD_EXTRA', 'Effect', 'Flex', 'GLY
     'activeEffect', 'applyCode', 'asBool', 'batch', 'batchKey', 'boldExtra', 'buttonPayload', 'charWidth', 'compileExpr', 'drawOrder', 'evalExpr', 'evalOffset', 'evalTerms', 'finalize',
     'findBox', 'isAscii', 'isExpr', 'isOptions', 'isWide', 'layout', 'layoutInline', 'lineWidth', 'lintLayout', 'lit', 'parseRich', 'parseSize', 'ref', 'registerGlyphWidth', 'richWidth',
     'stripFormat', 'styleCodes', 'unifontWidth', 'unregisterGlyph', 'usesChildren', 'usesSelf', 'usesUnifont', 'variable', 'walk', 'wrapDetailed',
-    'decodePng', 'downscaleIcon', 'encodePng', 'inkOf', 'pngSize', 'rewriteRuntimeImports', 'runtimeFiles', 'drawText', 'zip', 'PixelFonts',
+    'buttonTextOf', 'buttonIconOf',
+    'decodePng', 'downscaleIcon', 'encodePng', 'inkOf', 'pngSize', 'runtimeFiles', 'drawText', 'PixelFonts',
     // 排版、编译与表达式内部的数据结构
     'SizeJson', 'AnchorName', 'Dyn', 'RGB', 'Intrinsic', 'RNode', 'Source', 'Op', 'ExprNode', 'Value', 'CompiledExpr', 'EvalEnv', 'TextureMeta', 'RunStyle', 'Run',
     'Unit', 'Term', 'SizeSpec', 'UnitContext', 'Rect', 'Edges', 'Scope', 'LayoutEnv', 'Box', 'CompileResult', 'ServerFormFiles', 'TextPiece',

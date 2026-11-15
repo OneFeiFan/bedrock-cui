@@ -194,7 +194,8 @@ export function buildBook(options = {}) {
     // 混合翻页：翻页箭头走服务端（标题带 P:<页>;），目录 / 书签用开关
     // 服务端分页（静态界面，真机 1.5.4 验证）：标题 cui_ui:toggle_test|P:<页名>; + 锚点 + 页码开关
     // （1.10.0 试过路由界面：显示正常，但默认聚焦不可靠，鼠标不动连点翻页会乱跳）
-    const pages = new Pages('gbp').startAt('home').setSize(272, 180).setAnchor(TOP_LEFT).useServerPages()
+    // 表单按钮 0–12 留给界面自己（9–12：按钮图标测试），翻页按钮从 13 起
+    const pages = new Pages('gbp').startAt('home').setSize(272, 180).setAnchor(TOP_LEFT).useServerPages().setButtonBase(13)
     const detail = new Pages('gbd').startAt('none').setSize(272, 180).setAnchor(TOP_LEFT).setLayer(40)
     root.add(pages, detail)
 
@@ -438,6 +439,14 @@ function buildTextPages(pages) {
     buildSpecialPage(pages.page('tspecial'))
     chain.push('tsoft')
     buildSoftWrapTest(pages.page('tsoft'))
+    // 按钮图标（1.32.0）：Image(form.buttonTexture) 显示脚本 button(文字, 图标路径) 传来的贴图——原版物品、原版方块、本包贴图、没有图标
+    chain.push('ticon')
+    const iconRow = (index, y) => new CollectionItem('form_buttons', index).setSize(110, 16).setAnchor(TOP_LEFT).setOffset(0, y).add(
+        new Image(form.buttonTexture).setSize(16, 16).setAnchor(TOP_LEFT),
+        new Label(form.buttonText.minus('ico|')).setColor(BODY).setAnchor(Anchor.CENTER_LEFT).setOffset(20, 0))
+    pages.page('ticon').add(
+        new Side('L').add(new Title('按钮图标'), iconRow(9, 24), iconRow(10, 44), iconRow(11, 64), iconRow(12, 84)),
+        new Side('R').add(new Title('应当看到'), new Body('§8第 1 行：钻石（原版物品贴图）；第 2 行：草方块侧面（原版方块贴图）；第 3 行：本包的书本贴图；第 4 行：只有文字，没有图片，也不是紫黑格。', 22)))
     chain.push('tlayer')
     buildLayerTest(pages.page('tlayer'))
     // 行内图标（Text）：图标是真正的图片控件，与文字同高、清晰、颜色正确；折行 / 行高 / 样式延续由 CUI 排版

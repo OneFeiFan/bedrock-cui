@@ -55,6 +55,12 @@
 | `Justify` | 枚举 | 弹性布局主轴方向的分布方式。 |
 | `Align` | 枚举 | 弹性布局交叉轴方向的对齐方式。 |
 
+## 项目配置
+
+| 名称 | 种类 | 说明 |
+|---|---|---|
+| `defineConfig` | 函数 | 定义项目配置（cui.config.mjs）：命名空间、界面、贴图目录、预览数据。bedrock-cui dev 与 useSapdon() 共用。 |
+
 ## 表达式与响应式
 
 | 名称 | 种类 | 说明 |
@@ -109,12 +115,15 @@
 |---|---|---|
 | `ServerPaging` | 接口 | 一个界面的翻页路由表。 |
 | `ServerArrowRoute` | 接口 | 路由表中的一个翻页箭头。 |
+| `FormButtonSpec` | 类型 | 一个表单按钮：文字，或 { text, icon }。 |
 | `LintIssue` | 接口 | 静态检查的一项结果：rule、level、path、message。 |
 | `TextureInfo` | 接口 | 贴图信息：size、nineslice、baseSize。 |
 | `MetricsProfile` | 类型 | 字宽档案：'pc' 或 'android'。 |
 | `SoftWrapOptions` | 接口 | softWrapText() 的选项。 |
 | `WrapOptions` | 接口 | wrapText() 的选项。 |
 | `PaginateOptions` | 接口 | paginate() 的选项。 |
+| `CuiConfig` | 接口 | 项目配置。 |
+| `CuiPreviewForm` | 接口 | 预览中某个界面的表单数据：title、text、buttons。 |
 | `TextMetrics` | 接口 | measureText() 的结果：lines、width、height。 |
 | `LengthLike` | 类型 | 数字（像素）或 Length。 |
 | `ExprLike` | 类型 | 表达式，或字符串、数字、布尔等字面值。 |

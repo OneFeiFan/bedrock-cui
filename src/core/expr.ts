@@ -67,6 +67,11 @@ export const form = {
     title: ref('#title_text'),
     /** 当前表单按钮的文字（只能在 FormButton 内部使用） */
     buttonText: ref('#form_button_text', { kind: 'collection', collection: 'form_buttons' }),
+    /**
+     * 当前表单按钮的图标路径（ActionFormData.button(文字, 图标路径)；只能在 FormButton / CollectionItem 内部使用）。
+     * 用作 Image 的贴图：new Image(form.buttonTexture)——运行时由脚本决定显示哪张贴图，游戏加载了的贴图都可以，包括其他附加包的
+     */
+    buttonTexture: ref('#form_button_texture', { kind: 'collection', collection: 'form_buttons' }),
 }
 
 /**

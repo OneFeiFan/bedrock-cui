@@ -97,6 +97,20 @@ class Compiler {
         for (const [key, spec] of Object.entries(DYNAMIC)) {
             const v = p[key]
             if (!isExpr(v)) continue
+            // 贴图正好是 form.buttonTexture：照原版 server_form.json 的按钮图标写——贴图与文件系统直接覆盖，空或加载中时隐藏
+            const node = (v as Expr).node
+            if (key === 'texture' && node.k === 'ref' && node.name === '#form_button_texture') {
+                if (inCollection?.startsWith(THROUGH_TOGGLE)) this.issues.push({ rule: 'collection-through-toggle', level: 'error', path: n.path, message: '开关里读不到外层集合项的按钮图标。把 CollectionItem 放进开关的状态面板里' })
+                else if (!inCollection) this.issues.push({ rule: 'collection-ref-outside', level: 'error', path: n.path, message: 'form.buttonTexture 只能在 form_buttons 的集合项（FormButton / CollectionItem）里使用' })
+                if (!declaredCollections.size) bindings.push({ binding_type: 'collection_details', binding_collection_name: 'form_buttons' })
+                declaredCollections.add('form_buttons|#form_button_texture')
+                bindings.push(
+                    { binding_name: '#form_button_texture', binding_name_override: '#texture', binding_type: 'collection', binding_collection_name: 'form_buttons', ...this.cond() },
+                    { binding_name: '#form_button_texture_file_system', binding_name_override: '#texture_file_system', binding_type: 'collection', binding_collection_name: 'form_buttons', ...this.cond() },
+                    { binding_type: 'view', source_property_name: "(not ((#texture = '') or (#texture = 'loading')))", target_property_name: '#visible', ...this.cond() },
+                )
+                continue
+            }
             const c = compileExpr(v as Expr, `${key[0]}${dynIndex++}_`)
             Object.assign(vars, c.variables)
             if (c.globals.length && c.controls.length) {

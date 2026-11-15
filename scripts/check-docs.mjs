@@ -7,6 +7,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
+import { createRequire } from 'node:module'
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
 const guide = path.join(root, 'docs', 'guide')
@@ -15,6 +16,7 @@ const walk = (d) => { for (const f of fs.readdirSync(d)) { const p = path.join(d
 walk(guide)
 
 let bad = 0, ran = 0
+const typed = []       // [临时文件, 页面, 第几个代码块]：运行之后统一做类型检查
 for (const file of files) {
     const text = fs.readFileSync(file, 'utf8')
     for (const m of text.matchAll(/\]\(([^)#\s]+)(#[^)]*)?\)/g)) {
@@ -23,14 +25,31 @@ for (const file of files) {
     }
     const blocks = [...text.matchAll(/```js[^\n]*\n([\s\S]*?)```/g)].map((m) => m[1])
     blocks.forEach((code, k) => {
-        if (!code.includes("from 'bedrock-cui") || code.startsWith('// 接上例') || /……|@minecraft|cui\.generated|\.\/cui\/|@sapdon|document\.|bedrock-cui\/web|\.\/ui\/|\.build\(|\.pack\(|copyRuntime\(|actionForm/.test(code)) return
-        const tmp = path.join(root, 'examples', `_docs_check_${process.pid}.mjs`)
+        if (!code.includes("from 'bedrock-cui") || code.startsWith('// 接上例') || /……|@minecraft|cui\.generated|\.\/cui\/|@sapdon|document\.|bedrock-cui\/web|\.\/ui\/|\.build\(|.pack\(|copyRuntime\(|checkScripts\(|actionForm/.test(code)) return
+        const tmp = path.join(root, 'examples', `_docs_check_${process.pid}_${typed.length}.mjs`)
         fs.writeFileSync(tmp, code)
         const r = spawnSync(process.execPath, [tmp], { encoding: 'utf8' })
-        fs.rmSync(tmp, { force: true })
+        typed.push([tmp, path.relative(guide, file), k + 1])
         ran++
         if (r.status !== 0) { console.error(`✗ ${path.relative(guide, file)} 的第 ${k + 1} 个代码块：\n${(r.stderr.match(/^\w*Error.*$/m) ?? [r.stderr])[0]}`); bad++ }
     })
 }
-console.log(`手册：${files.length} 页，运行了 ${ran} 个代码块，${bad ? `${bad} 个问题` : '没有问题'}`)
+// 类型检查：参数类型不对（例如把布尔值传给需要序号的方法）运行时不会报错，要靠这一步
+try {
+    const ts = createRequire(import.meta.url)('typescript')
+    const program = ts.createProgram(typed.map(([f]) => f), {
+        allowJs: true, checkJs: true, noEmit: true, skipLibCheck: true,
+        target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext, moduleResolution: ts.ModuleResolutionKind.Bundler,
+    })
+    for (const d of ts.getPreEmitDiagnostics(program)) {
+        const hit = typed.find(([f]) => d.file && path.resolve(d.file.fileName) === path.resolve(f))
+        if (!hit) continue
+        const { line } = d.file.getLineAndCharacterOfPosition(d.start)
+        console.error(`✗ ${hit[1]} 的第 ${hit[2]} 个代码块，第 ${line + 1} 行：${ts.flattenDiagnosticMessageText(d.messageText, ' ')}`)
+        bad++
+    }
+} finally {
+    for (const [f] of typed) fs.rmSync(f, { force: true })
+}
+console.log(`手册：${files.length} 页，运行了 ${ran} 个代码块并做了类型检查，${bad ? `${bad} 个问题` : '没有问题'}`)
 process.exit(bad ? 1 : 0)

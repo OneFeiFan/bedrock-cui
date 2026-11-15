@@ -1,8 +1,12 @@
-# 网页输出
+# 生成普通网页
+
+::: tip
+本节介绍的不是游戏界面的预览。按游戏的字形与折行查看界面，使用[浏览器预览](preview.md)。
+:::
 
 ## renderHtml
 
-`bedrock-cui/dom` 将控件树渲染为 HTML。同一套控件既可以编译为游戏的 JSON UI，也可以输出为网页；本手册网站的页面外框即由 bedrock-cui 的控件搭建，经 `renderHtml()` 输出。
+`bedrock-cui/dom` 将控件树渲染为普通网页的 HTML。同一套控件既可以编译为游戏的 JSON UI，也可以输出为网页；本手册网站的页面外框即由 bedrock-cui 的控件搭建，经 `renderHtml()` 输出。
 
 ```js
 import { Column, Label, Row, Panel } from 'bedrock-cui'

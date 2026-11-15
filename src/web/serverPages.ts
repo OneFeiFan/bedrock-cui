@@ -5,18 +5,26 @@
  *   const preview = mountPreview(el, { root, title: sim.title, formButtons: sim.formButtons, onFormButton: (i) => sim.press(i, preview) })
  */
 import { signal, type Signal } from '../core/reactivity.js'
-import { pageTitle, pagingButtons, pagingResponse, type ServerPaging } from '../core/serverPagesShared.js'
+import { buttonIconOf, pageTitle, pagingButtons, pagingResponse, type FormButtonSpec, type ServerPaging } from '../core/serverPagesShared.js'
 
 export class ServerPagesPreview {
     readonly title: Signal<string>
     readonly formButtons: Signal<string[]>
+    /** 按钮的图标路径（own 中写成 { text, icon } 的按钮） */
+    readonly formButtonIcons: Signal<string[]>
     private page: string
     private dir: 'prev' | 'next' = 'next'
 
-    constructor(readonly paging: ServerPaging, private own: (page: string) => Record<number, string> = () => ({})) {
+    constructor(readonly paging: ServerPaging, private own: (page: string) => Record<number, FormButtonSpec> = () => ({})) {
         this.page = paging.start
         this.title = signal(pageTitle(paging, this.page))
         this.formButtons = signal(pagingButtons(paging, this.page, this.dir, own(this.page)))
+        this.formButtonIcons = signal(this.icons())
+    }
+
+    private icons(): string[] {
+        const own = this.own(this.page)
+        return this.formButtons.value.map((_, i) => buttonIconOf(own[i]) ?? '')
     }
 
     /** 当前页 */
@@ -29,6 +37,7 @@ export class ServerPagesPreview {
         this.page = next.page; this.dir = next.dir
         this.title.value = pageTitle(this.paging, this.page)
         this.formButtons.value = pagingButtons(this.paging, this.page, this.dir, this.own(this.page))
+        this.formButtonIcons.value = this.icons()
         preview?.resetToggles()
         return true
     }

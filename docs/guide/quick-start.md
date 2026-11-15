@@ -1,144 +1,99 @@
 # 快速上手
 
-本节演示从创建项目到在游戏中显示可翻页界面的完整流程。
+本节演示用命令行创建项目、在浏览器中预览界面、再构建附加包并在游戏中打开的完整流程。
+
+## 两部分工作
+
+使用 bedrock-cui 时的工作分为两部分：
+
+- **描述界面**：用控件搭建界面，写在 `ui/` 目录中。这一部分只涉及 JavaScript，在浏览器中预览即可，不需要进入游戏。
+- **挂到游戏里**：界面通过服务端表单显示，由行为包脚本打开。这一部分涉及附加包，见「挂到游戏里」一章。
+
+本节先完成第一部分；第二部分使用项目自带的脚本，不需要修改。
 
 ## 创建项目
 
 ```bash
-mkdir hello && cd hello
-npm init -y
-npm pkg set type=module
-npm install bedrock-cui
-npm install -D typescript @minecraft/server @minecraft/server-ui
+npx bedrock-cui create my_ui
+cd my_ui
+npm install
 ```
-
-`typescript` 与 `@minecraft/*` 用于构建时对游戏脚本做类型检查。
 
 ::: tip
-发布到 npm 之前，可通过 `npm install github:OneFeiFan/bedrock-cui` 安装。
+发布到 npm 之前，先全局安装：`npm install -g github:OneFeiFan/bedrock-cui`，再运行 `bedrock-cui create my_ui`。
 :::
 
-项目结构如下：
+生成的项目结构如下：
 
 ```
-hello/
-├─ build.mjs        # 描述界面并打包
-└─ scripts/
-   └─ main.js       # 游戏脚本，复制到行为包
+my_ui/
+├─ cui.config.mjs        # 项目配置：有哪些界面
+├─ ui/book.mjs           # 示例界面：一本两页的小书
+├─ scripts/index.js      # 行为包脚本：打开界面
+├─ main.mjs              # 构建入口
+├─ res/                  # 资源包文件（贴图等）
+└─ build.config、mod.info # sapdon 的项目设置
 ```
+
+bedrock-cui 的项目同时是一个 [sapdon](https://github.com/Meteage/sapdon) 项目：bedrock-cui 负责界面与预览，清单、UUID 与打包由 sapdon 负责。
+
+## 在浏览器中预览
+
+```bash
+npm run dev
+```
+
+打开终端中显示的地址（默认为 `http://localhost:5173`）。页面左侧列出项目中的界面，中间是按游戏规则绘制的预览，下方是静态检查的结果，右侧可以编辑表单的标题、正文与按钮文字。首次运行时会下载预览所需的字体。
+
+修改 `ui/book.mjs` 并保存后，预览自动刷新。
 
 ## 描述界面
 
-```js preview=card 220x120
-// build.mjs
+在 `ui/` 中新建 `card.mjs`，描述一块带标题和正文的面板：
+
+```js preview=buildCard() 220x120
+// ui/card.mjs
 import { Anchor, Color, Image, Label, Panel, Paragraph, Size } from 'bedrock-cui'
 
-const card = new Panel().setName('card').setSize(200, 100)
-card.add(
-    // 背景图，与面板同样大小
-    new Image('textures/ui/dialog_background_opaque').setSize(Size.full()),
-    // 标题：水平居中，距顶部 8 像素
-    new Label('欢迎').setColor(Color.hex('#3c2814')).setAnchor(Anchor.TOP_CENTER).setOffset(0, 8),
-    // 正文：在 180 像素处折行
-    new Paragraph('正文按给定的宽度折行。', 180).setName('intro').setAnchor(Anchor.TOP_LEFT).setOffset(10, 26),
-)
+export function buildCard() {
+    const card = new Panel().setName('card').setSize(200, 100)
+    card.add(
+        // 背景图，与面板同样大小
+        new Image('textures/ui/dialog_background_opaque').setSize(Size.full()),
+        // 标题：水平居中，距顶部 8 像素
+        new Label('欢迎').setColor(Color.hex('#3c2814')).setAnchor(Anchor.TOP_CENTER).setOffset(0, 8),
+        // 正文：在 180 像素处折行
+        new Paragraph('正文按给定的宽度折行。', 180).setName('intro').setAnchor(Anchor.TOP_LEFT).setOffset(10, 26),
+    )
+    return card
+}
 ```
 
-`add()` 将控件加入面板。`setXxx()` 返回控件本身，因此可以链式调用。
+`add()` 将控件加入面板。`setXxx()` 返回控件本身，因此可以链式调用。各类控件与布局方式见「搭建界面」一章。
 
-## 挂载到服务端表单
+在配置中登记这个界面：
 
-`CuiApp` 负责挂载界面与打包：
+```js {3,8}
+// cui.config.mjs
+import { defineConfig } from 'bedrock-cui'
+import { buildBook } from './ui/book.mjs'
+import { buildCard } from './ui/card.mjs'
 
-```js {2,7-8}
-import { Anchor, Color, Image, Label, Panel, Paragraph, Size } from 'bedrock-cui'
-import { CuiApp } from 'bedrock-cui/node'
-
-const card = new Panel().setName('card').setSize(200, 100)
-card.add(/* …… */)
-
-// 命名空间 'hello'；界面 id 'cui_ui:hello'
-const app = new CuiApp('hello').screen('cui_ui:hello', card)
-```
-
-游戏打开标题以界面 id 开头的服务端表单时，显示对应的界面。
-
-## 打开表单
-
-```js
-// scripts/main.js
-import { world } from '@minecraft/server'
-import { ActionFormData } from '@minecraft/server-ui'
-
-world.afterEvents.itemUse.subscribe((e) => {
-    if (e.itemStack.typeId !== 'minecraft:book') return
-    // 标题即界面 id
-    new ActionFormData().title('cui_ui:hello').body('').show(e.source)
+export default defineConfig({
+    namespace: 'book',
+    screens: {
+        'cui_ui:book': () => buildBook(),
+        'cui_ui:card': () => buildCard(),
+    },
+    textures: ['res'],
 })
 ```
 
-## 打包
-
-在 `build.mjs` 末尾加上：
-
-```js
-await app.build({ out: 'out', title: '你好', scripts: 'scripts' })
-```
-
-运行 `node build.mjs`，`out/` 中生成 `hello.mcaddon`。`build()` 完成以下工作：
-
-- 生成资源包与行为包的清单。UUID 写入 `out/hello.uuid.json`，此后的构建沿用同一组 UUID，游戏据此识别为同一个附加包。
-- 将 `scripts/` 复制到行为包。
-- 对脚本做类型检查。存在错误时（例如将 `show` 写成 `shwo`）构建失败，并给出出错的行。
-
-::: tip
-UUID 文件应提交到版本库。可通过 `uuidFile` 选项指定其位置：`app.build({ ..., uuidFile: 'hello.uuid.json' })`。
-:::
-
-## 服务端翻页
-
-将正文改为两页，每页放置一个翻页箭头：
-
-```js {1,4-10,12}
-import { Anchor, Color, Image, Label, Pages, Panel, Size } from 'bedrock-cui'
-import { CuiApp } from 'bedrock-cui/node'
-
-const pages = new Pages('hello').startAt('p1').setSize(Size.full())
-// 第四个参数返回箭头的外观，hover 为 true 时表示悬停状态
-pages.page('p1').add(new Label('第 1 页'),
-    pages.serverArrow('p1', 'p2', 'next', (hover) => new Label(hover ? '§e>' : '>'), 16, 12).setAnchor(Anchor.BOTTOM_RIGHT))
-pages.page('p2').add(new Label('第 2 页'),
-    pages.serverArrow('p2', 'p1', 'prev', (hover) => new Label(hover ? '§e<' : '<'), 16, 12).setAnchor(Anchor.BOTTOM_LEFT))
-const card = new Panel().setSize(200, 100).add(pages, pages.stayButton())
-
-await new CuiApp('hello').screen('cui_ui:hello', card).build({ out: 'out', title: '你好', scripts: 'scripts' })
-```
-
-脚本中使用 `ServerPagesForm` 处理翻页：
-
-```js {1-2,5,8}
-import { ServerPagesForm } from 'bedrock-cui/runtime/server-pages'
-import { paging } from './cui.generated.js'
-import { world } from '@minecraft/server'
-
-const book = new ServerPagesForm(paging['cui_ui:hello'])
-
-world.afterEvents.itemUse.subscribe((e) => {
-    if (e.itemStack.typeId === 'minecraft:book') book.open(e.source)
-})
-```
-
-`cui.generated.js` 由构建生成，包含各界面的翻页路由，不应手动修改。
-
-点击箭头时，表单关闭，脚本随即以新的页码重新打开表单。重新打开时，刚才点击方向上的箭头获得默认焦点，因此鼠标不移动也可以连续翻页。在最后一页继续点击时，点击由 `stayButton()` 创建的不可见按钮接收，表单停留在当前页。
-
-::: details 为什么不在客户端翻页
-JSON UI 可以通过开关在客户端切换页，目录和书签即采用这种方式。但游戏只在鼠标移动时重新判断悬停的控件，鼠标不动时再次点击会落到错误的位置。服务端翻页通过重新打开表单重设焦点，不存在这一问题。
-:::
+`screens` 中的键是界面 id，值是返回根控件的函数。预览页面的界面列表中随即出现 `cui_ui:card`。
 
 ## 静态检查
 
-构建时，静态检查的结果输出到终端。例如，对面板调用 `setContain()`（要求子控件不越出面板），并将正文的折行宽度改为 260：
+预览页面下方显示静态检查的结果。例如，对面板调用 `setContain()`（要求子控件不越出面板），并将正文的折行宽度改为 260：
 
 ```js
 const card = new Panel().setName('card').setSize(200, 100).setContain()
@@ -146,10 +101,35 @@ const card = new Panel().setName('card').setSize(200, 100).setContain()
 new Paragraph('……', 260).setName('intro')
 ```
 
-输出如下：
+预览页面与构建时均会给出：
 
 ```
-[bedrock-cui] 警告 out-of-bounds root/panel0/card/intro：越出 root/panel0/card 的安全区（右 70 像素）
+警告 out-of-bounds root/panel0/card/intro：越出 root/panel0/card 的安全区（右 70 像素）
 ```
 
 路径由控件名组成。未命名的控件按类型和顺序自动命名（如 `label1`），因此建议为需要定位的控件设置名称。警告不影响构建；错误会使构建失败。
+
+## 构建并在游戏中打开
+
+```bash
+npm run build      # 构建，结果在 dev/ 中
+npm run pack       # 构建并打包为 dev/my_ui.mcaddon
+```
+
+在 Windows 上，`npm run build` 还会将资源包与行为包复制到游戏的开发包目录。在游戏中新建世界并启用这两个包，手持书右键，即显示示例小书。
+
+打开界面的是 `scripts/index.js`：
+
+```js
+import { world } from '@minecraft/server'
+import { ServerPagesForm } from 'bedrock-cui/runtime/server-pages'
+import { paging } from './cui.generated.js'
+
+const book = new ServerPagesForm(paging['cui_ui:book']).setButtons(() => ({ 0: 'close|' }))
+
+world.afterEvents.itemUse.subscribe((e) => {
+    if (e.itemStack.typeId === 'minecraft:book') book.open(e.source)
+})
+```
+
+脚本打开一个标题为界面 id 的服务端表单，游戏随即显示对应的界面。`cui.generated.js` 由构建生成，包含各界面的翻页路由。这一部分的原理见[附加包与服务端表单基础](addon-basics.md)。

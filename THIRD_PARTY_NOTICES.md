@@ -6,9 +6,7 @@ bedrock-cui 本身以 MIT 许可证发布（见 [LICENSE](LICENSE)）。下面�
 
 - 项目：<https://github.com/Meteage/sapdon>　作者：Meteage
 - 借鉴的内容：
-  - **附加包打包流程**（`src/node/addon.ts`）：首次构建生成 UUID 并存进项目文件、之后不变；生成资源包与行为包的清单；
-    资源包与行为包放进同一个 `.mcaddon`。参照 sapdon 的 `src/cli/build.js`、`src/cli/pack.js`、`src/core/addon/manifest.ts`，
-    按 bedrock-cui 的面向对象写法重写，压缩改用 Node 自带的 zlib（不依赖 archiver）。
+  - **构建与打包**：bedrock-cui 的项目就是 sapdon 项目，清单、UUID 与打包由 sapdon（npm 依赖）完成；`bedrock-cui create` 复制 sapdon 包内的项目模板。
   - **服务端表单的挂载方式**（`src/mc/serverForm.ts`）：改写原版 `server_form.json` 的 `third_party_server_screen`
     （去掉滑入动画）与 `main_screen_content`、按表单标题显示自定义界面——思路来自 sapdon 的 `serverFormUI`。
 
@@ -51,7 +49,8 @@ bedrock-cui 是第三方工具，与 Mojang Studios、Microsoft 没有关联，�
 - `src/font/gameGlyphs.ts`：48 个全角标点 / 符号的 16×16 点阵，**由开发者在自己的游戏里截图逐格还原**（游戏的这些字形与 GNU Unifont 不同），
   用于让浏览器预览与字宽计算和游戏一致。字形来自游戏的渲染结果。
 - 不随源码分发：预览用的 `ascii.png`（Minecraft 默认字体），由 `scripts/fetch-fonts.mjs` 从开发者本机的 Minecraft Java 版客户端（或 Mojang 官方下载）提取，只在本机使用。
-- 手册网站的在线示例不使用 Mojang 的资源：英文字母也用 Unifont 绘制，原版贴图以 `scripts/build-site.mjs` 生成的替代图显示。
+- 手册网站的在线示例不使用 Mojang 的资源：英文字母也用 Unifont 绘制；界面贴图以 `scripts/build-site.mjs` 生成的近似替代图显示，物品图标以紫黑格占位图显示，不模仿原版的样子。
+- 不随源码分发：浏览器预览与测试用到的 12 张原版贴图（物品、`purpleBorder` 等），由 `scripts/fetch-vanilla-textures.mjs` 从 Mojang 的 bedrock-samples 下载，只在本机使用。
 - 参考资料：Mojang 的 [bedrock-samples](https://github.com/Mojang/bedrock-samples)（原版界面定义，用于对照 JSON UI 的结构与变量）。
 
 ## 开发工具（不随包分发）

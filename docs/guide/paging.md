@@ -40,7 +40,7 @@ import { ServerPagesForm } from 'bedrock-cui/runtime/server-pages'
 import { paging } from './cui.generated.js'
 
 const book = new ServerPagesForm(paging['cui_ui:book'])
-    .setButtons((player, page) => ({ 0: 'close|' }))        // 界面自己的表单按钮：序号 → 文字
+    .setButtons((player, page) => ({ 0: 'close|', 1: { text: 'ico|钻石', icon: 'textures/items/diamond' } }))   // 界面自己的表单按钮：序号 → 文字，或 { text, icon }
     .setBody((player, page) => '')                          // 表单正文
     .onSelect((player, index, page) => { /* 点击了非翻页按钮，表单已关闭 */ })
     .onClose((player, page) => { /* 玩家按 Esc 关闭了表单 */ })

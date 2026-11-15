@@ -1,0 +1,6 @@
+dev/
+res/
+node_modules/
+scripts/cui.generated.*
+.tmp/
+glyph-src/

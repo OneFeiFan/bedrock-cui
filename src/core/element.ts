@@ -657,8 +657,11 @@ export abstract class Flex extends Element {
     abstract readonly direction: 'row' | 'column'
     /** @internal 主轴按内容决定（Scroll 的内容：高度 = 子控件之和，超出部分滚动） */
     protected contentMain = false
+    /** 子控件之间的间距（像素） */
     gap = 0
+    /** 主轴方向的分布方式 */
     justify: Justify = Justify.START
+    /** 交叉轴方向的对齐方式 */
     align: Align = Align.STRETCH
     setGap(n: number): this { this.gap = n; return this }
     setJustify(j: Justify): this { this.justify = j; return this }

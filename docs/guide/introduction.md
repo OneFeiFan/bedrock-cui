@@ -38,14 +38,12 @@ card.add(
 
 ## 使用方式
 
-bedrock-cui 的各部分可以单独使用：
+bedrock-cui 与 [sapdon](https://github.com/Meteage/sapdon) 配合使用：bedrock-cui 负责界面与预览，sapdon 负责项目结构、清单与打包。
 
-- 只生成 JSON UI 文件，放入已有的资源包。
-- 加上脚本端运行时，使用服务端翻页和运行期文字的软换行。
-- 通过 `CuiApp.build()` 直接打包为附加包。
-- 作为 [sapdon](https://github.com/Meteage/sapdon) 项目的一部分，由 sapdon 负责项目结构与构建。
+- **新建项目**：`npx bedrock-cui create <名字>` 生成一个已配置好的 sapdon 项目，附带示例界面。
+- **已有的 sapdon 项目**：安装 bedrock-cui，添加配置文件，在构建入口中调用 `useSapdon()`。
 
-在这几种方式之间切换时，界面代码不需要修改。
+两种方式使用同一份配置（`cui.config.mjs`），都用 `bedrock-cui dev` 在浏览器中预览。
 
 ## 适用范围
 
@@ -53,6 +51,7 @@ bedrock-cui 只用于服务端表单界面，不修改 HUD、物品栏等原版�
 
 ## 学习路径
 
-- [快速上手](quick-start.md)：从创建项目到在游戏中翻页的完整流程。
+- [快速上手](quick-start.md)：创建项目、在浏览器中预览、构建并在游戏中打开。
+- [附加包与服务端表单基础](addon-basics.md)：不熟悉附加包开发时，先读这一节。
 - 指南：从[控件与组件树](elements.md)开始，按[目录](index.md)逐章介绍各项功能。
 - 参考：[各模块的 API](reference/api-core.md)、[静态检查规则](reference/lint.md)与[真机规则](reference/rules.md)。

@@ -1,6 +1,6 @@
 {
   "name": "bedrock-cui",
-  "version": "0.24.0",
+  "version": "0.25.0",
   "description": "Minecraft 基岩版 JSON UI 的面向对象 UI 框架：一棵组件树 → 基岩版 JSON UI ＋ 浏览器预览（按游戏的排版规则画）＋ 静态检查；附带服务端表单的混合翻页、跨平台软换行与附加包打包",
   "keywords": [
     "minecraft",
@@ -36,12 +36,14 @@
     "./dom": "./dist/dom/index.js"
   },
   "files": [
-    "dist",
-    "scripts/fetch-fonts.mjs",
-    "README.md",
     "LICENSE",
     "NOTICE",
-    "THIRD_PARTY_NOTICES.md"
+    "README.md",
+    "THIRD_PARTY_NOTICES.md",
+    "bin",
+    "dist",
+    "scripts/fetch-fonts.mjs",
+    "templates"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
@@ -50,19 +52,27 @@
     "dev": "vite",
     "preview:build": "vite build",
     "prepublishOnly": "npm test",
-    "docs:api": "node scripts/gen-api-reference.mjs",
+    "docs:api": "node scripts/gen-api-reference.mjs && node scripts/gen-component-api.mjs",
     "docs:check": "node scripts/check-docs.mjs",
-    "docs:site": "node scripts/build-site.mjs"
+    "docs:site": "node scripts/build-site.mjs",
+    "test-pack": "node examples/cui_toggle_test/build.mjs",
+    "e2e": "node scripts/e2e-create.mjs"
   },
   "devDependencies": {
     "@minecraft/server": "^2.0.0",
     "@minecraft/server-ui": "^2.2.0",
     "@types/node": "^22.20.5",
     "marked": "^15.0.12",
-    "typescript": "^5.6.3",
-    "vite": "^8.3.8"
+    "typescript": "^5.6.3"
   },
   "engines": {
     "node": "^20.19.0 || >=22.12.0"
+  },
+  "bin": {
+    "bedrock-cui": "bin/bedrock-cui.mjs"
+  },
+  "dependencies": {
+    "sapdon": "^4.0.0",
+    "vite": "^8.3.8"
   }
 }
