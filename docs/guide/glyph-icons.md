@@ -22,16 +22,21 @@ export const GI = {
 
 `ink` 是图标在 16×16 贴图中的墨迹范围（左边第一列与宽度），决定字距。构建时 bedrock-cui 读取贴图核对墨迹，与代码不符时报告正确的值。
 
-字形图在构建时生成：
+字形图在构建时生成，需要在配置的 `glyphs` 中登记：
 
 ```js
-// 接上例
-import { CuiApp } from 'bedrock-cui/node'
+// cui.config.mjs
+import { defineConfig } from 'bedrock-cui'
+import { GLYPHS } from './ui/glyphs.mjs'
 
-new CuiApp('book').glyphSheet(GLYPHS, (texture) => `res/${texture}.png`)
+export default defineConfig({
+    // ……
+    textures: ['res'],
+    glyphs: [GLYPHS],
+})
 ```
 
-第二个参数将贴图路径转换为本机的 PNG 文件。
+图标的贴图从 `textures` 列出的目录中查找。
 
 ## 在运行期文字中使用
 

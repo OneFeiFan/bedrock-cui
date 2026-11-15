@@ -60,6 +60,7 @@ const PAGES = [
         ]],
         ['项目配置', [
             ['defineConfig', '定义项目配置（cui.config.mjs）：命名空间、界面、贴图目录、预览数据。bedrock-cui dev 与 useSapdon() 共用。'],
+            ['screenOf', '取出配置中一个界面的构建函数与选项。'],
         ]],
         ['表达式与响应式', [
             ['form', '服务端表单的数据：title、text、buttonText。'],
@@ -109,6 +110,7 @@ const PAGES = [
             ['PaginateOptions', 'paginate() 的选项。'],
             ['CuiConfig', '项目配置。'],
             ['CuiPreviewForm', '预览中某个界面的表单数据：title、text、buttons。'],
+            ['CuiScreen', '配置中的一个界面：返回根控件的函数，或 { build, routed }。'],
             ['TextMetrics', 'measureText() 的结果：lines、width、height。'],
             ['LengthLike', '数字（像素）或 Length。'],
             ['ExprLike', '表达式，或字符串、数字、布尔等字面值。'],

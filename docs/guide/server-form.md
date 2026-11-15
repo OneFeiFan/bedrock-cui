@@ -7,13 +7,21 @@ bedrock-cui 的界面显示在服务端表单（`@minecraft/server-ui` 的 `Acti
 - 表单标题以前缀（默认 `cui_ui:`）开头时，隐藏原版的按钮列表；
 - 表单标题包含某个界面 id 时，显示该界面。
 
-```js
-// 接上例
-import { CuiApp } from 'bedrock-cui/node'
+界面在配置的 `screens` 中登记，键为界面 id：
 
-const app = new CuiApp('book')
-    .screen('cui_ui:book', bookRoot)
-    .screen('cui_ui:shop', shopRoot)
+```js
+// cui.config.mjs
+import { defineConfig } from 'bedrock-cui'
+import { buildBook } from './ui/book.mjs'
+import { buildShop } from './ui/shop.mjs'
+
+export default defineConfig({
+    namespace: 'book',
+    screens: {
+        'cui_ui:book': () => buildBook(),
+        'cui_ui:shop': () => buildShop(),
+    },
+})
 ```
 
 同一个命名空间中可以挂载多个界面，脚本按标题打开其中之一：
@@ -30,7 +38,11 @@ new ActionFormData().title('cui_ui:shop').body('').show(player)
 
 默认情况下，界面是静态的：表单打开时，命名空间中的所有界面都被创建，按标题决定显示哪一个。
 
-`screen()` 的第三个参数传入 `{ routed: true }` 时，界面改为路由方式：只在标题与界面 id 完全相同时创建。
+将配置中的界面写成 `{ build, routed: true }` 时，界面改为路由方式：只在标题与界面 id 完全相同时创建。
+
+```js
+screens: { 'cui_ui:shop': { build: () => buildShop(), routed: true } }
+```
 
 ::: warning
 路由界面存在两个已知问题（真机测试）：默认焦点不可靠，鼠标不移动时连续点击翻页会跳到错误的页；界面中的百分比尺寸不按屏幕计算。只在界面使用固定像素尺寸、且不依赖默认焦点时使用路由方式。

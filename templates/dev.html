@@ -22,6 +22,9 @@
     #form label { display: block; margin: 12px 0 4px; color: var(--soft); font-size: 12px; }
     #form input, #form textarea { width: 100%; font: 13px/1.5 ui-monospace, Consolas, monospace; padding: 6px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--text); }
     #form textarea { min-height: 120px; resize: vertical; }
+    #form .row { display: flex; gap: 6px; }
+    #form select { flex: 1; font: inherit; padding: 4px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--text); }
+    #form label.check { display: flex; align-items: center; gap: 6px; color: var(--text); }
     #log { margin-top: 12px; font-size: 12px; color: var(--soft); white-space: pre-wrap; }
 </style>
 </head>
@@ -29,7 +32,13 @@
 <aside id="screens"><h1>界面</h1><nav></nav></aside>
 <section id="stage"></section>
 <aside id="form">
-    <h2>表单数据</h2>
+    <h2>显示</h2>
+    <div class="row">
+        <select id="f-platform" title="按哪个平台的字宽排版"><option value="pc">PC 字宽</option><option value="android">安卓字宽</option></select>
+        <select id="f-scale" title="放大倍数"><option value="0">自动缩放</option><option value="1">1 倍</option><option value="2">2 倍</option><option value="3">3 倍</option><option value="4">4 倍</option></select>
+    </div>
+    <label class="check"><input type="checkbox" id="f-outlines"> 显示控件边框</label>
+    <h2 style="margin-top: 20px">表单数据</h2>
     <label>标题（ActionFormData.title）</label><input id="f-title">
     <label>正文（ActionFormData.body）</label><textarea id="f-text"></textarea>
     <label>按钮（每行一个，按序号；带图标写成「文字 @ 图标路径」）</label><textarea id="f-buttons"></textarea>

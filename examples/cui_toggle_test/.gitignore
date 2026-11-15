@@ -1,6 +1,6 @@
 dev/
-res/
+res/font/
+vanilla/
 node_modules/
 scripts/cui.generated.*
 .tmp/
-glyph-src/

@@ -60,6 +60,7 @@
 | 名称 | 种类 | 说明 |
 |---|---|---|
 | `defineConfig` | 函数 | 定义项目配置（cui.config.mjs）：命名空间、界面、贴图目录、预览数据。bedrock-cui dev 与 useSapdon() 共用。 |
+| `screenOf` | 函数 | 取出配置中一个界面的构建函数与选项。 |
 
 ## 表达式与响应式
 
@@ -124,6 +125,7 @@
 | `PaginateOptions` | 接口 | paginate() 的选项。 |
 | `CuiConfig` | 接口 | 项目配置。 |
 | `CuiPreviewForm` | 接口 | 预览中某个界面的表单数据：title、text、buttons。 |
+| `CuiScreen` | 类型 | 配置中的一个界面：返回根控件的函数，或 { build, routed }。 |
 | `TextMetrics` | 接口 | measureText() 的结果：lines、width、height。 |
 | `LengthLike` | 类型 | 数字（像素）或 Length。 |
 | `ExprLike` | 类型 | 表达式，或字符串、数字、布尔等字面值。 |

@@ -34,21 +34,17 @@ new Image('textures/ui/purpleBorder').setNineslice(4).setSize(Size.full())
 
 ## 贴图信息
 
-静态检查和浏览器预览需要知道贴图的尺寸和九宫格边宽。`CuiApp.setTextures()` 接受资源包目录的列表，从中读取 PNG 的尺寸和同名 `.json`：
+静态检查和浏览器预览需要知道贴图的尺寸和九宫格边宽。配置的 `textures` 列出存放贴图的资源包目录，bedrock-cui 从中读取 PNG 的尺寸和同名 `.json` 中的九宫格信息：
 
 ```js
-import { CuiApp } from 'bedrock-cui/node'
-
-const app = new CuiApp('book').setTextures(['res'])
+// cui.config.mjs
+export default defineConfig({
+    // ……
+    textures: ['res'],
+})
 ```
 
-也可以传入一个函数，按贴图路径返回尺寸和边宽：
-
-```js
-app.setTextures((path) => path === 'textures/ui/purpleBorder' ? { size: [16, 16], nineslice: 4 } : undefined)
-```
-
-未提供信息的贴图，静态检查跳过与其尺寸相关的判断。浏览器预览使用的贴图在 `mountPreview()` 中另行提供，见[浏览器预览](preview.md)。
+在这些目录中找不到的贴图（例如原版贴图），静态检查跳过与其尺寸相关的判断，浏览器预览中显示为紫黑格。
 
 ## 颜色与透明度
 

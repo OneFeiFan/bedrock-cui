@@ -4,7 +4,7 @@ import fs from 'node:fs'
 import { GlyphSheet, Label, Panel, Paragraph, Texture, compileNamespace, textWidth } from '../dist/index.js'
 import { decodePng, inkOf, renderGlyphSheet } from '../dist/node/index.js'
 
-const TEX = (n) => `preview-src/public/textures/${n}.png`
+const TEX = (n) => ['items', 'ui'].map((d) => `examples/cui_toggle_test/vanilla/textures/${d}/${n}.png`).find((f) => fs.existsSync(f)) ?? `examples/cui_toggle_test/res/textures/cui_test/${n}.png`
 
 test('emoji 页（E2–F8，真机 1.17.0）：1:1、16 高，字距 = 墨迹宽 + 1；粗体 + 0.5', () => {
     const sheet = new GlyphSheet('E3')

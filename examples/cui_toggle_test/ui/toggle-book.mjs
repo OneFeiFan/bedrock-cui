@@ -1,6 +1,6 @@
 /**
  * 开关翻页测试书（纯面向对象：类 + 普通对象，没有标签、没有包装函数）。
- * 浏览器预览（preview-src/main.ts）与真机测试包（examples/build-toggle-test.mjs）共用这一份。
+ * 真机测试包（examples/cui_toggle_test）的界面；npm run dev 在浏览器中预览。
  *
  * 要在真机上回答的问题：
  *   1. 开关翻页：点目录 / 箭头 / 书签翻页，表单不关闭、视角不偏转

@@ -1,5 +1,5 @@
 /**
- * 准备浏览器预览用的像素字体（不随源码分发），放在 preview-src/public/font/：
+ * 准备浏览器预览用的像素字体（不随源码分发），放在 ~/.cache/bedrock-cui/font/（或 --out 指定的目录）：
  *   unifont.hex.gz  ← GNU Unifont 16.0.04（画汉字等非 ASCII 字符）。先从 unifoundry.com 下载 hex；连不上时从 GNU 镜像（中科大 / GNU 官方）
  *                     下载 BDF 格式，在本地转换成 hex
  *   ascii.png       ← Minecraft 默认字体（画纯英文），从 Java 版客户端 client.jar 里取出
@@ -10,7 +10,7 @@
  *   node scripts/fetch-fonts.mjs --unifont "D:\下载\unifont-16.0.04.bdf.gz"   用手动下载的 Unifont（.hex / .hex.gz / .bdf / .bdf.gz）
  *   node scripts/fetch-fonts.mjs --force                                 已有的文件也重新准备
  *   node scripts/fetch-fonts.mjs --no-ascii                              只准备 Unifont（例如要公开发布的网站：ascii.png 是 Mojang 的资源）
- *   node node_modules/bedrock-cui/scripts/fetch-fonts.mjs --out public/font   在自己的项目里用：字体放进项目的静态资源目录（缺省是本包的 preview-src/public/font）
+ *   node node_modules/bedrock-cui/scripts/fetch-fonts.mjs --out public/font   字体放进指定目录（缺省是 ~/.cache/bedrock-cui/font，与 bedrock-cui dev 相同）
  *
  * client.jar 的查找顺序：--java-jar → 环境变量 CUI_JAVA_CLIENT_JAR → sapdon 缓存 ~/.sapdon/java/<版本>/client.jar →
  *   官方启动器的版本目录（Windows %APPDATA%\.minecraft\versions、macOS ~/Library/Application Support/minecraft/versions、
@@ -28,7 +28,8 @@ const args = process.argv.slice(2)
 const arg = (name) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : undefined }
 const force = args.includes('--force')
 const outAt = args.indexOf('--out')
-const dir = outAt >= 0 && args[outAt + 1] ? path.resolve(args[outAt + 1]) : path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'preview-src', 'public', 'font')
+// 缺省与 bedrock-cui dev 相同：环境变量 BEDROCK_CUI_FONT_DIR，或 ~/.cache/bedrock-cui/font
+const dir = outAt >= 0 && args[outAt + 1] ? path.resolve(args[outAt + 1]) : process.env.BEDROCK_CUI_FONT_DIR ?? path.join(os.homedir(), '.cache', 'bedrock-cui', 'font')
 fs.mkdirSync(dir, { recursive: true })
 
 async function download(url) {

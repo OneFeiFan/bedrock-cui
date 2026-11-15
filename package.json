@@ -36,6 +36,7 @@
     "./dom": "./dist/dom/index.js"
   },
   "files": [
+    "CHANGELOG.md",
     "LICENSE",
     "NOTICE",
     "README.md",
@@ -49,8 +50,7 @@
     "build": "tsc -p tsconfig.json",
     "prepare": "tsc -p tsconfig.json",
     "test": "tsc -p tsconfig.json && node scripts/run-tests.mjs",
-    "dev": "vite",
-    "preview:build": "vite build",
+    "dev": "cd examples/cui_toggle_test && node ../../bin/bedrock-cui.mjs dev",
     "prepublishOnly": "npm test",
     "docs:api": "node scripts/gen-api-reference.mjs && node scripts/gen-component-api.mjs",
     "docs:check": "node scripts/check-docs.mjs",

@@ -16,6 +16,9 @@ const walk = (d) => { for (const f of fs.readdirSync(d)) { const p = path.join(d
 walk(guide)
 
 let bad = 0, ran = 0
+// 写作约定（WRITING.md）中禁用的说法：只查正文，不查代码块；WRITING.md 本身列出了它们，不查
+// 用正则排除恰好包含这几个字的组合（如「按其实际字宽」中的「其实」）
+const BANNED = [/首先/, /其次/, /总之/, /综上所述/, /值得注意的是/, /好消息是/, /强大/, /轻松/, /无缝/, /你会注意到/, /你已经学会/, /下面马上/, /其实(?!际|现)/, /当然/]
 const typed = []       // [临时文件, 页面, 第几个代码块]：运行之后统一做类型检查
 for (const file of files) {
     const text = fs.readFileSync(file, 'utf8')
@@ -23,9 +26,14 @@ for (const file of files) {
         if (/^https?:/.test(m[1])) continue
         if (!fs.existsSync(path.resolve(path.dirname(file), m[1]))) { console.error(`✗ ${path.relative(guide, file)}：链接 ${m[1]} 指向的文件不存在`); bad++ }
     }
+    if (!file.endsWith('WRITING.md')) {
+        const prose = text.replace(/```[\s\S]*?```/g, '').replace(/`[^`]*`/g, '')
+        for (const w of BANNED) { const m = prose.match(w); if (m) { console.error(`✗ ${path.relative(guide, file)}：正文中出现「${m[0]}」（写作约定禁用）`); bad++ } }
+        if (/^## 下一步/m.test(prose)) { console.error(`✗ ${path.relative(guide, file)}：正文中有「下一步」一节（导航由页面底部负责）`); bad++ }
+    }
     const blocks = [...text.matchAll(/```js[^\n]*\n([\s\S]*?)```/g)].map((m) => m[1])
     blocks.forEach((code, k) => {
-        if (!code.includes("from 'bedrock-cui") || code.startsWith('// 接上例') || /……|@minecraft|cui\.generated|\.\/cui\/|@sapdon|document\.|bedrock-cui\/web|\.\/ui\/|\.build\(|.pack\(|copyRuntime\(|checkScripts\(|actionForm/.test(code)) return
+        if (!code.includes("from 'bedrock-cui") || code.startsWith('// 接上例') || /……|@minecraft|cui\.generated|cui\.config|\.\/cui\/|@sapdon|document\.|bedrock-cui\/web|\.\/ui\/|\.build\(|.pack\(|copyRuntime\(|checkScripts\(|actionForm/.test(code)) return
         const tmp = path.join(root, 'examples', `_docs_check_${process.pid}_${typed.length}.mjs`)
         fs.writeFileSync(tmp, code)
         const r = spawnSync(process.execPath, [tmp], { encoding: 'utf8' })

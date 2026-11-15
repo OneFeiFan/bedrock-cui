@@ -2,6 +2,17 @@
 
 > 这份文档按版本记录设计决策与全部真机测试（PC 与安卓）。较新的结论在后面的章节里会更正较早的；以「✅ 真机确认」标注的为准。
 
+## 0.000 v0.25：收尾审计
+
+- **只留一个预览工具**：删除仓库自带的预览程序（preview-src、vite.config.ts），`bedrock-cui dev` 补上字宽切换（PC / 安卓）、缩放、控件边框；
+  仓库的 `npm run dev` 即在 examples/cui_toggle_test 中运行 `bedrock-cui dev`。测试书的界面文件与自绘贴图移进该项目（ui/、res/），
+  原版贴图下载到项目的 vanilla/（不进资源包），字体缓存在 ~/.cache/bedrock-cui/font（与 bedrock-cui dev 相同）。
+- **配置能表达全部选项**：screens 的值可写成 { build, routed }（先前路由界面只能经 CuiApp.screen 的第三个参数设置）。
+  手册中示范直接创建 CuiApp 的 4 处改为配置写法。
+- **文档的自动检查**：check-docs 加上写作约定中禁用说法与「下一步」小节的检查（正则，避免「按其实际」这类误报）。
+- **README** 只回答「是什么、为什么、怎么开始、文档在哪」；开发者内容移到 CONTRIBUTING.md；新增 CHANGELOG.md。
+- **手机阅读**：☰ 打开从左侧滑出的侧栏（遮罩、点链接收起、顶栏链接收进侧栏）、正文开头的可折叠本页目录、字号与边距、代码块与预览贴边。
+
 ## 0.00 v0.25：打包完全交给 sapdon（不兼容的改动）
 
 - 移除 CuiApp.build()、CuiBuildOptions、Addon、PackFiles、zip、rewriteRuntimeImports（与 sapdon 的打包重复）。checkScripts 保留（src/node/check.ts）。

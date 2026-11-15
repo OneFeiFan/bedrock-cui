@@ -1,6 +1,6 @@
 import { defineConfig } from 'bedrock-cui'
-import { buildBook, FORM, GLYPHS } from '../toggle-book.mjs'
-import { buildResponsiveDemo, RESPONSIVE_FORM } from '../responsive-demo.mjs'
+import { buildBook, FORM, GLYPHS } from './ui/toggle-book.mjs'
+import { buildResponsiveDemo, RESPONSIVE_FORM } from './ui/responsive-demo.mjs'
 
 export default defineConfig({
     namespace: 'cui_toggle_test',
@@ -8,8 +8,8 @@ export default defineConfig({
         [FORM.title]: () => buildBook(),                       // 测试书（静态界面、混合翻页）
         [RESPONSIVE_FORM.title]: () => buildResponsiveDemo(),  // 响应式演示
     },
-    // 测试书的贴图由 build.mjs 从 preview-src/public/textures 复制进来
-    textures: ['res', 'glyph-src'],
+    // res：测试书自己的贴图（进资源包）；vanilla：原版贴图（预览与字形图用，不进资源包，fetch-vanilla-textures 下载）
+    textures: ['res', 'vanilla'],
     glyphs: [GLYPHS],
     preview: { viewport: [320, 220] },
 })

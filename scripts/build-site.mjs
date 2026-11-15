@@ -4,6 +4,7 @@
  * 正文用 Markdown；页面外框（顶栏、侧边栏、本页目录、上一页 / 下一页）用 bedrock-cui 的组件搭，由 bedrock-cui/dom 渲染成 HTML。
  */
 import fs from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { Marked } from 'marked'
@@ -126,6 +127,8 @@ function frame(page, current, prefix) {
     const link = (href, text, className) => new Link(prefix + href, text).setClassName(className)
 
     const top = new Row().setClassName('topbar').add(
+        // 窄屏：☰ 打开侧栏（侧栏从左侧滑出）
+        new Html('<button class="menu" type="button" aria-label="打开目录">☰</button>', 'span'),
         link('index.html', SITE_TITLE, 'brand'),
         new Panel().setGrow(),
         link('introduction.html', '指南', 'nav'),
@@ -135,6 +138,11 @@ function frame(page, current, prefix) {
     )
 
     const side = new Column().setClassName('sidebar')
+    // 窄屏时顶栏的链接收进侧栏
+    side.add(new Column().setClassName('side-nav').add(
+        link('introduction.html', '指南', 'side-link'), link('components/panel.html', '组件', 'side-link'),
+        link('reference/api-core.html', '参考', 'side-link'), new Link(REPO, 'GitHub').setClassName('side-link'),
+    ))
     for (const s of sections) {
         side.add(new Label(s.title).setClassName('side-title'))
         for (const p of s.pages) side.add(link(htmlName(p.file), p.title, p.file === current ? 'side-link active' : 'side-link'))
@@ -152,8 +160,12 @@ function frame(page, current, prefix) {
         for (const t of page.toc) toc.add(new Link(`#${t.id}`, t.text).setClassName('toc-link'))
     }
 
+    // 窄屏：正文开头的可折叠目录（宽屏用右侧的本页目录）
+    const mobileToc = page.toc.length
+        ? `<details class="mobile-toc"><summary>本页目录</summary>${page.toc.map((t) => `<a href="#${t.id}">${t.text}</a>`).join('')}</details>`
+        : ''
     const main = new Column().setClassName('main').add(
-        new Html(page.html, 'article').setClassName('content'),
+        new Html(mobileToc + page.html, 'article').setClassName('content'),
         pager,
         new Link(`${REPO}/edit/master/docs/guide/${current}`, '在 GitHub 上编辑此页').setClassName('edit'),
     )
@@ -182,6 +194,14 @@ for (const file of files) {
 </head>
 <body>
 ${body}
+<div class="backdrop"></div>
+<script>
+// 窄屏的侧栏：☰ 打开，点遮罩或链接收起
+const toggle = (open) => document.body.classList.toggle('nav-open', open)
+document.querySelector('.menu').addEventListener('click', () => toggle(!document.body.classList.contains('nav-open')))
+document.querySelector('.backdrop').addEventListener('click', () => toggle(false))
+document.querySelectorAll('.sidebar a').forEach((a) => a.addEventListener('click', () => toggle(false)))
+</script>
 </body>
 </html>
 `
@@ -212,7 +232,7 @@ fs.writeFileSync(path.join(tex, 'white.png'), png(2, 2, () => [255, 255, 255, 25
 // 物品图标：不模仿原版的样子，统一用紫黑格（游戏中贴图缺失时的样子），一看就知道是占位
 const missing = png(16, 16, (x, y) => ((x < 8) === (y < 8) ? [248, 0, 248, 255] : [0, 0, 0, 255]))
 for (const f of ['diamond.png', 'stick.png', 'sword.png']) fs.writeFileSync(path.join(tex, f), missing)
-const unifont = path.join(root, 'preview-src', 'public', 'font', 'unifont.hex.gz')
+const unifont = path.join(process.env.BEDROCK_CUI_FONT_DIR ?? path.join(os.homedir(), '.cache', 'bedrock-cui', 'font'), 'unifont.hex.gz')
 if (fs.existsSync(unifont)) {
     fs.mkdirSync(path.join(out, 'font'), { recursive: true })
     fs.copyFileSync(unifont, path.join(out, 'font', 'unifont.hex.gz'))

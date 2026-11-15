@@ -10,13 +10,13 @@
 
 每一项依次为级别、规则名、控件路径与说明。错误使构建失败，警告不影响构建。各规则的说明见[静态检查规则](reference/lint.md)。
 
-不打包、只检查时，使用 `compile()`：
+在脚本中获取检查结果时，使用 `CuiApp.fromConfig(配置).compile()`：
 
 ```js
-import { Panel } from 'bedrock-cui'
 import { CuiApp } from 'bedrock-cui/node'
+import config from './cui.config.mjs'
 
-const { issues } = new CuiApp('book').screen('cui_ui:book', new Panel()).compile()
+const { issues } = CuiApp.fromConfig(config).compile()
 for (const i of issues) console.log(i.level, i.rule, i.path, i.message)
 ```
 
@@ -44,4 +44,4 @@ new Panel().setSize(116, 160).setPadding(Insets.of(3, 0, 3, 9)).setContain()
 
 ## 贴图信息
 
-与贴图尺寸有关的检查（如 `keep-ratio`、`nineslice-too-small`）需要贴图信息，通过 `CuiApp.setTextures()` 提供，见[贴图信息](images.md#贴图信息)。
+与贴图尺寸有关的检查（如 `keep-ratio`、`nineslice-too-small`）需要贴图信息，由配置的 `textures` 提供，见[贴图信息](images.md#贴图信息)。

@@ -14,7 +14,7 @@ import type { GlyphSheet } from '../core/glyphs.js'
 import type { LintIssue } from '../mc/lint.js'
 import type { TextureInfo } from '../layout/engine.js'
 import type { ServerPaging } from '../core/serverPagesShared.js'
-import type { CuiConfig } from '../core/config.js'
+import { screenOf, type CuiConfig } from '../core/config.js'
 import { renderGlyphSheet, textureInfoFrom } from './tools.js'
 
 /** 编译结果 */
@@ -54,7 +54,7 @@ export class CuiApp {
     /** 由项目配置创建（root = 项目根目录，贴图目录相对于它） */
     static fromConfig(config: CuiConfig, root = process.cwd()): CuiApp {
         const app = new CuiApp(config.namespace)
-        for (const [panelId, build] of Object.entries(config.screens)) app.screen(panelId, build())
+        for (const [panelId, s] of Object.entries(config.screens)) { const { build, routed } = screenOf(s); app.screen(panelId, build(), routed ? { routed } : {}) }
         const dirs = (config.textures ?? ['res']).map((d) => path.resolve(root, d))
         app.setTextures(dirs)
         for (const sheet of config.glyphs ?? []) {

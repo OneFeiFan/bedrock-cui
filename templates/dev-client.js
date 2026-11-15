@@ -1,7 +1,7 @@
 // bedrock-cui dev 的预览页面：读取项目配置，按界面逐个预览；右侧编辑表单数据；服务端翻页可直接点击。
 import config from 'virtual:cui-config'
 import TEXTURES from 'virtual:cui-textures'
-import { Pages, compileNamespace, signal } from 'bedrock-cui'
+import { Pages, compileNamespace, screenOf, setMetricsProfile, signal } from 'bedrock-cui'
 import { ServerPagesPreview, mountPreview } from 'bedrock-cui/web'
 
 const ids = Object.keys(config.screens)
@@ -21,13 +21,17 @@ function findPaging(root, panelId) {
     return found
 }
 
+const outlines = signal(false)
+let current
+
 function show(id) {
+    current = id
     location.hash = encodeURIComponent(id)
     nav.querySelectorAll('a').forEach((a) => a.classList.toggle('active', a.dataset.id === id))
     stage.innerHTML = ''
     const form = config.preview?.forms?.[id] ?? {}
     const viewport = config.preview?.viewport ?? [400, 240]
-    const root = config.screens[id]()
+    const root = screenOf(config.screens[id]).build()
     const paging = findPaging(root, id)
     // 按钮：每行一个；行末写「 @ 图标路径」表示带图标的按钮
     const parse = () => ($('f-buttons').value ? $('f-buttons').value.split('\n') : []).map((line) => {
@@ -45,13 +49,13 @@ function show(id) {
     const sim = paging ? new ServerPagesPreview(paging, own) : undefined
 
     // 静态检查：显示在预览下方
-    const issues = compileNamespace(config.namespace, { root: config.screens[id]() }).issues
+    const issues = compileNamespace(config.namespace, { root: screenOf(config.screens[id]).build() }).issues
 
     const box = document.createElement('div')
     stage.append(box)
-    const scale = Math.max(1, Math.min(4, Math.floor((stage.clientWidth - 48) / viewport[0])))
+    const scale = Number($('f-scale').value) || Math.max(1, Math.min(4, Math.floor((stage.clientWidth - 48) / viewport[0])))
     const preview = mountPreview(box, {
-        root, viewport, scale, textures: TEXTURES,
+        root, viewport, scale, textures: TEXTURES, outlines,
         fonts: { unifont: '/@cui/font/unifont.hex.gz', ascii: '/@cui/font/ascii.png' },
         title: sim ? sim.title : title, formText: text, formButtons: sim ? sim.formButtons : buttons, formButtonIcons: sim ? sim.formButtonIcons : buttonIcons,
         onFormButton: (i, t) => {
@@ -73,6 +77,11 @@ function show(id) {
     }
     stage.append(list)
 }
+
+// 显示设置：字宽档案切换后重建界面（排版按当前档案计算）
+$('f-platform').onchange = () => { setMetricsProfile($('f-platform').value); show(current) }
+$('f-scale').onchange = () => show(current)
+$('f-outlines').onchange = () => { outlines.value = $('f-outlines').checked }
 
 for (const id of ids) {
     const a = document.createElement('a')
