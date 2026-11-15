@@ -63,7 +63,8 @@ a:hover { text-decoration: underline; }
 pre.code { margin: 16px 0; padding: 14px 0; overflow-x: auto; border-radius: 8px; background: var(--bg-code); font-family: var(--mono); font-size: 13.5px; line-height: 1.65; }
 pre.code code { display: block; min-width: max-content; }
 pre.code .line { display: block; padding: 0 20px; }
-pre.code .line.hl { background: var(--hl); }
+pre.code .line.hl { background: var(--hl); box-shadow: inset 3px 0 0 var(--brand); }
+.code-note { margin: -8px 0 16px !important; font-size: 12px; color: var(--text-soft); }
 .tok-c { color: var(--tok-c); } .tok-s { color: var(--tok-s); } .tok-k { color: var(--tok-k); } .tok-n { color: var(--tok-n); }
 
 /* 提示框 */
@@ -76,7 +77,8 @@ pre.code .line.hl { background: var(--hl); }
 .callout.details summary { cursor: pointer; font-weight: 700; padding: 8px 0; }
 
 /* 在线示例 */
-.cui-preview { margin: -8px 0 0; padding: 16px; border: 1px solid var(--line); border-top: none; border-radius: 0 0 8px 8px; background: repeating-conic-gradient(var(--bg-soft) 0% 25%, var(--bg) 0% 50%) 50% / 16px 16px; overflow-x: auto; }
+.cui-preview { display: flex; justify-content: center; margin: -8px 0 0; padding: 16px; border: 1px solid var(--line); border-top: none; border-radius: 0 0 8px 8px; background: var(--bg-soft); overflow-x: auto; }
+.cui-preview > * { flex: none; }
 .cui-preview canvas { display: block; image-rendering: pixelated; }
 .cui-preview-note { margin: 4px 0 16px !important; font-size: 12px; color: var(--text-soft); }
 

@@ -18,26 +18,55 @@ row.add(
 
 ## 同一层内的绘制顺序
 
-同一层内的控件不按书写顺序绘制。游戏将同一层的控件按材质分批：所有文字为一批，每种贴图各为一批。各批按其在控件树中首次出现的顺序绘制，先出现的批次先绘制。
+位于同一层的控件，绘制顺序与代码中的书写顺序无关。游戏按以下步骤绘制一层：
 
-因此，文字与图片位于同一层时，谁在上面取决于整个界面中这一层是先出现文字还是先出现该贴图，与这两个控件的书写顺序无关：
+1. 找出这一层的全部控件，按它们在控件树中出现的顺序排列。
+2. 按材质分组：所有文字为一组，每种贴图各为一组。组的先后，由组内最早出现的那个控件决定。
+3. 按组的先后依次绘制。后绘制的组盖在先绘制的组之上。
 
-```js preview=page 220x120
+下面的示例中，「标题」、背景图和「钻石」都位于第 0 层：
+
+```js preview=page 220x80
 import { Anchor, Image, Label, Panel, Size } from 'bedrock-cui'
 
-const page = new Panel().setSize(200, 100)
+const page = new Panel().setSize(200, 60)
 page.add(
-    new Label('标题').setLayer(0).setAnchor(Anchor.TOP_CENTER),     // 第 0 层：文字这一批先出现
-    new Panel().setSize(110, 18).add(
+    new Label('标题').setLayer(0).setAnchor(Anchor.TOP_CENTER),
+    new Panel().setSize(110, 18).setAnchor(Anchor.BOTTOM_CENTER).add(
         new Image('textures/ui/purpleBorder').setSize(Size.full()),
-        new Label('钻石').setLayer(0),                              // 被同一层后出现的图片批次盖住
+        new Label('钻石').setLayer(0),
     ),
 )
 ```
 
-在上面的示例中，「钻石」虽然写在背景图之后，但由于这一层的文字批次早于该贴图的批次出现，背景图会盖住文字。
+按上面的步骤：
+
+1. 第 0 层的控件依次为：「标题」（文字）、背景图（紫框贴图）、「钻石」（文字）。
+2. 分为两组：文字组包含「标题」与「钻石」，由于「标题」最先出现，文字组排在第一；紫框贴图组排在第二。
+3. 先绘制文字组，再绘制紫框贴图组。背景图在「钻石」之后绘制，因此盖住了「钻石」。
+
+「钻石」虽然写在背景图之后，但它与「标题」同属文字组，随文字组一起先于背景图绘制。
+
+将「标题」移到背景图之后，这一层最先出现的变为背景图，紫框贴图组排在第一，「钻石」随文字组之后绘制，显示在背景图之上：
+
+```js preview=page 220x80 {9}
+import { Anchor, Image, Label, Panel, Size } from 'bedrock-cui'
+
+const page = new Panel().setSize(200, 60)
+page.add(
+    new Panel().setSize(110, 18).setAnchor(Anchor.BOTTOM_CENTER).add(
+        new Image('textures/ui/purpleBorder').setSize(Size.full()),
+        new Label('钻石').setLayer(0),
+    ),
+    new Label('标题').setLayer(0).setAnchor(Anchor.TOP_CENTER),
+)
+```
 
 该规则由真机测试得出，测试方法见[真机规则](reference/rules.md)。
+
+## 实际编写时
+
+不需要推算同一层内各组的顺序，只需让文字的层级高于与它重叠的图片。文字默认位于第 1 层，比默认在第 0 层的图片高一层，因此保持默认层级时不会出现上述情况。以上示例将文字设为第 0 层，仅用于演示该规则。
 
 ## 静态检查
 

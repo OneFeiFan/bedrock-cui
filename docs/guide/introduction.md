@@ -54,5 +54,5 @@ bedrock-cui 只用于服务端表单界面，不修改 HUD、物品栏等原版�
 ## 学习路径
 
 - [快速上手](quick-start.md)：从创建项目到在游戏中翻页的完整流程。
-- 指南：按[目录](index.md)逐章介绍各项功能，从「搭建界面」开始。
-- 参考：各模块 API 的完整说明。
+- 指南：从[控件与组件树](elements.md)开始，按[目录](index.md)逐章介绍各项功能。
+- 参考：[各模块的 API](reference/api-core.md)、[静态检查规则](reference/lint.md)与[真机规则](reference/rules.md)。

@@ -88,7 +88,8 @@ function renderMarkdown(src, file) {
                 const [language, spec] = [lang.split(/\s+/)[0], (lang.match(/\{([^}]*)\}/) ?? [])[1]]
                 const marks = lineSet(spec)
                 const lines = highlight(text, language).split('\n').map((l, i) => `<span class="line${marks.has(i + 1) ? ' hl' : ''}">${l || ' '}</span>`)
-                const pre = `<pre class="code" data-lang="${language}"><code>${lines.join('')}</code></pre>\n`
+                const note = marks.size ? '<p class="code-note">绿色背景的行是相对上一段代码新增或修改的部分。</p>\n' : ''
+                const pre = `<pre class="code" data-lang="${language}"><code>${lines.join('')}</code></pre>\n${note}`
                 const pv = lang.match(/preview=(\w+)(?:\s+(\d+)x(\d+))?/)
                 if (!pv) return pre
                 return pre + previewScript(text, `pv-${++previews}`, pv[1], Number(pv[2] ?? 240), Number(pv[3] ?? 140), base)
@@ -203,7 +204,7 @@ fs.writeFileSync(path.join(tex, 'dialog.png'), png(16, 16, (x, y) => {
     if (e === 1) return x === 1 || y === 1 ? [255, 255, 255, 255] : [85, 85, 85, 255]
     return [198, 198, 198, 255]
 }))
-fs.writeFileSync(path.join(tex, 'purple.png'), png(16, 16, (x, y) => (edge(x, y) === 1 ? [80, 10, 170, 255] : [16, 0, 16, 240])))
+fs.writeFileSync(path.join(tex, 'purple.png'), png(16, 16, (x, y) => (edge(x, y) === 1 ? [80, 10, 170, 255] : [16, 0, 16, 255])))
 fs.writeFileSync(path.join(tex, 'white.png'), png(2, 2, () => [255, 255, 255, 255]))
 fs.writeFileSync(path.join(tex, 'diamond.png'), png(16, 16, (x, y) => {
     const d = Math.abs(x - 7.5) + Math.abs(y - 7.5)

@@ -50,7 +50,7 @@ card.add(
 
 `CuiApp` 负责挂载界面与打包：
 
-```js {2,8}
+```js {2,7-8}
 import { Anchor, Color, Image, Label, Panel, Paragraph, Size } from 'bedrock-cui'
 import { CuiApp } from 'bedrock-cui/node'
 
@@ -99,7 +99,7 @@ UUID 文件应提交到版本库。可通过 `uuidFile` 选项指定其位置：
 
 将正文改为两页，每页放置一个翻页箭头：
 
-```js {1,4-9}
+```js {1,4-10,12}
 import { Anchor, Color, Image, Label, Pages, Panel, Size } from 'bedrock-cui'
 import { CuiApp } from 'bedrock-cui/node'
 
@@ -153,8 +153,3 @@ new Paragraph('……', 260).setName('intro')
 ```
 
 路径由控件名组成。未命名的控件按类型和顺序自动命名（如 `label1`），因此建议为需要定位的控件设置名称。警告不影响构建；错误会使构建失败。
-
-## 下一步
-
-- [控件与组件树](elements.md)
-- 在 sapdon 项目中使用：见 [examples/sapdon-project](../../examples/sapdon-project)
