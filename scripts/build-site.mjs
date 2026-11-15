@@ -9,6 +9,8 @@ import { fileURLToPath } from 'node:url'
 import { Marked } from 'marked'
 import { Column, Label, Panel, Row } from 'bedrock-cui'
 import { Html, Link, renderHtml } from 'bedrock-cui/dom'
+import { encodePng } from 'bedrock-cui/node'
+import { build as viteBuild } from 'vite'
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
 const guide = path.join(root, 'docs', 'guide')
@@ -59,8 +61,21 @@ function lineSet(spec) {
     return set
 }
 
+/**
+ * 在线示例：```js preview=变量名 宽x高 —— 显示代码，并在下方用像素预览显示该变量（模拟屏幕 宽×高）。
+ * 代码只能从 'bedrock-cui' 导入（改写成从 window.CUI 取用）。
+ */
+function previewScript(code, id, name, w, h, base) {
+    const body = code.replace(/^import\s*\{([^}]*)\}\s*from\s*'bedrock-cui'\s*;?\s*$/gm, (_, names) => `const {${names}} = CUI`)
+    if (/^\s*import\s/m.test(body)) throw new Error(`在线示例只能从 'bedrock-cui' 导入：${id}`)
+    return `<div class="cui-preview" id="${id}"></div>\n<p class="cui-preview-note">预览：按游戏的排版规则绘制。英文字母的字形与游戏不同，原版贴图以替代图显示。</p>\n` +
+        `<script>(() => {\n${body.replace(/<\/script/g, '<\\/script')}\nCUI_PREVIEW('${id}', ${name}, { w: ${w}, h: ${h}, base: '${base}' })\n})()</script>\n`
+}
+
 function renderMarkdown(src, file) {
     const toc = []
+    const base = '../'.repeat(file.split('/').length - 1)
+    let previews = 0
     const marked = new Marked({
         renderer: {
             heading({ tokens, depth }) {
@@ -73,7 +88,10 @@ function renderMarkdown(src, file) {
                 const [language, spec] = [lang.split(/\s+/)[0], (lang.match(/\{([^}]*)\}/) ?? [])[1]]
                 const marks = lineSet(spec)
                 const lines = highlight(text, language).split('\n').map((l, i) => `<span class="line${marks.has(i + 1) ? ' hl' : ''}">${l || ' '}</span>`)
-                return `<pre class="code" data-lang="${language}"><code>${lines.join('\n')}</code></pre>\n`
+                const pre = `<pre class="code" data-lang="${language}"><code>${lines.join('')}</code></pre>\n`
+                const pv = lang.match(/preview=(\w+)(?:\s+(\d+)x(\d+))?/)
+                if (!pv) return pre
+                return pre + previewScript(text, `pv-${++previews}`, pv[1], Number(pv[2] ?? 240), Number(pv[3] ?? 140), base)
             },
             link({ href, title, tokens }) {
                 const text = this.parser.parseInline(tokens)
@@ -96,7 +114,7 @@ function renderMarkdown(src, file) {
         return `<div class="callout ${kind}"><p class="callout-title">${title ?? names[kind]}</p>\n${content}</div>\n`
     })
     const html = marked.parse(body)
-    return { html, toc, title: (src.match(/^# (.+)$/m) ?? [, file])[1].replace(/`/g, '') }
+    return { html, toc, previews, title: (src.match(/^# (.+)$/m) ?? [, file])[1].replace(/`/g, '') }
 }
 
 // ───────── 页面外框：用 bedrock-cui 的组件搭 ─────────
@@ -156,7 +174,7 @@ for (const file of files) {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${page.title} | ${SITE_TITLE}</title>
-<link rel="stylesheet" href="${prefix}site.css">
+<link rel="stylesheet" href="${prefix}site.css">${page.previews ? `\n<script src="${prefix}assets/cui-preview.js"></script>` : ''}
 </head>
 <body>
 ${body}
@@ -168,5 +186,47 @@ ${body}
     fs.writeFileSync(to, doc)
 }
 fs.copyFileSync(path.join(root, 'docs', 'site', 'site.css'), path.join(out, 'site.css'))
+
+// 在线示例：浏览器脚本（bedrock-cui + 预览）、替代贴图、Unifont
+await viteBuild({
+    configFile: false, logLevel: 'warn',
+    resolve: { alias: [{ find: /^bedrock-cui\/web$/, replacement: path.join(root, 'dist', 'web', 'index.js') }, { find: /^bedrock-cui$/, replacement: path.join(root, 'dist', 'index.js') }] },
+    build: { outDir: path.join(out, 'assets'), emptyOutDir: false, lib: { entry: path.join(root, 'scripts', 'site-preview-entry.js'), formats: ['iife'], name: 'CUIPreviewBundle', fileName: () => 'cui-preview.js' } },
+})
+const png = (w, h, px) => { const d = new Uint8Array(w * h * 4); for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) d.set(px(x, y) ?? [0, 0, 0, 0], (y * w + x) * 4); return encodePng(w, h, d) }
+const edge = (x, y, n = 16) => Math.min(x, y, n - 1 - x, n - 1 - y)
+const tex = path.join(out, 'assets', 'textures')
+fs.mkdirSync(tex, { recursive: true })
+fs.writeFileSync(path.join(tex, 'dialog.png'), png(16, 16, (x, y) => {
+    const e = edge(x, y)
+    if (e === 0) return (x === 0 || x === 15) && (y === 0 || y === 15) ? null : [0, 0, 0, 255]
+    if (e === 1) return x === 1 || y === 1 ? [255, 255, 255, 255] : [85, 85, 85, 255]
+    return [198, 198, 198, 255]
+}))
+fs.writeFileSync(path.join(tex, 'purple.png'), png(16, 16, (x, y) => (edge(x, y) === 1 ? [80, 10, 170, 255] : [16, 0, 16, 240])))
+fs.writeFileSync(path.join(tex, 'white.png'), png(2, 2, () => [255, 255, 255, 255]))
+fs.writeFileSync(path.join(tex, 'diamond.png'), png(16, 16, (x, y) => {
+    const d = Math.abs(x - 7.5) + Math.abs(y - 7.5)
+    return d < 5.5 ? (x + y < 14 ? [160, 250, 245, 255] : [40, 200, 200, 255]) : d < 6.6 ? [20, 90, 100, 255] : null
+}))
+fs.writeFileSync(path.join(tex, 'stick.png'), png(16, 16, (x, y) => (Math.abs(x + y - 15) <= 1 && x > 2 && x < 13 ? [120, 80, 40, 255] : null)))
+fs.writeFileSync(path.join(tex, 'sword.png'), png(16, 16, (x, y) => {
+    if (Math.abs(x + y - 15) <= 1 && x >= 5 && x <= 14) return [120, 230, 230, 255]
+    if (Math.abs(x - y) <= 1 && x >= 2 && x <= 6 && y >= 8) return [40, 40, 40, 255]
+    if (Math.abs(x + y - 15) <= 0 && x >= 1 && x <= 4) return [110, 75, 40, 255]
+    return null
+}))
+const unifont = path.join(root, 'preview-src', 'public', 'font', 'unifont.hex.gz')
+if (fs.existsSync(unifont)) {
+    fs.mkdirSync(path.join(out, 'font'), { recursive: true })
+    fs.copyFileSync(unifont, path.join(out, 'font', 'unifont.hex.gz'))
+    fs.writeFileSync(path.join(out, 'font', 'LICENSE.txt'), `unifont.hex.gz — GNU Unifont 16.0.04
+Copyright (C) 1998-2024 Roman Czyborra, Paul Hardy, Qianqian Fang, Andrew Miller, Johnnie Weaver, David Corbett, Nils Moskopp, Rebecca Bettencourt, et al.
+GNU Unifont 采用 GNU GPLv2+（含字体嵌入例外）与 SIL Open Font License 1.1 双许可；此处按 SIL OFL 1.1 再发布，未作修改。
+项目：https://unifoundry.com/unifont/
+许可全文：https://openfontlicense.org/open-font-license-official-text/
+`)
+}
+else console.warn('没有 Unifont（node scripts/fetch-fonts.mjs --no-ascii）：在线示例的文字会改用系统字体')
 fs.writeFileSync(path.join(out, '.nojekyll'), '')
 console.log(`网站：${files.length} 页 → ${out}`)

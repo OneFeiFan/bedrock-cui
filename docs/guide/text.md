@@ -32,6 +32,23 @@ new Label('一段较长的说明文字').setSize(110, Length.auto())   // 宽 11
 
 不含空格的中文段落相当于一个很长的单词，因此会逐字排满每一行。中英文混排时，数字或英文两侧的空格是仅有的断点，空格之后的一长串汉字被视为一个单词，可能整个移到下一行，在上一行末尾留下大段空白。
 
+下面是同一句话分别交给 `Label`（游戏折行）和 `Paragraph`（软换行）的结果：
+
+```js preview=compare 260x80
+import { Anchor, Color, Image, Label, Length, Panel, Paragraph, Size } from 'bedrock-cui'
+
+const TEXT = '背包里一共 11 种物品，其中钻石有 3 个，每 2 个钻石加 1 根木棍可以合成 1 把钻石剑。'
+const INK = Color.hex('#3c2814')
+const compare = new Panel().setSize(250, 72)
+compare.add(
+    new Image('textures/ui/dialog_background_opaque').setSize(Size.full()),
+    new Label(TEXT).setColor(INK).setSize(110, Length.auto()).setAnchor(Anchor.TOP_LEFT).setOffset(8, 6),
+    new Paragraph(TEXT, 110).setColor(INK).setAnchor(Anchor.TOP_LEFT).setOffset(132, 6),
+)
+```
+
+左边的 `Label` 中，数字之后的一长串汉字被整个移到下一行，上一行末尾留下空白。
+
 ## Paragraph
 
 `Paragraph` 用于较长的文字。它与 `Label` 一样交给游戏折行，但会调整汉字与英文、数字交界处的间隔，避免上述的空白：

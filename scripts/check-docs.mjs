@@ -21,7 +21,7 @@ for (const file of files) {
         if (/^https?:/.test(m[1])) continue
         if (!fs.existsSync(path.resolve(path.dirname(file), m[1]))) { console.error(`✗ ${path.relative(guide, file)}：链接 ${m[1]} 指向的文件不存在`); bad++ }
     }
-    const blocks = [...text.matchAll(/```js(?: \{[^}]*\})?\n([\s\S]*?)```/g)].map((m) => m[1])
+    const blocks = [...text.matchAll(/```js[^\n]*\n([\s\S]*?)```/g)].map((m) => m[1])
     blocks.forEach((code, k) => {
         if (!code.includes("from 'bedrock-cui") || code.startsWith('// 接上例') || /……|@minecraft|cui\.generated|\.\/cui\/|@sapdon|document\.|bedrock-cui\/web|\.\/ui\/|\.build\(|\.pack\(|copyRuntime\(|actionForm/.test(code)) return
         const tmp = path.join(root, 'examples', `_docs_check_${process.pid}.mjs`)

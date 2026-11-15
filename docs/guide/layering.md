@@ -22,7 +22,7 @@ row.add(
 
 因此，文字与图片位于同一层时，谁在上面取决于整个界面中这一层是先出现文字还是先出现该贴图，与这两个控件的书写顺序无关：
 
-```js
+```js preview=page 220x120
 import { Anchor, Image, Label, Panel, Size } from 'bedrock-cui'
 
 const page = new Panel().setSize(200, 100)

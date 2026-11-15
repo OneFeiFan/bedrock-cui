@@ -6,7 +6,7 @@ bedrock-cui 是一个用于编写 Minecraft 基岩版界面的 JavaScript 框架
 
 下面是一个最基本的示例：
 
-```js
+```js preview=card 220x120
 import { Anchor, Color, Image, Label, Panel, Paragraph, Size } from 'bedrock-cui'
 
 const card = new Panel().setSize(200, 100)

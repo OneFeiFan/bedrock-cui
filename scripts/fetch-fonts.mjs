@@ -9,6 +9,7 @@
  *   node scripts/fetch-fonts.mjs --java-jar "C:\path\to\client.jar"     指定 Java 版客户端
  *   node scripts/fetch-fonts.mjs --unifont "D:\下载\unifont-16.0.04.bdf.gz"   用手动下载的 Unifont（.hex / .hex.gz / .bdf / .bdf.gz）
  *   node scripts/fetch-fonts.mjs --force                                 已有的文件也重新准备
+ *   node scripts/fetch-fonts.mjs --no-ascii                              只准备 Unifont（例如要公开发布的网站：ascii.png 是 Mojang 的资源）
  *   node node_modules/bedrock-cui/scripts/fetch-fonts.mjs --out public/font   在自己的项目里用：字体放进项目的静态资源目录（缺省是本包的 preview-src/public/font）
  *
  * client.jar 的查找顺序：--java-jar → 环境变量 CUI_JAVA_CLIENT_JAR → sapdon 缓存 ~/.sapdon/java/<版本>/client.jar →
@@ -174,4 +175,5 @@ async function prepareAscii() {
 }
 
 await prepareUnifont()
-await prepareAscii()
+if (args.includes('--no-ascii')) console.log('· 跳过 ascii.png（--no-ascii）：纯英文用 Unifont 画')
+else await prepareAscii()

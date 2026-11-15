@@ -29,7 +29,7 @@ hello/
 
 ## 描述界面
 
-```js
+```js preview=card 220x120
 // build.mjs
 import { Anchor, Color, Image, Label, Panel, Paragraph, Size } from 'bedrock-cui'
 

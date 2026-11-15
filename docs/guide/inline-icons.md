@@ -4,14 +4,14 @@
 
 `Text` 用于在一段文字中插入图标。图标由 `InlineIcon` 创建，以模板字符串的形式写入文字：
 
-```js
+```js preview=recipe 140x50
 import { Color, InlineIcon, Text, TextStyle } from 'bedrock-cui'
 
 const DIAMOND = InlineIcon.of('textures/items/diamond')
 const STICK = InlineIcon.of('textures/items/stick')
 const BODY = TextStyle.of(Color.hex('#3c2814'))
 
-new Text(`合成钻石剑：工作台中间一列放 ${DIAMOND}${DIAMOND}，下面放 ${STICK}。`, 110, BODY)
+const recipe = new Text(`合成钻石剑：工作台中间一列放 ${DIAMOND}${DIAMOND}，下面放 ${STICK}。`, 110, BODY)
 ```
 
 第二个参数是折行宽度，第三个参数是文字样式。

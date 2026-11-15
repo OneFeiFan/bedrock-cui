@@ -41,6 +41,7 @@ SOFTWARE.
 - 项目：<https://unifoundry.com/unifont/>　许可：GNU GPLv2+（含字体嵌入例外）或 SIL OFL 1.1 双许可，本项目按 **SIL OFL 1.1** 使用。
 - 包含的内容：`src/font/unifontWidths.ts`——由 GNU Unifont 16.0.04 的点阵计算出的**字距表**（只有宽度，不含字形）。
 - 不随源码分发：预览用的 `unifont.hex.gz`，由 `scripts/fetch-fonts.mjs` 在开发者本机下载。
+- 手册网站（GitHub Pages）的在线示例按 SIL OFL 1.1 原样再发布 `unifont.hex.gz`，附带 `font/LICENSE.txt`。
 - OFL 全文：<https://openfontlicense.org/open-font-license-official-text/>
 
 ## Minecraft（Mojang Studios）
@@ -50,6 +51,7 @@ bedrock-cui 是第三方工具，与 Mojang Studios、Microsoft 没有关联，�
 - `src/font/gameGlyphs.ts`：48 个全角标点 / 符号的 16×16 点阵，**由开发者在自己的游戏里截图逐格还原**（游戏的这些字形与 GNU Unifont 不同），
   用于让浏览器预览与字宽计算和游戏一致。字形来自游戏的渲染结果。
 - 不随源码分发：预览用的 `ascii.png`（Minecraft 默认字体），由 `scripts/fetch-fonts.mjs` 从开发者本机的 Minecraft Java 版客户端（或 Mojang 官方下载）提取，只在本机使用。
+- 手册网站的在线示例不使用 Mojang 的资源：英文字母也用 Unifont 绘制，原版贴图以 `scripts/build-site.mjs` 生成的替代图显示。
 - 参考资料：Mojang 的 [bedrock-samples](https://github.com/Mojang/bedrock-samples)（原版界面定义，用于对照 JSON UI 的结构与变量）。
 
 ## 开发工具（不随包分发）

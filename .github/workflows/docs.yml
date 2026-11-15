@@ -26,6 +26,8 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      # 在线示例用的字体：只要 Unifont（ascii.png 是 Mojang 的资源，不随网站发布）
+      - run: node scripts/fetch-fonts.mjs --no-ascii
       - run: node scripts/build-site.mjs site-dist
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
