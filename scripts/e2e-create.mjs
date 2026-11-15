@@ -26,7 +26,8 @@ const fail = (message) => {
     walk(rp)
     console.error(`===== 构建日志 =====${log}\n===== 资源包里的文件 =====\n${files.join('\n')}`)
     console.error(`cui.generated.js：${fs.existsSync(path.join(project, 'scripts', 'cui.generated.js')) ? '已生成（useSapdon 运行了）' : '没有生成（useSapdon 没有运行到提交前）'}`)
-    if (/Dev server not running|ECONNREFUSED|fetch failed/.test(log)) console.error('线索：构建入口向 sapdon 构建服务器提交时请求失败，sapdon 没有让构建失败，登记的文件都没有写出')
+    if (/JSON\.(isRawJSON|rawJSON) is not a function/.test(log)) console.error(`线索：当前 Node.js ${process.version} 没有 JSON.rawJSON，sapdon 4 提交构建内容失败（需要 Node.js 22.12 以上）`)
+    else if (/Dev server not running|ECONNREFUSED|fetch failed/.test(log)) console.error('线索：构建入口向 sapdon 构建服务器提交时出错，sapdon 没有让构建失败，登记的文件都没有写出')
     throw new Error(message)
 }
 

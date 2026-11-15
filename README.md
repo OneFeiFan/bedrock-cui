@@ -25,7 +25,7 @@
 npm install bedrock-cui
 ```
 
-需要 Node.js ≥ 20.19 或 ≥ 22.12。发布到 npm 之前，可以从源码使用：
+需要 Node.js ≥ 22.12（sapdon 4 用到了 Node 21 起才有的 `JSON.rawJSON`）。发布到 npm 之前，可以从源码使用：
 
 ```bash
 git clone https://github.com/OneFeiFan/bedrock-cui.git

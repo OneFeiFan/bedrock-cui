@@ -130,6 +130,11 @@ export class CuiApp {
      * 把 cui.generated.js / .d.ts 写进项目脚本目录（缺省 scripts/），由 sapdon 的 rollup 打包；字形图写进 res/（res 在项目代码运行之前同步，变了要再构建一次）。
      */
     useSapdon(sapdon: SapdonCore, options: { scriptsDir?: string, resDir?: string } = {}): this {
+        // sapdon 4 提交构建内容时用 JSON.rawJSON / JSON.isRawJSON（Node 21 起才有）。旧版 Node 上提交会出错，而 sapdon 只打印
+        // 「Dev server not running」、构建照样成功——包里缺了全部界面文件却毫无提示。所以在这里先拦住
+        if (typeof (JSON as unknown as { rawJSON?: unknown }).rawJSON !== 'function') {
+            throw new Error(`bedrock-cui：sapdon 4 需要 Node.js 22.12 或更高版本（当前 ${process.version} 没有 JSON.rawJSON，提交构建内容会失败，界面文件不会写出）`)
+        }
         sapdon.GRegistry.beforeSubmit((entries) => {
             const c = this.compile()
             this.report(c.issues)
