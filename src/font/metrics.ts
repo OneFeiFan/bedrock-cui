@@ -91,9 +91,6 @@ export const boldExtra = (ch: string, unifont = !isAscii(ch)) => (profile === 'a
 /** 去掉 § 格式码 */
 export const stripFormat = (s: string) => s.replace(/§./g, '')
 
-/** @deprecated 用 boldExtra(ch)（ASCII 1、Unifont 字形 0.5） */
-export const BOLD_EXTRA = 1
-
 /**
  * 宽度（像素）：§ 码不占宽度；粗体（§l 起、§r 止——基岩版换颜色不清粗体）加 boldExtra。
  * `bold` = 进入这段文字时是否已是粗体；`unifont` = 字体（缺省按这段文字的内容决定）。

@@ -53,11 +53,11 @@ const book = new Panel().setSize(200, 90).add(
 | `titleFor(panelId: string, key: string)` | 静态界面的服务端分页：表单标题 `<界面 id>\|P:<页名>;` |
 | `useRoutePages()` | 服务端分页（路由界面用）：每一页一个路由——标题 `<界面 id>/<页名>`（serverTitle）路由到「同一个界面 + 一个变量」， |
 | `serverRoutes()` | 服务端路由：基础路由 = 初始页 |
-| `page(key: string, options: LayoutOptions = {})` | 取 / 建一页 |
-| `link(key: string, options: Omit<LayoutOptions, 'name'> & { name?: string } = {})` | 一个跳到 key 页的开关（放在树里任何地方；视觉加在它的状态面板里） |
+| `page(key: string)` | 取 / 建一页 |
+| `link(key: string)` | 一个跳到 key 页的开关（放在树里任何地方；视觉加在它的状态面板里） |
 | `indexOf(key: string)` | 第几页（从 0 起） |
 | `attach(key: string, toggle: Toggle)` | 把一个自己构造的开关（例如继承 Toggle 的目录行、箭头、书签类）挂到 key 页：设好组名、序号、名字 |
-| `blocker(key: string, options: Omit<LayoutOptions, 'name'> & { name?: string } = {})` | 透明、无声的拦截层：一个指向 key 页（通常是弹层自己所在的页）的开关 |
+| `blocker(key: string)` | 透明、无声的拦截层：一个指向 key 页（通常是弹层自己所在的页）的开关 |
 | `showing(key: string)` | 某页「正在显示」的表达式（例如书签的选中样式用） |
 | `pageKeys()` |  |
 

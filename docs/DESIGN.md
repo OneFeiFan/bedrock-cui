@@ -2,6 +2,14 @@
 
 > 这份文档按版本记录设计决策与全部真机测试（PC 与安卓）。较新的结论在后面的章节里会更正较早的；以「✅ 真机确认」标注的为准。
 
+## 0.0000 v0.25：移除参数对象写法
+
+- 各控件与组件只保留位置参数的构造函数；ImageOptions 等 13 个选项接口、Pages 的 page / link / blocker 的选项参数、toggleOptions、BOLD_EXTRA、isOptions 删除。
+  基类 Element 的构造函数仍收初始属性，只供子类使用（applyInitial，不导出）；Panel、Button 显式声明无参构造，不再经继承接受参数对象。
+- 测试中的 124 处旧写法用 TypeScript 语法树改写为「位置参数 + set({ … })」。改写暴露了 set() 的缺陷：name 是字段不是属性，set({ name }) 只写进了 props——已修正。
+- 「面向对象 API 完整」测试改为直接核对每个控件类：可写属性 ↔ setXxx()（一次设多项的便捷方法列为例外）。由此发现并删除两个别名：setGridPosition()（同 setGridPos）、
+  Paragraph.scale / setScale()（同 fontScale）。
+
 ## 0.000 v0.25：收尾审计
 
 - **只留一个预览工具**：删除仓库自带的预览程序（preview-src、vite.config.ts），`bedrock-cui dev` 补上字宽切换（PC / 安卓）、缩放、控件边框；

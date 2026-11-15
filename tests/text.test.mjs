@@ -63,11 +63,11 @@ test('分页：按每页行数切块；首页可单独设高度；页首不留�
 })
 
 test('Paragraph hard 模式：CUI 排好每一行写进文字（显式换行）、宽度固定高度 default；排版高度 = 行数 × 10', () => {
-    const p = new Paragraph({ name: 'p', text: '§a绿色的一段比较长的文字，用来测试段落。', width: 60, anchor: 'top_left', wrap: 'hard' })
+    const p = new Paragraph('§a绿色的一段比较长的文字，用来测试段落。', 60).set({ name: 'p', anchor: 'top_left', wrap: 'hard' })
     assert.ok(p.lines.length > 1)
     assert.equal(p.props.text, p.lines.join('\n'))
     assert.deepEqual(p.props.size, [60, 'default'])
-    const b = findBox(layout(finalize(new Panel({ size: [200, 100], anchor: 'top_left', children: [p] })), { viewport: [200, 100] }), 'p')
+    const b = findBox(layout(finalize(new Panel().set({ size: [200, 100], anchor: 'top_left', children: [p] })), { viewport: [200, 100] }), 'p')
     assert.equal(b.rect.h, p.lines.length * 10)
     assert.deepEqual(b.lines, p.lines, '引擎不会再折（每行都在宽度内）')
 })
@@ -100,9 +100,9 @@ test('软换行与游戏折行模拟（真机 1.28.0）：不换行空格判断�
 })
 
 test('静态检查：固定高度的文字框放不下', () => {
-    const root = new Panel({ size: [200, 100], children: [
-        new Label({ name: 'over', text: '很长的文字'.repeat(10), size: [40, 20] }),
-        new Label({ name: 'ok', text: '短', size: [40, 20] }),
+    const root = new Panel().set({ size: [200, 100], children: [
+        new Label('很长的文字'.repeat(10)).set({ name: 'over', size: [40, 20] }),
+        new Label('短').set({ name: 'ok', size: [40, 20] }),
     ] })
     assert.deepEqual(compileNamespace('t', { root }).issues.filter((i) => i.rule !== 'text-overlap').map((i) => `${i.rule}@${i.path.split('/').pop()}`), ['text-overflow@over'])
 })

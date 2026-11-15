@@ -31,9 +31,9 @@ test('元素：新写法（构造函数只收必要参数 + 链式 / 属性）�
     const label = new Label('入门', BODY).setAnchor(Anchor.CENTER_LEFT).setOffset(23, 0)
     label.layer = 2
     modern.add(label)
-    const legacy = new Panel({ name: 'row', size: [116, 18], anchor: 'top_left', children: [
-        new Image({ texture: 'textures/items/book_normal', size: [16, 16], anchor: 'left_middle', offset: [3, 0] }),
-        new Label({ text: '入门', color: Color.hex('#45301c').toJSON(), shadow: true, anchor: 'left_middle', offset: [23, 0], layer: 2 }),
+    const legacy = new Panel().set({ name: 'row', size: [116, 18], anchor: 'top_left', children: [
+        new Image('textures/items/book_normal').set({ size: [16, 16], anchor: 'left_middle', offset: [3, 0] }),
+        new Label('入门').set({ color: Color.hex('#45301c').toJSON(), shadow: true, anchor: 'left_middle', offset: [23, 0], layer: 2 }),
     ] })
     assert.deepEqual(compileNamespace('t', { r: modern }).json, compileNamespace('t', { r: legacy }).json)
     // 读属性得到有类型的对象

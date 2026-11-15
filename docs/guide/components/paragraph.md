@@ -30,7 +30,6 @@ const card = new Panel().setSize(200, 50).add(
 | `text` | `setText()` | `string` | 原文（未折行） |
 | `width` | `setWidth()` | `number` | 折行宽度（像素） |
 | `fontScale` | `setFontScale()` | `number \| undefined` | 字号倍数 |
-| `scale` | `setScale()` | `number \| undefined` | 同 fontScale（早期参数对象里的名字） |
 | `kinsoku` | `setKinsoku()` | `boolean \| undefined` | 避头尾（缺省 true） |
 | `autoSpace` | `setAutoSpace()` | `boolean \| undefined` | 中英文自动留空（缺省 true；中文标点与英文之间也留——Minecraft 的全角标点画得很窄） |
 | `hang` | `setHang()` | `number \| undefined` | 给挂在行尾的标点留的像素（缺省 8） |

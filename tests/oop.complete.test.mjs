@@ -7,7 +7,7 @@ const require = createRequire(import.meta.url)
 const ts = require('typescript')
 const root = path.resolve(import.meta.dirname, '..')
 
-test('面向对象 API 完整：每个参数对象字段都有同名的属性读写与 setXxx()（用 TypeScript 编译器逐项核对）', () => {
+test('面向对象 API 完整：每个控件类的可写属性都有同名的 setXxx()，每个 setXxx() 都对应一个属性（用 TypeScript 编译器逐项核对）', () => {
     const files = ['element.ts', 'glyphs.ts'].map((f) => path.join(root, 'src/core', f))
         .concat(['text.ts', 'form.ts', 'pages.ts', 'richtext.ts'].map((f) => path.join(root, 'src/components', f)))
     const program = ts.createProgram(files, { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext, strict: true })
@@ -15,27 +15,34 @@ test('面向对象 API 完整：每个参数对象字段都有同名的属性读
     const decl = {}
     for (const sf of program.getSourceFiles()) {
         if (!files.includes(path.resolve(sf.fileName))) continue
-        ts.forEachChild(sf, (n) => { if ((ts.isClassDeclaration(n) || ts.isInterfaceDeclaration(n)) && n.name) decl[n.name.text] = n })
+        ts.forEachChild(sf, (n) => { if (ts.isClassDeclaration(n) && n.name) decl[n.name.text] = n })
     }
-    const pairs = [['Panel', 'LayoutOptions'], ['Stack', 'StackOptions'], ['Grid', 'GridOptions'], ['Image', 'ImageOptions'], ['Label', 'LabelOptions'],
-        ['Button', 'ButtonOptions'], ['Toggle', 'ToggleOptions'], ['CollectionItem', 'CollectionItemOptions'], ['Raw', 'RawOptions'],
-        ['Paragraph', 'ParagraphOptions'], ['FormButton', 'FormButtonOptions'], ['FormGate', 'FormGateOptions'], ['Pages', 'PagesOptions'], ['Text', 'TextOptions']]
+    // 一次设置多项的便捷方法，不对应单个属性
+    const COMBINED = new Set(['setAnchor', 'setPlacement', 'setUV', 'setStyle', 'setWidth', 'setHeight', 'setVariable', 'setRaw', 'setButtonBase', 'setBindingAlways'])
+    const classes = ['Panel', 'Stack', 'Grid', 'Image', 'Label', 'Button', 'Toggle', 'CollectionItem', 'Raw', 'Row', 'Column', 'Scroll',
+        'Paragraph', 'Text', 'FormButton', 'FormGate', 'Pages']
     const missing = []
-    for (const [cls, iface] of pairs) {
-        assert.ok(decl[cls] && decl[iface], `${cls} / ${iface}`)
-        const has = new Set()
-        for (const s of checker.getPropertiesOfType(checker.getTypeAtLocation(decl[cls]))) {
-            const flags = ts.getCombinedModifierFlags(s.valueDeclaration ?? s.declarations?.[0])
-            if (!(flags & ts.ModifierFlags.Private)) has.add(s.name)
+    for (const cls of classes) {
+        assert.ok(decl[cls], cls)
+        const members = checker.getPropertiesOfType(checker.getTypeAtLocation(decl[cls])).filter((s) => {
+            const d = s.valueDeclaration ?? s.declarations?.[0]
+            return d && !(ts.getCombinedModifierFlags(d) & (ts.ModifierFlags.Private | ts.ModifierFlags.Protected)) && !s.name.startsWith('_')
+        })
+        const names = new Set(members.map((s) => s.name))
+        // 可写属性：有 set 访问器
+        const writable = members.filter((s) => s.declarations?.some((d) => ts.isSetAccessorDeclaration(d))).map((s) => s.name)
+        for (const p of writable) {
+            const setter = `set${p[0].toUpperCase()}${p.slice(1)}`
+            if (!names.has(setter)) missing.push(`${cls}.${setter}()（属性 ${p}）`)
         }
-        for (const m of checker.getPropertiesOfType(checker.getTypeAtLocation(decl[iface])).map((s) => s.name)) {
-            if (['children', 'name', 'raw'].includes(m)) continue
-            const setter = `set${m[0].toUpperCase()}${m.slice(1)}`
-            if (!has.has(m)) missing.push(`${cls}.${m}`)
-            if (!has.has(setter)) missing.push(`${cls}.${setter}()`)
+        // setXxx() 方法都对应一个属性
+        for (const m of members.filter((s) => /^set[A-Z]/.test(s.name) && s.flags & ts.SymbolFlags.Method).map((s) => s.name)) {
+            if (COMBINED.has(m)) continue
+            const p = m[3].toLowerCase() + m.slice(4)
+            if (!names.has(p)) missing.push(`${cls}.${p}（方法 ${m}()）`)
         }
     }
-    assert.deepEqual(missing, [], '缺的属性 / 方法')
+    assert.deepEqual([...new Set(missing)], [], '缺的属性 / 方法')
 })
 
 test('属性赋值与 set({...})：有类型的值与早期写法的原始值都能转换；Paragraph 改选项会重新折行；FormButton 改 tag 同步显示条件；Pages 有页面后不能改组名', async () => {

@@ -12,25 +12,11 @@
  * 再开一个 Pages（不同 group）就是相互独立的另一组状态（例如物品详情弹层：关掉后回到原来那页）。
  */
 import { form, toggleState, type Expr } from '../core/expr.js'
-import { Panel, Toggle, type LayoutOptions, isOptions, _applyOptions } from '../core/element.js'
+import { Panel, Toggle } from '../core/element.js'
 import { Anchor, Size } from '../core/values.js'
 import { FormButton } from './form.js'
 import { STAY_TAG, arrowTag, type ServerArrowRoute, type ServerPaging } from '../core/serverPagesShared.js'
 import type { Element } from '../core/element.js'
-
-export interface PagesOptions extends LayoutOptions {
-    /** 开关组名：同时用作开关名前缀，要在整个界面里唯一 */
-    group: string
-    /** 初始页（缺省第一页） */
-    start?: string
-    /**
-     * 服务端页码（混合翻页）：表单重新打开时，按 source 里的 `<prefix><页名>;` 显示那一页。
-     * 一个隐藏的「服务端锚点」开关（序号 = 页数）初始选中：此时按服务端页码显示（没有页码 = 初始页；脚本最好总是带页码）；
-     * 用户点了任何翻页开关，锚点就不再选中，改由开关接管。
-     * 用法：翻页箭头用 FormButton（服务端重开表单 = 鼠标不动也能连续翻，真机 1.4.0），目录 / 书签用开关（即时）。
-     */
-    server?: { source?: Expr, prefix?: string }
-}
 
 interface Entry { index: number, panel: Panel, links: Toggle[] }
 
@@ -42,15 +28,10 @@ export class Pages extends Panel {
     private serverMode?: { kind: 'title', source: Expr, prefix: string, anchor: Toggle, flags: Map<string, Toggle> } | { kind: 'routes' }
 
     /** group = 开关组名（同时用作开关名前缀，要在整个界面里唯一） */
-    constructor(group: string)
-    /** @deprecated 用 new Pages(组名).startAt(...).useServerPages(...) */
-    constructor(options: PagesOptions)
-    constructor(a: string | PagesOptions) {
-        const { group, start, server, ...rest } = isOptions(a) ? a as PagesOptions : { group: a as string } as PagesOptions
-        super({ size: ['100%', '100%'], ...rest })
+    constructor(group: string) {
+        super()
+        this.setSize(Size.full())
         this._group = group
-        this._start = start
-        if (server) this.useServerPages(server.source, server.prefix)
     }
 
     /** 开关组名（同时是开关名前缀）。只能在还没有页面时改：页面的开关创建时就带上了组名 */
@@ -162,12 +143,11 @@ export class Pages extends Panel {
     }
 
     /** 取 / 建一页 */
-    page(key: string, options: LayoutOptions = {}): Panel {
+    page(key: string): Panel {
         const existing = this.entries.get(key)
         if (existing) return existing.panel
         const index = this.entries.size
         const panel = new Panel().setName(`${this.group}_${key}`).setSize(Size.full())
-        _applyOptions(panel, options)
         const anchor = new Toggle(this.group, index).setName(`${this.group}__${key}`).setSize(0, 0)
         this.add(anchor, panel)
         this.entries.set(key, { index, panel, links: [anchor] })
@@ -175,10 +155,9 @@ export class Pages extends Panel {
     }
 
     /** 一个跳到 key 页的开关（放在树里任何地方；视觉加在它的状态面板里） */
-    link(key: string, options: Omit<LayoutOptions, 'name'> & { name?: string } = {}): Toggle {
+    link(key: string): Toggle {
         const e = this.entries.get(key) ?? (this.page(key), this.entries.get(key)!)
-        const t = new Toggle(this.group, e.index).setName(options.name ?? `${this.group}_${key}_l${e.links.length}`)
-        _applyOptions(t, { ...options, name: undefined })
+        const t = new Toggle(this.group, e.index).setName(`${this.group}_${key}_l${e.links.length}`)
         e.links.push(t)
         return t
     }
@@ -201,18 +180,12 @@ export class Pages extends Panel {
         return toggle
     }
 
-    /** @deprecated 构造跳到 key 页的开关所需的参数（给参数对象写法用）。改用 `new Toggle(pages.group, pages.indexOf(key))` + `pages.attach(key, 开关)`，或 `pages.link(key)` */
-    toggleOptions(key: string): { group: string, index: number } {
-        return { group: this.group, index: this.indexOf(key) }
-    }
-
     /**
      * 透明、无声的拦截层：一个指向 key 页（通常是弹层自己所在的页）的开关。
      * 真机：弹层下面的开关能被点穿；拦截层层级更高、先接住点击，点它不改变任何状态（选中的还是这一页）。
      */
-    blocker(key: string, options: Omit<LayoutOptions, 'name'> & { name?: string } = {}): Toggle {
+    blocker(key: string): Toggle {
         const t = new Toggle(this.group, this.indexOf(key)).setSize(Size.full()).setRaw('sound_volume', 0)
-        _applyOptions(t, { ...options, raw: { sound_volume: 0, ...(options.raw ?? {}) } })
         return this.attach(key, t)
     }
 
@@ -261,6 +234,5 @@ export class Pages extends Panel {
             e.panel.props.visible = visible
         }
     }
-
 
 }

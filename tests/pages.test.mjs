@@ -4,14 +4,14 @@ import assert from 'node:assert/strict'
 import { Panel, Label, Image, Toggle, Pages, compileNamespace, finalize, layout, findBox, serverForm, walk } from '../dist/index.js'
 
 function book() {
-    const pages = new Pages({ group: 'book', start: 'home', size: [200, 100], anchor: 'top_left' })
-    pages.page('home').add(new Label({ name: 'home_text', text: '目录' }))
-    pages.page('sword').add(new Label({ name: 'sword_text', text: '钻石剑' }))
-    const toSword = pages.link('sword', { name: 'row_sword', size: [100, 18], anchor: 'top_left' })
-    toSword.unchecked.add(new Label({ text: '去钻石剑' }))
-    toSword.checkedHover.add(new Image({ texture: 'hl', keepRatio: false, size: ['100%', '100%'] }))
+    const pages = new Pages('book').startAt('home').set({ size: [200, 100], anchor: 'top_left' })
+    pages.page('home').add(new Label('目录').set({ name: 'home_text' }))
+    pages.page('sword').add(new Label('钻石剑').set({ name: 'sword_text' }))
+    const toSword = pages.link('sword').set({ name: 'row_sword', size: [100, 18], anchor: 'top_left' })
+    toSword.unchecked.add(new Label('去钻石剑'))
+    toSword.checkedHover.add(new Image('hl').set({ keepRatio: false, size: ['100%', '100%'] }))
     pages.page('home').add(toSword)
-    const back = pages.link('home', { name: 'back', size: [20, 10] })
+    const back = pages.link('home').set({ name: 'back', size: [20, 10] })
     pages.page('sword').add(back)
     return pages
 }
@@ -63,7 +63,7 @@ test('排版（预览语义）：选中哪个序号就显示哪页；点到的�
 })
 
 test('静态检查：开关名重复', () => {
-    const root = new Panel({ size: [10, 10], children: [new Toggle({ name: 'x', group: 'g', index: 0 }), new Panel({ children: [new Toggle({ name: 'x', group: 'g', index: 1 })] })] })
+    const root = new Panel().set({ size: [10, 10], children: [new Toggle('g', 0).set({ name: 'x' }), new Panel().set({ children: [new Toggle('g', 1).set({ name: 'x' })] })] })
     assert.deepEqual(compileNamespace('t', { root }).issues.map((i) => i.rule), ['toggle-name-unique'])
 })
 
@@ -101,27 +101,27 @@ test('serverForm：挂到原版服务端表单（工厂 + 标题门控 + 隐藏�
 
 test('静态检查：开关里读外层集合项的数据（真机读不到）；集合项放进开关状态面板里则可以', async () => {
     const { CollectionItem, Toggle, Label, Panel, compileNamespace, form } = await import('../dist/index.js')
-    const bad = new CollectionItem({ collection: 'form_buttons', index: 0, size: [20, 20] })
-    const t = new Toggle({ name: 'tg', group: 'g', index: 0, size: [20, 20] })
-    t.uncheckedHover.add(new Label({ name: 'info', text: form.buttonText.minus('s0|') }))
+    const bad = new CollectionItem('form_buttons', 0).set({ size: [20, 20] })
+    const t = new Toggle('g', 0).set({ name: 'tg', size: [20, 20] })
+    t.uncheckedHover.add(new Label(form.buttonText.minus('s0|')).set({ name: 'info' }))
     bad.add(t)
-    assert.deepEqual(compileNamespace('t', { root: new Panel({ children: [bad] }) }).issues.map((i) => i.rule), ['collection-through-toggle'])
-    const t2 = new Toggle({ name: 'tg2', group: 'g', index: 0, size: [20, 20] })
-    t2.uncheckedHover.add(new CollectionItem({ collection: 'form_buttons', index: 0, size: [20, 20] }).add(new Label({ text: form.buttonText.minus('s0|') })))
-    assert.deepEqual(compileNamespace('t', { root: new Panel({ children: [t2] }) }).issues, [])
+    assert.deepEqual(compileNamespace('t', { root: new Panel().set({ children: [bad] }) }).issues.map((i) => i.rule), ['collection-through-toggle'])
+    const t2 = new Toggle('g', 0).set({ name: 'tg2', size: [20, 20] })
+    t2.uncheckedHover.add(new CollectionItem('form_buttons', 0).set({ size: [20, 20] }).add(new Label(form.buttonText.minus('s0|'))))
+    assert.deepEqual(compileNamespace('t', { root: new Panel().set({ children: [t2] }) }).issues, [])
 })
 
 test('启用 / 禁用：enabled 表达式 → #enabled 绑定；禁用的开关显示 locked 态（lockedVisible: false 则不画）；预览不参与鼠标判定', async () => {
     const { Toggle, Label, Panel, compileNamespace, finalize, layout, findBox, toggleState } = await import('../dist/index.js')
-    const t = new Toggle({ name: 'arrow', group: 'g', index: 1, size: [20, 10], enabled: toggleState('page0'), lockedVisible: false })
-    t.unchecked.add(new Label({ name: 'art', text: '→' }))
-    const { json } = compileNamespace('t', { root: new Panel({ children: [t] }) })
+    const t = new Toggle('g', 1).set({ name: 'arrow', size: [20, 10], enabled: toggleState('page0'), lockedVisible: false })
+    t.unchecked.add(new Label('→').set({ name: 'art' }))
+    const { json } = compileNamespace('t', { root: new Panel().set({ children: [t] }) })
     const tj = json.root.controls[0]['arrow@common.toggle']
     assert.equal(tj.bindings.at(-1).target_property_name, '#enabled')
     const states = Object.fromEntries(tj.controls.map((c) => Object.entries(c)[0]))
     assert.deepEqual(states.unchecked_locked.controls, [], 'lockedVisible: false → 禁用时什么都不画')
     assert.equal(states.unchecked.controls.length, 1)
-    const run = (on) => layout(finalize(new Panel({ size: [100, 50], children: [t.clone()] })), { viewport: [100, 50], data: (n, src) => (src.kind === 'control' ? on : '') })
+    const run = (on) => layout(finalize(new Panel().set({ size: [100, 50], children: [t.clone()] })), { viewport: [100, 50], data: (n, src) => (src.kind === 'control' ? on : '') })
     assert.ok(findBox(run(true), 'art'))
     assert.equal(findBox(run(true), 'arrow').enabled, true)
     assert.equal(findBox(run(false), 'art'), undefined)
@@ -130,7 +130,7 @@ test('启用 / 禁用：enabled 表达式 → #enabled 绑定；禁用的开关�
 
 test('serverForm 多个界面：按标题路由，只创建标题完全相同的那一个；标题重复时报错', async () => {
     const { serverForm, Panel, Label } = await import('../dist/index.js')
-    const { files } = serverForm({ namespace: 'two', panels: [{ panelId: 'cui_ui:book', content: new Panel({ children: [new Label({ text: '书' })] }), routed: true }, { panelId: 'cui_ui:bookshelf', content: new Panel({ children: [new Label({ text: '书架' })] }), routed: true }] })
+    const { files } = serverForm({ namespace: 'two', panels: [{ panelId: 'cui_ui:book', content: new Panel().set({ children: [new Label('书')] }), routed: true }, { panelId: 'cui_ui:bookshelf', content: new Panel().set({ children: [new Label('书架')] }), routed: true }] })
     const ns = files['ui/two.json']
     const router = ns.root.controls[0].router
     assert.deepEqual(router.property_bag, { '#route_': [], '#route_cui_ui:book': ['screen_0'], '#route_cui_ui:bookshelf': ['screen_1'] }, '标题互为子串也没关系：按完整标题查')
@@ -140,26 +140,26 @@ test('serverForm 多个界面：按标题路由，只创建标题完全相同的
 
 test('静态检查：开关序号必须是非负整数（-1 = 不强制、自动分配，会撞号）', async () => {
     const { Toggle, Panel, compileNamespace } = await import('../dist/index.js')
-    const root = new Panel({ children: [new Toggle({ name: 'a', group: 'g', index: -1 }), new Toggle({ name: 'b', group: 'g', index: 1.5 })] })
+    const root = new Panel().set({ children: [new Toggle('g', -1).set({ name: 'a' }), new Toggle('g', 1.5).set({ name: 'b' })] })
     assert.deepEqual(compileNamespace('t', { root }).issues.map((i) => i.rule), ['toggle-index', 'toggle-index'])
 })
 
 test('静态检查 mixed-sources：一条表达式同时读开关状态与全局绑定（真机 1.5.2：开关变化不会触发重新计算）', async () => {
     const { Panel, Label, compileNamespace, toggleState, form } = await import('../dist/index.js')
-    const root = new Panel({ children: [new Label({ name: 'x', text: 'a', visible: toggleState('t').and(form.title.contains('P:')) })] })
+    const root = new Panel().set({ children: [new Label('a').set({ name: 'x', visible: toggleState('t').and(form.title.contains('P:')) })] })
     assert.deepEqual(compileNamespace('t', { root }).issues.map((i) => i.rule), ['mixed-sources'])
 })
 
 test('FormButton 默认聚焦优先级：default_focus_precedence', async () => {
     const { FormButton, compileNamespace } = await import('../dist/index.js')
-    const { json } = compileNamespace('t', { b: new FormButton({ index: 12, tag: 'go12|F', size: [28, 18], focusPrecedence: 100 }) })
+    const { json } = compileNamespace('t', { b: new FormButton(12, 'go12|F', 28, 18).set({ focusPrecedence: 100 }) })
     const btn = json.b.controls[0].grid.controls[0].grid_item_012.controls[0].cell.controls[0]['button@common.button']
     assert.equal(btn.default_focus_precedence, 100)
 })
 
 test('静态检查 obfuscated-unifont：§k 出现在含汉字的文字里（真机只显示成点）', async () => {
     const { Panel, Label, compileNamespace } = await import('../dist/index.js')
-    const root = new Panel({ children: [new Label({ name: 'a', text: '§k乱码abc' }), new Label({ name: 'b', text: '§kabcdef' })] })
+    const root = new Panel().set({ children: [new Label('§k乱码abc').set({ name: 'a' }), new Label('§kabcdef').set({ name: 'b' })] })
     assert.deepEqual(compileNamespace('t', { root }).issues.filter((i) => i.rule !== 'text-overlap').map((i) => `${i.rule}@${i.path.split('/').pop()}`), ['obfuscated-unifont@a'])
 })
 
@@ -168,7 +168,7 @@ test('服务端分页 = 路由变体：标题 <id>/<页名> → 同一界面 + �
     const pages = new Pages('bk').startAt('home').useRoutePages()
     pages.page('home').add(new Label('目录'))
     pages.page('sword').add(new Label('剑'))
-    pages.page('home').add(pages.link('sword', { name: 'row_sword', size: [10, 10] }))
+    pages.page('home').add(pages.link('sword').set({ name: 'row_sword', size: [10, 10] }))
     const book = new Panel().add(pages)
     const { files, issues } = serverForm({ namespace: 'ns', panels: [{ panelId: 'cui_ui:book', content: book, routes: pages.serverRoutes(), routed: true }] })
     assert.deepEqual(issues, [])

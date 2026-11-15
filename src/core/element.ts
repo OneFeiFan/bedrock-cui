@@ -9,7 +9,6 @@
  * 构造函数只收必要参数（文字、贴图、开关组…）；其余属性用 setXxx() 链式设置或直接赋值。值是有类型的对象（Size、Length、Anchor、
  * Color、Insets、Texture、TextStyle，见 values.ts）。按钮 / 开关的各个状态是实例上现成的面板（button.hover.add(...)）。
  * 自定义组件 = 继承内置类的子类（class BookRow extends FormButton { … }）。
- * 旧写法（构造函数传一个参数对象）仍可用，但已标记 @deprecated。
  *
  * 编译与预览前，`finalize()` 把对象树拍成快照（RNode）：给没写名字的元素分配确定的名字（类型 + 同级序号），
  * 并让需要「全部建完再算」的元素（如 Pages 的页面显示条件）在这时收尾。
@@ -63,73 +62,6 @@ export interface LayoutOptions {
     children?: Element[]
 }
 
-export interface StackOptions extends LayoutOptions { orientation?: 'vertical' | 'horizontal' }
-export interface GridOptions extends LayoutOptions { dims: [number, number] }
-export interface ImageOptions extends LayoutOptions {
-    texture: Dyn<string>
-    /** 保持贴图宽高比。**JSON UI 缺省为 true**：拉伸 1×1 的纯色贴图请写 false（lint 会提示） */
-    keepRatio?: boolean
-    /** 九宫格边宽（通常写在贴图 .json 里，不用在这里写） */
-    nineslice?: number | [number, number, number, number]
-    /** 逻辑尺寸（base_size；高清贴图用，通常写在贴图 .json 里） */
-    baseSize?: [number, number]
-    uv?: [number, number]
-    uvSize?: [number, number]
-    color?: RGB
-    clipDirection?: 'left' | 'right' | 'up' | 'down' | 'center'
-    clipRatio?: Dyn<number>
-    anims?: string[]
-}
-export interface LabelOptions extends LayoutOptions {
-    text: Dyn<string>
-    color?: RGB
-    shadow?: boolean
-    fontScale?: number
-    align?: 'left' | 'center' | 'right'
-    /** 文字是语言键，按玩家语言显示 */
-    localize?: boolean
-}
-export interface ButtonOptions extends LayoutOptions {
-    /** 继承的原版模板（缺省 common.button） */
-    template?: string
-    /** 按下时发出的按钮事件（缺省 button.form_button_click） */
-    pressedName?: string
-    /** 仅预览：点击回调 */
-    onPress?: () => void
-    /**
-     * 默认聚焦优先级（default_focus_precedence，越大越优先）。真机 1.5.2：服务端重开表单后鼠标没动，
-     * 点击交给**默认聚焦**的控件——翻页箭头要比关闭按钮优先。
-     */
-    focusPrecedence?: number
-}
-export interface ToggleOptions extends LayoutOptions {
-    /** 开关组名（toggle_name）。同组 + radio = 单选组 */
-    group: string
-    /** 单选组（缺省 true） */
-    radio?: boolean
-    /** 在单选组里的序号（toggle_group_forced_index） */
-    index: number
-    /** 单选组初始选中的序号（toggle_group_default_selected；同组应一致） */
-    defaultSelected?: number
-    /** 非单选时的初始状态 */
-    defaultState?: boolean
-    /** 禁用（locked）时是否照常显示（缺省 true：沿用普通态的样子；false：什么都不画） */
-    lockedVisible?: boolean
-    /** 默认聚焦优先级（default_focus_precedence，越大越优先） */
-    focusPrecedence?: number
-    /**
-     * 用表达式设定开关状态（view 绑定写 #toggle_state）。用途：把「只读全局绑定」的条件变成一个开关状态，
-     * 别处再按开关名读——真机 1.5.2：一条表达式同时读开关状态与全局绑定（#title_text）时，开关变化不会触发重新计算。
-     */
-    stateFrom?: Expr
-}
-export interface CollectionItemOptions extends LayoutOptions { collection: string, index: number }
-export interface RawOptions extends LayoutOptions {
-    json: Record<string, unknown>
-    /** 继承的原版模板（编译成 `名字@模板`，例如 common.text_cycler） */
-    template?: string
-}
-
 type Addable = Element | string | null | undefined | false
 
 /** 所有元素的基类 */
@@ -140,7 +72,8 @@ export abstract class Element {
     readonly children: Element[] = []
     parent?: Element
 
-    constructor(options: LayoutOptions = {}) {
+    /** 只供子类使用：子类把自己的初始属性传给基类。使用者用各控件类的构造函数加 setXxx() */
+    constructor(options: LayoutOptions & Record<string, unknown> = {}) {
         const { children, name, ...rest } = options
         this.name = name
         this.props = rest
@@ -179,11 +112,12 @@ export abstract class Element {
     /** 合并原始属性（低层逃生口；平时用下面有类型的属性 / setXxx()） */
     /**
      * 一次设置多项：`el.set({ size: Size.full(), layer: 2, color: Color.WHITE })`。有同名属性的键走属性写入器（与 `el.size = …` 一样、
-     * 自动转换类型——有类型的值与早期写法的原始值都接受）；children 追加子元素；其余键原样并入（逃生口）。
+     * 自动转换类型——有类型的值与原始值，如 [100, 20]、'top_left'，都接受）；children 追加子元素；其余键原样并入（逃生口）。
      */
     set(props: Record<string, unknown>): this {
         for (const [k, v] of Object.entries(props)) {
             if (k === 'children') { if (v) this.add(...(v as Addable[])); continue }
+            if (k === 'name') { this.name = v as string | undefined; continue }      // name 是字段，不是带写入器的属性
             if (hasSetter(this, k)) (this as Record<string, unknown>)[k] = v
             else this.props[k] = v
         }
@@ -319,8 +253,6 @@ export abstract class Element {
     setGrow(on = true): this { this.grow = on; return this }
     /** 在 grid 里的格位 */
     setGridPos(col: number, row: number): this { this.gridPos = [col, row]; return this }
-    /** 同 setGridPos */
-    setGridPosition(col: number, row: number): this { return this.setGridPos(col, row) }
     /** JSON UI 变量（$name） */
     setVariable(name: string, value: unknown): this { this.props.variables = { ...this.props.variables, [name.startsWith('$') ? name : `$${name}`]: value }; return this }
     /** 一次设置多个 JSON UI 变量（替换原有的） */
@@ -373,27 +305,16 @@ function cloneInto(el: Element, map: Map<Element, Element>): Element {
     return c
 }
 
-/** @internal 判断是不是旧写法的参数对象（普通对象字面量） */
-export function isOptions(v: unknown): v is Record<string, any> {
-    return v !== null && typeof v === 'object' && Object.getPrototypeOf(v) === Object.prototype
-}
-
 /** 面板（容器） */
 export class Panel extends Element {
     readonly type = 'panel' as const
-    constructor()
-    /** @deprecated 用 new Panel() 加 setXxx() / 属性 */
-    constructor(options: LayoutOptions)
-    constructor(options: LayoutOptions = {}) { super(options) }
+    constructor() { super() }
 }
 
 /** 堆叠面板（stack_panel）：子控件沿一个方向依次排列 */
 export class Stack extends Element {
     readonly type = 'stack' as const
-    constructor(orientation?: 'vertical' | 'horizontal')
-    /** @deprecated 用 new Stack('vertical') */
-    constructor(options: StackOptions)
-    constructor(a: 'vertical' | 'horizontal' | StackOptions = {}) { super(isOptions(a) ? a : { orientation: a }) }
+    constructor(orientation?: 'vertical' | 'horizontal') { super(orientation ? { orientation } : {}) }
     /** 排列方向（缺省 vertical） */
     get orientation(): 'vertical' | 'horizontal' | undefined { return this.props.orientation }
     set orientation(v: 'vertical' | 'horizontal' | undefined) { this.props.orientation = v }
@@ -403,10 +324,7 @@ export class Stack extends Element {
 /** 网格 */
 export class Grid extends Element {
     readonly type = 'grid' as const
-    constructor(columns: number, rows: number)
-    /** @deprecated 用 new Grid(列, 行) */
-    constructor(options: GridOptions)
-    constructor(a: number | GridOptions, rows?: number) { super(isOptions(a) ? a as GridOptions : { dims: [a as number, rows ?? 1] } as GridOptions) }
+    constructor(columns: number, rows: number) { super({ dims: [columns, rows] }) }
     /** [列, 行] */
     get dims(): [number, number] { return this.props.dims }
     set dims(v: [number, number]) { this.props.dims = v }
@@ -416,12 +334,9 @@ export class Grid extends Element {
 /** 图片 */
 export class Image extends Element {
     readonly type = 'image' as const
-    constructor(texture: Texture | string | Expr)
-    /** @deprecated 用 new Image(贴图) */
-    constructor(options: ImageOptions)
-    constructor(a: Texture | string | Expr | ImageOptions) {
-        super(isOptions(a) ? a as ImageOptions : {})
-        if (!isOptions(a)) this.texture = a as Texture | string | Expr
+    constructor(texture: Texture | string | Expr) {
+        super()
+        this.texture = texture
     }
     /** 贴图（Texture、路径或表达式） */
     get texture(): Texture | Expr { const t = this.props.texture; return isExpr(t) ? t : Texture.from(t) }
@@ -477,12 +392,10 @@ export class Image extends Element {
 /** 文字 */
 export class Label extends Element {
     readonly type = 'label' as const
-    constructor(text: string | Expr, style?: TextStyle)
-    /** @deprecated 用 new Label(文字, 样式) */
-    constructor(options: LabelOptions)
-    constructor(a: string | Expr | LabelOptions, style?: TextStyle) {
-        super(isOptions(a) ? a as LabelOptions : {})
-        if (!isOptions(a)) { this.text = a as string | Expr; if (style) this.setStyle(style) }
+    constructor(text: string | Expr, style?: TextStyle) {
+        super()
+        this.text = text
+        if (style) this.setStyle(style)
     }
     /** 文字（字符串或表达式） */
     get text(): string | Expr { return this.props.text }
@@ -529,11 +442,8 @@ export class Label extends Element {
 /** 原样输出的 JSON（逃生口） */
 export class Raw extends Element {
     readonly type = 'raw' as const
-    constructor(json: Record<string, unknown>, template?: string)
-    /** @deprecated 用 new Raw(json, 模板) */
-    constructor(options: RawOptions)
-    constructor(a: Record<string, unknown> | RawOptions, template?: string) {
-        super(isOptions(a) && 'json' in a ? a as RawOptions : { json: a, template })
+    constructor(json: Record<string, unknown>, template?: string) {
+        super({ json, template })
     }
     /** 原样输出的 JSON */
     get json(): Record<string, unknown> { return this.props.json }
@@ -553,10 +463,7 @@ export class Button extends Element {
     readonly default = statePanel()
     readonly hover = statePanel()
     readonly pressed = statePanel()
-    constructor()
-    /** @deprecated 用 new Button() 加 setXxx() */
-    constructor(options: ButtonOptions)
-    constructor(options: ButtonOptions = {}) { super(options) }
+    constructor() { super() }
     slots() { return { default: this.default, hover: this.hover, pressed: this.pressed } }
     /** 按下时发出的按钮事件（缺省 button.form_button_click） */
     get pressedName(): string | undefined { return this.props.pressedName }
@@ -588,10 +495,7 @@ export class Toggle extends Element {
     readonly uncheckedHover = statePanel()
     readonly checkedHover = statePanel()
     /** 单选组 group 里的第 index 个 */
-    constructor(group: string, index: number)
-    /** @deprecated 用 new Toggle(组名, 序号) */
-    constructor(options: ToggleOptions)
-    constructor(a: string | ToggleOptions, index?: number) { super(isOptions(a) ? a as ToggleOptions : { group: a, index: index ?? 0 }) }
+    constructor(group: string, index: number) { super({ group, index }) }
     slots() { return { unchecked: this.unchecked, checked: this.checked, unchecked_hover: this.uncheckedHover, checked_hover: this.checkedHover } }
     /** 单选组名 */
     get group(): string { return this.props.group }
@@ -630,10 +534,7 @@ export class Toggle extends Element {
 /** 集合项：子树绑定到某个集合（如 form_buttons）的第 index 项 */
 export class CollectionItem extends Element {
     readonly type = 'collection_item' as const
-    constructor(collection: string, index: number)
-    /** @deprecated 用 new CollectionItem(集合名, 序号) */
-    constructor(options: CollectionItemOptions)
-    constructor(a: string | CollectionItemOptions, index?: number) { super(isOptions(a) ? a as CollectionItemOptions : { collection: a, index: index ?? 0 }) }
+    constructor(collection: string, index: number) { super({ collection, index }) }
     /** 集合名（例如 form_buttons） */
     get collection(): string { return this.props.collection }
     set collection(v: string) { this.props.collection = v }
@@ -766,10 +667,9 @@ function snapshot(list: Element[], parentPath: string): RNode[] {
 }
 
 /**
- * @internal 已弃用的参数对象写法的兼容层：把布局选项并进一个已经构造好的元素（效果与参数对象构造函数相同）。
- * 框架自己的代码一律用 setXxx()；只有仍接受参数对象的公开方法（例如 pages.page(key, options)）经过这里。
+ * 只供基类构造函数使用：把子类传来的初始属性并入元素（name 与 children 单独处理，其余写入 props）。
  */
-export function _applyOptions(el: Element, options: LayoutOptions): void {
+function applyInitial(el: Element, options: LayoutOptions & Record<string, unknown>): void {
     const { children, name, ...rest } = options
     if (name !== undefined) el.name = name
     for (const [k, v] of Object.entries(rest)) if (v !== undefined) el.props[k] = v

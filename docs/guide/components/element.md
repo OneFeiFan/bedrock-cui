@@ -61,7 +61,6 @@ panel.add(label)
 | `setHeight(h: LengthLike)` |  |
 | `setPlacement(from: AnchorValue, to: AnchorValue)` | 分别指定父控件上的点（from）与自身上的点（to）：例如 from 右上、to 左上 = 贴在父控件右边外侧 |
 | `allowOverflow(on = true)` | 同 setOverflow |
-| `setGridPosition(col: number, row: number)` | 同 setGridPos |
 | `setVariable(name: string, value: unknown)` | JSON UI 变量（$name） |
 | `setRaw(key: string, value: unknown)` | 逃生口：原样并入输出 JSON 的属性 |
 | `setBindingAlways(on = true)` | 本元素的绑定一律 binding_condition: always（要在别的控件后来才出现时重新读取，例如读路由界面里的标记） |

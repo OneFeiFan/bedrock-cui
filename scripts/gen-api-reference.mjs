@@ -185,18 +185,17 @@ const PAGES = [
 ]
 
 /** 内部实现：不写进参考 */
-const INTERNAL = new Set(['BEDROCK_COLORS', 'BOLD_EXTRA', 'Effect', 'Flex', 'GLYPH_HEIGHT', 'GLYPH_TOP', 'NBSP_BREAK_WIDTH', 'NO_LINE_END', 'NO_LINE_START', 'PLAIN', 'SCROLLBAR',
+const INTERNAL = new Set(['BEDROCK_COLORS', 'Effect', 'Flex', 'GLYPH_HEIGHT', 'GLYPH_TOP', 'NBSP_BREAK_WIDTH', 'NO_LINE_END', 'NO_LINE_START', 'PLAIN', 'SCROLLBAR',
     'activeEffect', 'applyCode', 'asBool', 'batch', 'batchKey', 'boldExtra', 'buttonPayload', 'charWidth', 'compileExpr', 'drawOrder', 'evalExpr', 'evalOffset', 'evalTerms', 'finalize',
-    'findBox', 'isAscii', 'isExpr', 'isOptions', 'isWide', 'layout', 'layoutInline', 'lineWidth', 'lintLayout', 'lit', 'parseRich', 'parseSize', 'ref', 'registerGlyphWidth', 'richWidth',
+    'findBox', 'isAscii', 'isExpr', 'isWide', 'layout', 'layoutInline', 'lineWidth', 'lintLayout', 'lit', 'parseRich', 'parseSize', 'ref', 'registerGlyphWidth', 'richWidth',
     'stripFormat', 'styleCodes', 'unifontWidth', 'unregisterGlyph', 'usesChildren', 'usesSelf', 'usesUnifont', 'variable', 'walk', 'wrapDetailed',
     'buttonTextOf', 'buttonIconOf',
     'decodePng', 'downscaleIcon', 'encodePng', 'inkOf', 'pngSize', 'runtimeFiles', 'drawText', 'PixelFonts',
     // 排版、编译与表达式内部的数据结构
     'SizeJson', 'AnchorName', 'Dyn', 'RGB', 'Intrinsic', 'RNode', 'Source', 'Op', 'ExprNode', 'Value', 'CompiledExpr', 'EvalEnv', 'TextureMeta', 'RunStyle', 'Run',
     'Unit', 'Term', 'SizeSpec', 'UnitContext', 'Rect', 'Edges', 'Scope', 'LayoutEnv', 'Box', 'CompileResult', 'ServerFormFiles', 'TextPiece',
-    // 早期参数对象写法的类型（已弃用，面向对象写法不需要）
-    'LayoutOptions', 'StackOptions', 'GridOptions', 'ImageOptions', 'LabelOptions', 'ButtonOptions', 'ToggleOptions', 'CollectionItemOptions', 'RawOptions',
-    'FormGateOptions', 'FormButtonOptions', 'PagesOptions', 'ParagraphOptions', 'TextOptions'])
+    'LayoutOptions',
+    'TextOptions'])
 
 const files = PAGES.flatMap((p) => p.modules.map(([, f]) => path.join(root, f)))
 const program = ts.createProgram(files, { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext, moduleResolution: ts.ModuleResolutionKind.Bundler, strict: true, skipLibCheck: true })
