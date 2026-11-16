@@ -15,6 +15,7 @@ import type { LintIssue } from '../mc/lint.js'
 import type { TextureInfo } from '../layout/engine.js'
 import type { ServerPaging } from '../core/serverPagesShared.js'
 import { screenOf, type CuiConfig } from '../core/config.js'
+import { Screen, type ScreenManifest } from '../core/screen.js'
 import { renderGlyphSheet, textureInfoFrom } from './tools.js'
 
 /** 编译结果 */
@@ -23,6 +24,8 @@ export interface CuiCompiled {
     files: Record<string, object>
     /** 界面 id → 翻页路由表（界面里有服务端翻页箭头才有） */
     paging: Record<string, ServerPaging>
+    /** defineScreen 定义的界面：界面 id → 清单（名字与按钮序号的对应，附翻页路由表） */
+    screens: Record<string, ScreenManifest & { paging?: ServerPaging }>
     /** 字形图：[资源包里的路径, PNG] */
     glyphs: [string, Uint8Array][]
     issues: LintIssue[]
@@ -51,10 +54,28 @@ export class CuiApp {
     /** namespace = 界面 JSON 的命名空间（也是独立打包时附加包的名字） */
     constructor(readonly namespace: string) { }
 
+    private manifests = new Map<string, ScreenManifest>()
+
+    /** 挂载 defineScreen 定义的界面：构建视图，记下清单 */
+    addScreen(screen: Screen): this {
+        const { root, manifest } = screen.build()
+        this.manifests.set(screen.id, manifest)
+        return this.screen(screen.id, root)
+    }
+
     /** 由项目配置创建（root = 项目根目录，贴图目录相对于它） */
     static fromConfig(config: CuiConfig, root = process.cwd()): CuiApp {
         const app = new CuiApp(config.namespace)
-        for (const [panelId, s] of Object.entries(config.screens)) { const { build, routed } = screenOf(s); app.screen(panelId, build(), routed ? { routed } : {}) }
+        if (Array.isArray(config.screens)) for (const s of config.screens) app.addScreen(s)
+        else for (const [panelId, s] of Object.entries(config.screens)) {
+            if (s instanceof Screen) {
+                if (s.id !== panelId) throw new Error(`配置中的界面 id「${panelId}」与 defineScreen 的 id「${s.id}」不一致`)
+                app.addScreen(s)
+                continue
+            }
+            const { build, routed } = screenOf(s)
+            app.screen(panelId, build(), routed ? { routed } : {})
+        }
         const dirs = (config.textures ?? ['res']).map((d) => path.resolve(root, d))
         app.setTextures(dirs)
         for (const sheet of config.glyphs ?? []) {
@@ -108,7 +129,8 @@ export class CuiApp {
             if (g.issues.length) issues.push(...g.issues.map((message) => ({ rule: 'glyph-sheet', level: 'error' as const, path: g.file, message })))
             glyphs.push([g.file, g.png])
         }
-        return { files: files as Record<string, object>, paging, glyphs, issues }
+        const screens = Object.fromEntries([...this.manifests].map(([id, m]) => [id, paging[id] ? { ...m, paging: paging[id] } : m]))
+        return { files: files as Record<string, object>, paging, screens, glyphs, issues }
     }
 
     /** 打印检查结果；有错误就抛出（构建失败） */
@@ -119,10 +141,13 @@ export class CuiApp {
     }
 
     /** cui.generated.js 的内容：界面 id → 翻页路由表。runtimeType = JSDoc 里 ServerPaging 类型的来源 */
-    private generatedModule(paging: Record<string, ServerPaging>, runtimeType: string): string {
+    private generatedModule(paging: Record<string, ServerPaging>, runtimeType: string, screens: CuiCompiled['screens'] = {}): string {
         return `// 由 bedrock-cui 生成，请勿手改（每次构建覆盖）\n` +
             `/** 界面 id → 翻页路由表（new ServerPagesForm(paging[界面 id])） @type {Record<string, import('${runtimeType}').ServerPaging>} */\n` +
-            `export const paging = ${JSON.stringify(paging, null, 2)}\n`
+            `export const paging = ${JSON.stringify(paging, null, 2)}\n` +
+            `/** defineScreen 定义的界面：界面 id → 清单（名字与按钮序号的对应） */\n` +
+            `export const screens = ${JSON.stringify(screens, null, 2)}\n` +
+            (Object.keys(screens).length ? `// 登记清单：之后界面的 open() / close() 可用\nimport { registerScreens } from 'bedrock-cui/runtime/screens'\nregisterScreens(screens)\n` : '')
     }
 
     /**
@@ -152,9 +177,9 @@ export class CuiApp {
             }
             const scriptsDir = path.resolve(options.scriptsDir ?? 'scripts')
             fs.mkdirSync(scriptsDir, { recursive: true })
-            fs.writeFileSync(path.join(scriptsDir, 'cui.generated.js'), this.generatedModule(c.paging, 'bedrock-cui/runtime/server-pages'))
+            fs.writeFileSync(path.join(scriptsDir, 'cui.generated.js'), this.generatedModule(c.paging, 'bedrock-cui/runtime/server-pages', c.screens))
             fs.writeFileSync(path.join(scriptsDir, 'cui.generated.d.ts'),
-                `// 由 bedrock-cui 生成，请勿手改\nimport type { ServerPaging } from 'bedrock-cui/runtime/server-pages'\n/** 界面 id → 翻页路由表 */\nexport declare const paging: Record<string, ServerPaging>\n`)
+                `// 由 bedrock-cui 生成，请勿手改\nimport type { ServerPaging } from 'bedrock-cui/runtime/server-pages'\nimport type { ScreenManifest } from 'bedrock-cui'\n/** 界面 id → 翻页路由表 */\nexport declare const paging: Record<string, ServerPaging>\n/** defineScreen 定义的界面：界面 id → 清单 */\nexport declare const screens: Record<string, ScreenManifest & { paging?: ServerPaging }>\n`)
             // 字形图：写进 res/（以后的构建由 sapdon 同步）；sapdon 4 通过 SAPDON_BUILD_CONTEXT 告知本次构建的输出目录，
             // 同时直接写进本次输出的资源包——res/ 在运行构建入口之前就同步完了，否则新生成的字形图要再构建一次才进包
             let ctx: { projectName?: string, projectPath?: string, buildDir?: string } | undefined

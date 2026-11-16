@@ -19,7 +19,7 @@
 | `Scroll` | 类 | 可滚动的区域，子控件纵向排列。 |
 | `Button` | 类 | 按钮。外观由 default、hover、pressed 三个状态面板组成。 |
 | `Toggle` | 类 | 开关。同组互斥；外观由四个状态面板组成。 |
-| `CollectionItem` | 类 | 集合中的一项，例如第 n 个表单按钮。其内部可读取该项的数据。 |
+| `CollectionItem` | 类 | 集合中的一项。服务端表单的按钮用 form.button(n) 获得，不需要直接创建。 |
 | `Raw` | 类 | 原样输出的 JSON UI 元素。 |
 
 ## 组件
@@ -55,6 +55,14 @@
 | `Justify` | 枚举 | 弹性布局主轴方向的分布方式。 |
 | `Align` | 枚举 | 弹性布局交叉轴方向的对齐方式。 |
 
+## 界面（defineScreen）
+
+| 名称 | 种类 | 说明 |
+|---|---|---|
+| `defineScreen` | 函数 | 定义一个界面：数据（props）、逻辑（state、computed、methods、生命周期）与视图（view）写在一个文件中。 |
+| `Screen` | 类 | defineScreen() 返回的界面对象：id；行为包脚本中的 open(玩家, props)、close(玩家)、isOpen(玩家)；构建时的 build()、previewForm()。 |
+| `ScreenButton` | 类 | button(名字) 返回的按钮：default、hover、pressed 三个状态，add() 加入始终显示的内容。 |
+
 ## 项目配置
 
 | 名称 | 种类 | 说明 |
@@ -66,7 +74,7 @@
 
 | 名称 | 种类 | 说明 |
 |---|---|---|
-| `form` | 常量 | 服务端表单的数据：title、text、buttonText。 |
+| `form` | 常量 | 当前服务端表单的内容：title、text、buttonText、buttonTexture；form.button(n) 获得第 n 个按钮。 |
 | `toggleState` | 常量 | 某个开关是否选中的表达式。 |
 | `Expr` | 类 | 表达式。编译为 JSON UI 的绑定，由游戏在运行时求值。 |
 | `signal` | 常量 | 创建一个信号（可观察的值），用于向浏览器预览提供数据。 |
@@ -126,6 +134,13 @@
 | `CuiConfig` | 接口 | 项目配置。 |
 | `CuiPreviewForm` | 接口 | 预览中某个界面的表单数据：title、text、buttons。 |
 | `CuiScreen` | 类型 | 配置中的一个界面：返回根控件的函数，或 { build, routed }。 |
+| `ScreenOptions` | 接口 | defineScreen() 的选项。 |
+| `ButtonSlot` | 接口 | 按钮的一个状态：add() 加入的控件显示在该状态下。 |
+| `ScreenViewContext` | 接口 | 视图函数得到的参数：props、button()、pages()。 |
+| `ScreenManifest` | 接口 | 界面的清单：props 与按钮的名字及其对应的表单按钮序号。 |
+| `PropDefault` | 类型 | props 中的默认值：文字、文字与图标、是否显示、列表。 |
+| `PropItem` | 类型 | 一个 prop 的值：文字，或 { text, icon }。 |
+| `PropSlot` | 接口 | 一个 prop 占用的表单按钮：序号与标记。 |
 | `TextMetrics` | 接口 | measureText() 的结果：lines、width、height。 |
 | `LengthLike` | 类型 | 数字（像素）或 Length。 |
 | `ExprLike` | 类型 | 表达式，或字符串、数字、布尔等字面值。 |

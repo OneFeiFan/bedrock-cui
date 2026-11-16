@@ -38,6 +38,7 @@ new ActionFormData().title('cui_ui:shop').body('').button('buy|').show(player).t
 | `default` | — | `Panel` |  |
 | `hover` | — | `Panel` |  |
 | `pressed` | — | `Panel` |  |
+| `size` | — | `Size \| undefined` | 尺寸（像素） |
 | `tag` | `setTag()` | `string` | 按钮文字的标记（文字含它时显示） |
 | `focusPrecedence` | `setFocusPrecedence()` | `number \| undefined` | 默认聚焦优先级（服务端重开表单、鼠标没动时，点击交给默认聚焦的控件） |
 | `collection` | `setCollection()` | `string` | 集合名（例如 form_buttons） |

@@ -63,40 +63,40 @@ const card = new Panel().setSize(200, 40).add(
 
 ## 读取表单按钮的文字
 
-正文只有一段，而表单按钮可以有很多个，适合传递成组的数据，例如一列物品。按钮的文字不一定显示为按钮：`CollectionItem('form_buttons', 序号)` 读取第几个按钮，在它的内部，`form.buttonText` 即该按钮的文字。
+正文只有一段，而按钮可以有很多个，适合传递成组的数据，例如一列物品（见[工作原理](how-it-works.md#按钮在-bedrock-cui-中的用途)）。`form.button(n)` 表示表单的第 n 个按钮（从 0 开始，对应脚本中第 n 个 `button()`），它返回一个容器；在这个容器内部，`form.buttonText` 即该按钮的文字。
 
 下面的界面用前三个按钮的文字显示一列物品。每个按钮的文字以 `item|` 开头，显示时用 `minus()` 去掉：
 
 ```js preview=list 220x80 form=data
-import { Anchor, CollectionItem, Color, Column, Image, Label, Panel, Size, form } from 'bedrock-cui'
+import { Anchor, Color, Column, Image, Label, Panel, Size, form } from 'bedrock-cui'
 
 // 脚本：.button('item|钻石 ×3').button('item|绿宝石 ×12').button('item|金锭 ×5')
 const data = { buttons: ['item|钻石 ×3', 'item|绿宝石 ×12', 'item|金锭 ×5'] }
 
 const rows = new Column().setGap(2).setAnchor(Anchor.TOP_LEFT).setOffset(10, 8)
 for (let i = 0; i < 3; i++) {
-    rows.add(new CollectionItem('form_buttons', i).setSize(160, 10).add(
+    rows.add(form.button(i).setSize(160, 10).add(
         new Label(form.buttonText.minus('item|')).setColor(Color.hex('#3c2814')).setAnchor(Anchor.TOP_LEFT),
     ))
 }
 const list = new Panel().setSize(200, 50).add(new Image('textures/ui/dialog_background_opaque').setSize(Size.full()), rows)
 ```
 
-`CollectionItem` 需要像素尺寸。按钮序号超出脚本实际发送的按钮数时，该项读取不到数据，保持空白。
+`form.button(n)` 返回的容器需要设置像素尺寸。序号超出脚本实际添加的按钮数时，容器读取不到数据，内容保持空白。这个容器本身不可点击。
 
-`FormButton` 也是一种 `CollectionItem`：它除了读取按钮的文字，还能被点击，点击后表单关闭，脚本得知按钮的序号（见[服务端表单](server-form.md#表单按钮)）。
+需要点击时使用 `FormButton(n, …)`：它同样对应第 n 个按钮、可以读取按钮的文字，并且可以被点击，点击后表单关闭，脚本得到序号 n（见[服务端表单](server-form.md#表单按钮)）。
 
 ## 显示按钮的图标
 
 `ActionFormData.button(文字, 图标路径)` 可以为按钮附带一个图标。在集合项内部，`form.buttonTexture` 即该按钮的图标路径，用作 `Image` 的贴图：
 
 ```js preview=list 220x60 form=data
-import { Anchor, CollectionItem, Color, Column, Image, Label, Panel, Size, form } from 'bedrock-cui'
+import { Anchor, Color, Column, Image, Label, Panel, Size, form } from 'bedrock-cui'
 
 // 脚本：.button('ico|钻石', 'textures/items/diamond').button('ico|没有图标')
 const data = { buttons: [{ text: 'ico|钻石', icon: 'textures/items/diamond' }, 'ico|没有图标'] }
 
-const row = (i) => new CollectionItem('form_buttons', i).setSize(160, 16).add(
+const row = (i) => form.button(i).setSize(160, 16).add(
     new Image(form.buttonTexture).setSize(16, 16).setAnchor(Anchor.TOP_LEFT),
     new Label(form.buttonText.minus('ico|')).setColor(Color.hex('#3c2814')).setAnchor(Anchor.CENTER_LEFT).setOffset(20, 0),
 )
@@ -113,7 +113,7 @@ const list = new Panel().setSize(200, 44).add(
 `FormGate(标记)` 是一个容器：表单正文包含该标记时，显示其中的内容。它相当于 `new Panel().setVisible(form.text.contains(标记))`，用于由脚本决定显示界面中的哪一部分：
 
 ```js preview=card 220x60 form=data
-import { Anchor, Color, FormGate, Image, Label, Panel, Size } from 'bedrock-cui'
+import { Anchor, Color, FormGate, Image, Label, Panel, Size, form } from 'bedrock-cui'
 
 // 脚本按玩家的进度传入 stage:2
 const data = { text: 'stage:2' }
@@ -132,7 +132,7 @@ const card = new Panel().setSize(200, 40).add(
 `toggleState(开关名)` 读取一个开关是否选中，用于显示条件。开关的用法见[开关与分页](pages.md)：
 
 ```js
-import { Label, toggleState } from 'bedrock-cui'
+import { Label, toggleState, form } from 'bedrock-cui'
 
 new Label('§a已选中').setVisible(toggleState('show_details'))
 ```

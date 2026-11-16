@@ -1,10 +1,20 @@
 // bedrock-cui dev 的预览页面：读取项目配置，按界面逐个预览；右侧编辑表单数据；服务端翻页可直接点击。
 import config from 'virtual:cui-config'
 import TEXTURES from 'virtual:cui-textures'
-import { Pages, compileNamespace, screenOf, setMetricsProfile, signal } from 'bedrock-cui'
+import { Pages, Screen, compileNamespace, screenOf, setMetricsProfile, signal } from 'bedrock-cui'
 import { ServerPagesPreview, mountPreview } from 'bedrock-cui/web'
 
-const ids = Object.keys(config.screens)
+// 界面：defineScreen 定义的界面（数组），或「界面 id → 函数」
+const entries = Array.isArray(config.screens)
+    ? Object.fromEntries(config.screens.map((s) => [s.id, s]))
+    : config.screens
+const ids = Object.keys(entries)
+/** 构建界面：defineScreen 的界面返回控件树与预览用的表单内容（props 的默认值） */
+const make = (id) => {
+    const s = entries[id]
+    if (s instanceof Screen) { const { root, manifest } = s.build(); return { root, manifest, form: s.previewForm(manifest) } }
+    return { root: screenOf(s).build() }
+}
 const nav = document.querySelector('#screens nav')
 const stage = document.getElementById('stage')
 const $ = (id) => document.getElementById(id)
@@ -29,9 +39,13 @@ function show(id) {
     location.hash = encodeURIComponent(id)
     nav.querySelectorAll('a').forEach((a) => a.classList.toggle('active', a.dataset.id === id))
     stage.innerHTML = ''
-    const form = config.preview?.forms?.[id] ?? {}
+    const built = make(id)
+    // defineScreen 的界面：表单内容取 props 的默认值；其他界面取配置里的 preview.forms
+    const form = built.form
+        ? { buttons: built.form.buttons.map((b, i) => (built.form.icons[i] ? { text: b, icon: built.form.icons[i] } : b)) }
+        : config.preview?.forms?.[id] ?? {}
     const viewport = config.preview?.viewport ?? [400, 240]
-    const root = screenOf(config.screens[id]).build()
+    const root = built.root
     const paging = findPaging(root, id)
     // 按钮：每行一个；行末写「 @ 图标路径」表示带图标的按钮
     const parse = () => ($('f-buttons').value ? $('f-buttons').value.split('\n') : []).map((line) => {
@@ -49,7 +63,7 @@ function show(id) {
     const sim = paging ? new ServerPagesPreview(paging, own) : undefined
 
     // 静态检查：显示在预览下方
-    const issues = compileNamespace(config.namespace, { root: screenOf(config.screens[id]).build() }).issues
+    const issues = compileNamespace(config.namespace, { root: make(id).root }).issues
 
     const box = document.createElement('div')
     stage.append(box)
@@ -61,6 +75,8 @@ function show(id) {
         onFormButton: (i, t) => {
             const before = sim?.current
             if (sim && sim.press(i, preview)) return log(sim.current === before ? `停留在 ${sim.current}（原地不动）` : `翻到 ${sim.current}`)
+            const named = built.manifest?.buttons.find((b) => b.index === i)
+            if (named) return log(`点击了按钮「${named.name}」：游戏中调用 methods.${named.name}()`)
             log(`点击了表单按钮 ${i}「${t}」：游戏中表单关闭，脚本收到序号 ${i}`)
         },
     })

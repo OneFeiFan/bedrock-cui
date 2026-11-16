@@ -84,7 +84,7 @@ bedrock-cui 用 `form` 对象（从 `'bedrock-cui'` 导入）表示「当前打�
 |---|---|
 | `.title('cui_ui:shop')` | `form.title` |
 | `.body('今天的特价：钻石')` | `form.text` |
-| 第 n 个 `.button(文字, 图标)` | 在 `CollectionItem('form_buttons', n)` 内部，用 `form.buttonText`、`form.buttonTexture` |
+| 第 n 个 `.button(文字, 图标)` | 在 `form.button(n)` 内部，用 `form.buttonText`、`form.buttonTexture` |
 
 下面的界面用一个 `Label` 显示表单的正文。示例中的 `data` 模拟脚本打开表单时传入的内容，只用于本页的预览：
 
@@ -106,7 +106,7 @@ const card = new Panel().setSize(200, 40).add(
 
 界面上的内容全部由 bedrock-cui 绘制，原版的按钮列表不再显示。脚本仍然可以添加按钮，这些按钮在 bedrock-cui 中有两种用途。这是 bedrock-cui 的用法，不是原版的特性：
 
-1. **向界面传递数据**：按钮的文字与图标可以被界面读取，显示在界面的任意位置。例如脚本添加三个按钮，文字分别为三种物品的名称与数量，界面把它们排成一个列表。读取第 n 个按钮的内容使用 `CollectionItem`，它是一个容器，本身不可点击（见[表达式与绑定](bindings.md#读取表单按钮的文字)）。
+1. **向界面传递数据**：按钮的文字与图标可以被界面读取，显示在界面的任意位置。例如脚本添加三个按钮，文字分别为三种物品的名称与数量，界面把它们排成一个列表。读取第 n 个按钮的内容使用 `form.button(n)`，它返回一个容器，本身不可点击（见[表达式与绑定](bindings.md#读取表单按钮的文字)）。
 2. **接收点击**：界面中的 `FormButton(n, …)` 是一块可点击的区域，对应第 n 个按钮。玩家点击它时，效果与点击原版的第 n 个按钮相同：表单关闭，脚本得到序号 n（见[服务端表单](server-form.md#表单按钮)）。
 
 ## 更新界面上的内容

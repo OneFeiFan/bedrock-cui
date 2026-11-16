@@ -10,7 +10,7 @@
  *   5. 诊断：最后一页列出每个开关的选中状态（同序号的开关会不会一起选中）
  */
 import { softWrap } from 'bedrock-cui/runtime'
-import { Anchor, CollectionItem, Color, FormButton, GlyphSheet, Image, InlineIcon, Insets, Label, Length, Pages, Panel, Paragraph, Size, Stack, Text, TextStyle, Toggle, form, paginate, textWidth, toggleState } from 'bedrock-cui'
+import { Anchor, Color, FormButton, GlyphSheet, Image, InlineIcon, Insets, Label, Length, Pages, Panel, Paragraph, Size, Stack, Text, TextStyle, Toggle, form, paginate, textWidth, toggleState } from 'bedrock-cui'
 
 export const T = {
     book: 'textures/cui_test/book', line: 'textures/cui_test/line', rowHover: 'textures/cui_test/row_hover',
@@ -121,7 +121,7 @@ class ItemSlot extends Panel {
         const icn = size >= 32 ? 32 : 16
         const base = () => [new Image(T.cell).setSize(Size.full()), new Image(icon).setSize(icn, icn).setLayer(2)]
         const tipHolder = () => {
-            const holder = new CollectionItem('form_buttons', index).setSize(size, size).setLayer(30).allowOverflow()
+            const holder = form.button(index).setSize(size, size).setLayer(30).allowOverflow()
             const payload = form.buttonText.minus(tag)
             // 提示框：贴合内容 + 四周各 4 像素，挂在格子右上角往右
             const tip = new Image(T.purple).setSize(Length.children().plus(8), Length.children().plus(8)).setPlacement(TOP_RIGHT, TOP_LEFT).setOffset(2, -2)
@@ -148,7 +148,7 @@ class DetailOverlay extends Panel {
         this.add(new Image(T.purple).setSize(Size.full()))
         this.add(new Label('钻石剑 · 详情（弹层）').setColor(WHITE).setShadow().setAnchor(TOP_LEFT).setOffset(8, 8))
         // 运行期数据：8 号表单按钮的文字（正文放页码了）
-        this.add(new CollectionItem('form_buttons', 8).setSize(134, 60).setAnchor(TOP_LEFT).setOffset(8, 22)
+        this.add(form.button(8).setSize(134, 60).setAnchor(TOP_LEFT).setOffset(8, 22)
             .add(new Label(form.buttonText.minus('od|')).setColor(GRAY).setShadow().setSize(134, Length.auto()).setAnchor(TOP_LEFT)))
         const close = detail.attach('none', new Toggle(detail.group, detail.indexOf('none')).setSize(40, 14).setAnchor(BOTTOM_RIGHT).setOffset(-6, -6))
         const btn = (hover) => [new Image(hover ? T.rowHover : T.line).setKeepRatio(false).setSize(Size.full()), new Label('关闭').setColor(hover ? TITLE : WHITE).setLayer(2)]
@@ -430,7 +430,7 @@ function buildTextPages(pages) {
     // 同一段运行期文字：左 = 游戏自己折行（只在空格处换行）；右 = 脚本先用 cui/runtime 的 softWrap 做软换行（与 Paragraph 缺省模式相同）
     // 长度不定：放进定高（标题下方到安全区底部 = 129）并裁剪的面板，再长也不会压到翻页箭头（lint runtime-text-unbounded）
     const runtimeText = (index, tag) => new Panel().setSize(110, 129).setAnchor(TOP_LEFT).setOffset(0, 22).setClip().add(
-        new CollectionItem('form_buttons', index).setSize(110, 10).setAnchor(TOP_LEFT)
+        form.button(index).setSize(110, 10).setAnchor(TOP_LEFT)
             .add(new Label(form.buttonText.minus(tag)).setColor(BODY).setSize(110, Length.auto()).setAnchor(TOP_LEFT)))
     run.add(new Side('L').add(new Title('运行期：游戏折行'), runtimeText(5, 'txt|')))
     run.add(new Side('R').add(new Title('运行期：软换行'), runtimeText(7, 'txw|')))
@@ -441,7 +441,7 @@ function buildTextPages(pages) {
     buildSoftWrapTest(pages.page('tsoft'))
     // 按钮图标（1.32.0）：Image(form.buttonTexture) 显示脚本 button(文字, 图标路径) 传来的贴图——原版物品、原版方块、本包贴图、没有图标
     chain.push('ticon')
-    const iconRow = (index, y) => new CollectionItem('form_buttons', index).setSize(110, 16).setAnchor(TOP_LEFT).setOffset(0, y).add(
+    const iconRow = (index, y) => form.button(index).setSize(110, 16).setAnchor(TOP_LEFT).setOffset(0, y).add(
         new Image(form.buttonTexture).setSize(16, 16).setAnchor(TOP_LEFT),
         new Label(form.buttonText.minus('ico|')).setColor(BODY).setAnchor(Anchor.CENTER_LEFT).setOffset(20, 0))
     pages.page('ticon').add(

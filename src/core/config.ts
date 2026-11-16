@@ -12,13 +12,15 @@
  */
 import type { Element } from './element.js'
 import type { GlyphSheet } from './glyphs.js'
+import type { Screen } from './screen.js'
 
 /** 一个界面：返回根控件的函数，或 { build, routed }（routed：路由方式，见手册「服务端表单」） */
 export type CuiScreen = (() => Element) | { build: () => Element, routed?: boolean }
 
 /** 界面的构建函数与选项 */
-export function screenOf(s: CuiScreen): { build: () => Element, routed: boolean } {
-    return typeof s === 'function' ? { build: s, routed: false } : { build: s.build, routed: !!s.routed }
+export function screenOf(s: CuiScreen | Screen): { build: () => Element, routed: boolean } {
+    if ('options' in s && typeof (s as Screen).build === 'function' && 'id' in s) return { build: () => (s as Screen).build().root, routed: false }
+    return typeof s === 'function' ? { build: s, routed: false } : { build: (s as { build: () => Element }).build, routed: !!(s as { routed?: boolean }).routed }
 }
 
 /** 预览时某个界面的表单数据 */
@@ -34,8 +36,8 @@ export interface CuiPreviewForm {
 export interface CuiConfig {
     /** 界面文件的命名空间（ui/<namespace>.json） */
     namespace: string
-    /** 界面 id → 返回根控件的函数（每次调用都应新建控件树）；需要路由方式时写成 { build, routed: true } */
-    screens: Record<string, CuiScreen>
+    /** 界面：defineScreen 定义的界面对象的数组；或「界面 id → 返回根控件的函数」（需要路由方式时写成 { build, routed: true }） */
+    screens: Screen[] | Record<string, CuiScreen | Screen>
     /** 存放贴图的资源包目录（相对项目根目录），用于预览与静态检查；缺省 ['res'] */
     textures?: string[]
     /** 字形图（GlyphSheet），图标贴图从 textures 目录中查找 */

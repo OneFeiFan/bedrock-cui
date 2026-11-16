@@ -14,6 +14,7 @@
 
 - 命令行 `bedrock-cui create`、`dev`、`build`；项目配置 `defineConfig()`（`cui.config.mjs`），界面可写成 `{ build, routed }`。
 - `form.buttonTexture`：图片显示表单按钮的图标，可显示任意已加载的贴图。
+- `form.button(n)`：表单的第 n 个按钮，返回读取该按钮内容的容器（代替 `new CollectionItem('form_buttons', n)`）。
 - `bedrock-cui/dom`：将控件树输出为普通网页。
 - 预览（`bedrock-cui dev`）：字宽切换、缩放、控件边框；图片染色（`setColor()`）。
 - 手册网站，含在线示例、组件页与 API 参考；适配手机阅读。

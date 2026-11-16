@@ -7,10 +7,12 @@
  * （漏声明 #form_text、字面量里带引号、`=` 与 `-` 的字符串语义……）。这里用带类型的构造器写，由编译器负责细节。
  */
 
+import type { CollectionItem } from './element.js'
+
 /** 数据来源：全局绑定（#form_text、#title_text）、集合项（form_buttons 的 #form_button_text）、某个控件的属性（开关的 #toggle_state） */
 export type Source =
     | { kind: 'global' }
-    | { kind: 'collection', collection: string }
+    | { kind: 'collection', collection: string, index?: number }    // index：界面的 prop 所对应的按钮（快照时自动包上读取它的容器）
     | { kind: 'control', control: string, siblingScope?: boolean }
 
 export type Op = '+' | '-' | '*' | '/' | '%' | '=' | '>' | '<' | '>=' | '<=' | 'and' | 'or'
@@ -59,19 +61,32 @@ export const ref = (name: string, source: Source = { kind: 'global' }) => new Ex
 export const variable = (name: string) => new Expr({ k: 'var', name: name.startsWith('$') ? name : `$${name}` })
 export const isExpr = (x: unknown): x is Expr => x instanceof Expr
 
-/** 服务端表单的数据 */
+// form.button(n) 返回的容器（CollectionItem）定义在 element.ts，而 element.ts 依赖本模块：由 element.ts 加载时注册工厂，避免循环依赖
+let buttonItemFactory: ((index: number) => CollectionItem) | undefined
+/** @internal 由 element.ts 注册 form.button() 的工厂 */
+export function _registerFormButtonFactory(f: (index: number) => CollectionItem): void { buttonItemFactory = f }
+
+/** 当前打开的服务端表单的内容：写进界面后编译为 JSON UI 的绑定，游戏显示界面时从当前表单取值 */
 export const form = {
-    /** 表单正文（ActionFormData.body） */
+    /** 表单正文（ActionFormData 的 body()） */
     text: ref('#form_text'),
-    /** 表单标题 */
+    /** 表单标题（ActionFormData 的 title()） */
     title: ref('#title_text'),
-    /** 当前表单按钮的文字（只能在 FormButton 内部使用） */
+    /** 按钮的文字（ActionFormData 的 button() 的第一个参数）。只能在 form.button(n) 或 FormButton 内部使用 */
     buttonText: ref('#form_button_text', { kind: 'collection', collection: 'form_buttons' }),
     /**
-     * 当前表单按钮的图标路径（ActionFormData.button(文字, 图标路径)；只能在 FormButton / CollectionItem 内部使用）。
-     * 用作 Image 的贴图：new Image(form.buttonTexture)——运行时由脚本决定显示哪张贴图，游戏加载了的贴图都可以，包括其他附加包的
+     * 按钮的图标路径（ActionFormData 的 button() 的第二个参数）。只能在 form.button(n) 或 FormButton 内部使用。
+     * 用作 Image 的贴图：new Image(form.buttonTexture)——游戏加载了的贴图都可以显示，包括其他附加包的
      */
     buttonTexture: ref('#form_button_texture', { kind: 'collection', collection: 'form_buttons' }),
+    /**
+     * 表单的第 index 个按钮（从 0 开始，对应脚本中第 index 个 button()）：返回一个容器，在它内部用 form.buttonText、form.buttonTexture 读取这个按钮的内容。
+     * 容器本身不可点击；需要点击时用 FormButton
+     */
+    button(index: number): CollectionItem {
+        if (!buttonItemFactory) throw new Error('form.button() 需要先加载 bedrock-cui 的控件模块')
+        return buttonItemFactory(index)
+    },
 }
 
 /**
@@ -181,3 +196,33 @@ export function evalExpr(e: ExprLike, env: EvalEnv): Value {
 }
 
 export const asBool = (v: Value) => truthy(v)
+
+// ───────── 界面的 prop（defineScreen 的 props）─────────
+
+/**
+ * 界面的一个 prop：由行为包脚本在打开表单时提供的数据，通过第 index 个表单按钮传输（按钮文字 = 标记 + 文字，图标 = 按钮的图标）。
+ * 本身是一个表达式（取文字）：new Label(props.greeting)。用在 Image 的贴图上时取图标，用在 setVisible() 上时表示「有值时显示」。
+ * 读取按钮数据需要在对应的集合项内部：快照时自动给使用它的控件包上容器（使用者看不到序号、标记与容器）。
+ */
+export class PropRef extends Expr {
+    constructor(readonly propName: string, readonly index: number, readonly tag: string) {
+        super(ref('#form_button_text', { kind: 'collection', collection: 'form_buttons', index }).minus(tag).node)
+    }
+    /** prop 的图标（Image 的贴图） */
+    get icon(): Expr { return ref('#form_button_texture', { kind: 'collection', collection: 'form_buttons', index: this.index }) }
+    /** prop 是否有值（显示条件） */
+    get present(): Expr { return ref('#form_button_text', { kind: 'collection', collection: 'form_buttons', index: this.index }).contains(this.tag) }
+}
+
+/** 表达式中引用的 prop 按钮序号（快照时据此包容器） */
+export function propIndices(v: unknown, out = new Set<number>()): Set<number> {
+    const walk = (n: unknown): void => {
+        if (!n || typeof n !== 'object') return
+        if (Array.isArray(n)) { n.forEach(walk); return }
+        const o = n as Record<string, unknown>
+        if (o.k === 'ref' && (o.source as { kind?: string, index?: number })?.kind === 'collection' && typeof (o.source as { index?: number }).index === 'number') out.add((o.source as { index: number }).index)
+        for (const x of Object.values(o)) if (x && typeof x === 'object') walk(x)
+    }
+    walk(v instanceof Expr ? v.node : v)
+    return out
+}

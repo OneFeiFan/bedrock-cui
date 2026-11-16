@@ -9,9 +9,9 @@
 | 规则 | 说明 |
 |---|---|
 | `bad-size` | 尺寸表达式无法解析。 |
-| `collection-index` | 使用了不存在的 `collection_index` 属性。绑定集合项应使用 `FormButton` 或 `CollectionItem`。 |
+| `collection-index` | 使用了不存在的 `collection_index` 属性。读取表单按钮应使用 `form.button(n)` 或 `FormButton`。 |
 | `collection-ref-outside` | 集合数据（如 `form.buttonText`）在对应的集合项之外使用。 |
-| `collection-through-toggle` | 开关内部读取开关之外的集合项数据。应将 `CollectionItem` 放进开关的状态面板。 |
+| `collection-through-toggle` | 开关内部读取开关之外的集合项数据。应将 `form.button(n)` 放进开关的状态面板。 |
 | `duplicate-name` | 同一父控件中存在同名的子控件。 |
 | `glyph-sheet` | 字形图标的墨迹与贴图不符；说明中给出正确的值。 |
 | `inline-icon-in-label` | `InlineIcon` 用在了 `Label` 中。行内图标只能用在 `Text` 中。 |
@@ -22,7 +22,7 @@
 
 | 规则 | 说明 |
 |---|---|
-| `collection-item-size` | `FormButton` 的尺寸不是像素值。表单按钮编译为网格，需要知道边长。 |
+| `collection-item-size` | 读取表单按钮的控件（显示 prop 的控件、`button()`、`FormButton`）没有像素尺寸，内容不会显示。用 `setSize(宽, 高)` 设置像素尺寸。 |
 | `engine-wrap-short-line` | 由游戏折行的静态文字会在上一行末尾留下大段空白。应改用 `Paragraph`；运行期文字使用 `softWrap()`。 |
 | `flex-overflow` | 弹性布局的内容在某种屏幕尺寸下放不下。会变长的内容应放进 `Scroll`，或调大 `setMinSize()`。 |
 | `glyph-line-overlap` | 多行文字中的字形图标会压到相邻的行。应设置 `setLineSpacing(6)`。 |

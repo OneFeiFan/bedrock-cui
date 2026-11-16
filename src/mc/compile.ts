@@ -100,8 +100,8 @@ class Compiler {
             // 贴图正好是 form.buttonTexture：照原版 server_form.json 的按钮图标写——贴图与文件系统直接覆盖，空或加载中时隐藏
             const node = (v as Expr).node
             if (key === 'texture' && node.k === 'ref' && node.name === '#form_button_texture') {
-                if (inCollection?.startsWith(THROUGH_TOGGLE)) this.issues.push({ rule: 'collection-through-toggle', level: 'error', path: n.path, message: '开关里读不到外层集合项的按钮图标。把 CollectionItem 放进开关的状态面板里' })
-                else if (!inCollection) this.issues.push({ rule: 'collection-ref-outside', level: 'error', path: n.path, message: 'form.buttonTexture 只能在 form_buttons 的集合项（FormButton / CollectionItem）里使用' })
+                if (inCollection?.startsWith(THROUGH_TOGGLE)) this.issues.push({ rule: 'collection-through-toggle', level: 'error', path: n.path, message: '开关里读不到外层集合项的按钮图标。把 form.button(n) 放进开关的状态面板里' })
+                else if (!inCollection) this.issues.push({ rule: 'collection-ref-outside', level: 'error', path: n.path, message: 'form.buttonTexture 只能在 form.button(n) 或 FormButton 内部使用' })
                 if (!declaredCollections.size) bindings.push({ binding_type: 'collection_details', binding_collection_name: 'form_buttons' })
                 declaredCollections.add('form_buttons|#form_button_texture')
                 bindings.push(
@@ -118,7 +118,7 @@ class Compiler {
             }
             for (const g of c.globals) if (!declaredGlobals.has(g)) { declaredGlobals.add(g); bindings.push({ binding_name: g, ...this.cond() }) }
             for (const col of c.collections) {
-                if (inCollection?.startsWith(THROUGH_TOGGLE)) this.issues.push({ rule: 'collection-through-toggle', level: 'error', path: n.path, message: `开关里读不到外层集合项的 ${col.name}（真机：common.toggle 自带空集合名的 collection_details 绑定）。把 CollectionItem 放进开关的状态面板里` })
+                if (inCollection?.startsWith(THROUGH_TOGGLE)) this.issues.push({ rule: 'collection-through-toggle', level: 'error', path: n.path, message: `开关里读不到外层集合项的 ${col.name}（真机：common.toggle 自带空集合名的 collection_details 绑定）。把 form.button(n) 放进开关的状态面板里` })
                 else if (!inCollection) this.issues.push({ rule: 'collection-ref-outside', level: 'error', path: n.path, message: `${col.name} 只能在 ${col.collection} 的集合项（FormButton）里使用` })
                 const k2 = `${col.collection}|${col.name}`
                 if (!declaredCollections.has(k2)) {

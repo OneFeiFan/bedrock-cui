@@ -33,7 +33,8 @@
     "./runtime": "./dist/runtime/index.js",
     "./runtime/server-pages": "./dist/runtime/serverPages.js",
     "./package.json": "./package.json",
-    "./dom": "./dist/dom/index.js"
+    "./dom": "./dist/dom/index.js",
+    "./runtime/screens": "./dist/runtime/screens.js"
   },
   "files": [
     "CHANGELOG.md",

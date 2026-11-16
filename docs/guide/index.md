@@ -57,7 +57,7 @@
 - [Scroll](components/scroll.md)
 - [Button](components/button.md)
 - [Toggle](components/toggle.md)
-- [CollectionItem](components/collection-item.md)
+- [form.button()](components/form-button-item.md)
 
 ### 组件
 

@@ -65,5 +65,5 @@ detail.page('sword').add(
 游戏只在鼠标移动时重新判断悬停的控件。用开关连续翻页时，若鼠标不移动，第二次点击会落到错误的位置。目录、书签、弹出层这类每次都需要移动鼠标的操作适合用开关；「下一页」这类在同一位置连续点击的操作，应使用[服务端翻页](paging.md)。
 
 ::: warning
-开关内部的控件读取不到开关之外的 `CollectionItem` 的数据。需要在开关的状态面板中显示表单按钮的文字时，将 `CollectionItem` 放在状态面板内部。静态检查对此报告 `collection-through-toggle`。
+开关内部的控件读取不到开关之外的 `form.button(n)` 的数据。需要在开关的状态面板中显示表单按钮的文字时，将 `form.button(n)` 放在状态面板内部。静态检查对此报告 `collection-through-toggle`。
 :::

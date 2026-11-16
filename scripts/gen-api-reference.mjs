@@ -31,7 +31,7 @@ const PAGES = [
             ['Scroll', '可滚动的区域，子控件纵向排列。'],
             ['Button', '按钮。外观由 default、hover、pressed 三个状态面板组成。'],
             ['Toggle', '开关。同组互斥；外观由四个状态面板组成。'],
-            ['CollectionItem', '集合中的一项，例如第 n 个表单按钮。其内部可读取该项的数据。'],
+            ['CollectionItem', '集合中的一项。服务端表单的按钮用 form.button(n) 获得，不需要直接创建。'],
             ['Raw', '原样输出的 JSON UI 元素。'],
         ]],
         ['组件', [
@@ -58,12 +58,17 @@ const PAGES = [
             ['Justify', '弹性布局主轴方向的分布方式。'],
             ['Align', '弹性布局交叉轴方向的对齐方式。'],
         ]],
+        ['界面（defineScreen）', [
+            ['defineScreen', '定义一个界面：数据（props）、逻辑（state、computed、methods、生命周期）与视图（view）写在一个文件中。'],
+            ['Screen', 'defineScreen() 返回的界面对象：id；行为包脚本中的 open(玩家, props)、close(玩家)、isOpen(玩家)；构建时的 build()、previewForm()。'],
+            ['ScreenButton', 'button(名字) 返回的按钮：default、hover、pressed 三个状态，add() 加入始终显示的内容。'],
+        ]],
         ['项目配置', [
             ['defineConfig', '定义项目配置（cui.config.mjs）：命名空间、界面、贴图目录、预览数据。bedrock-cui dev 与 useSapdon() 共用。'],
             ['screenOf', '取出配置中一个界面的构建函数与选项。'],
         ]],
         ['表达式与响应式', [
-            ['form', '服务端表单的数据：title、text、buttonText。'],
+            ['form', '当前服务端表单的内容：title、text、buttonText、buttonTexture；form.button(n) 获得第 n 个按钮。'],
             ['toggleState', '某个开关是否选中的表达式。'],
             ['Expr', '表达式。编译为 JSON UI 的绑定，由游戏在运行时求值。'],
             ['signal', '创建一个信号（可观察的值），用于向浏览器预览提供数据。'],
@@ -111,6 +116,13 @@ const PAGES = [
             ['CuiConfig', '项目配置。'],
             ['CuiPreviewForm', '预览中某个界面的表单数据：title、text、buttons。'],
             ['CuiScreen', '配置中的一个界面：返回根控件的函数，或 { build, routed }。'],
+            ['ScreenOptions', 'defineScreen() 的选项。'],
+            ['ButtonSlot', '按钮的一个状态：add() 加入的控件显示在该状态下。'],
+            ['ScreenViewContext', '视图函数得到的参数：props、button()、pages()。'],
+            ['ScreenManifest', '界面的清单：props 与按钮的名字及其对应的表单按钮序号。'],
+            ['PropDefault', 'props 中的默认值：文字、文字与图标、是否显示、列表。'],
+            ['PropItem', '一个 prop 的值：文字，或 { text, icon }。'],
+            ['PropSlot', '一个 prop 占用的表单按钮：序号与标记。'],
             ['TextMetrics', 'measureText() 的结果：lines、width、height。'],
             ['LengthLike', '数字（像素）或 Length。'],
             ['ExprLike', '表达式，或字符串、数字、布尔等字面值。'],
@@ -157,6 +169,7 @@ const PAGES = [
             ['服务端翻页', [
                 ['ServerPagesForm', '按路由表打开服务端表单并处理翻页。'],
                 ['lockCamera', '锁定或解除玩家的视角。'],
+                ['showForm', '显示表单；玩家正忙（上一个表单还没关完）时稍后重试。点击后立即重新打开的表单应使用它。'],
             ]],
             ['类型', [['ServerPaging', '一个界面的翻页路由表。'], ['ServerArrowRoute', '路由表中的一个翻页箭头。'], ['FormButtonSpec', 'setButtons() 中的一个按钮：文字，或 { text, icon }。']]],
         ]],
@@ -189,7 +202,7 @@ const INTERNAL = new Set(['BEDROCK_COLORS', 'Effect', 'Flex', 'GLYPH_HEIGHT', 'G
     'activeEffect', 'applyCode', 'asBool', 'batch', 'batchKey', 'boldExtra', 'buttonPayload', 'charWidth', 'compileExpr', 'drawOrder', 'evalExpr', 'evalOffset', 'evalTerms', 'finalize',
     'findBox', 'isAscii', 'isExpr', 'isWide', 'layout', 'layoutInline', 'lineWidth', 'lintLayout', 'lit', 'parseRich', 'parseSize', 'ref', 'registerGlyphWidth', 'richWidth',
     'stripFormat', 'styleCodes', 'unifontWidth', 'unregisterGlyph', 'usesChildren', 'usesSelf', 'usesUnifont', 'variable', 'walk', 'wrapDetailed',
-    'buttonTextOf', 'buttonIconOf',
+    'buttonTextOf', 'buttonIconOf', 'PropRef', 'propIndices', '_setScreenRuntime',
     'decodePng', 'downscaleIcon', 'encodePng', 'inkOf', 'pngSize', 'runtimeFiles', 'drawText', 'PixelFonts',
     // 排版、编译与表达式内部的数据结构
     'SizeJson', 'AnchorName', 'Dyn', 'RGB', 'Intrinsic', 'RNode', 'Source', 'Op', 'ExprNode', 'Value', 'CompiledExpr', 'EvalEnv', 'TextureMeta', 'RunStyle', 'Run',

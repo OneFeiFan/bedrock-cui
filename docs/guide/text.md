@@ -5,7 +5,7 @@
 `Label` 显示一段文字：
 
 ```js
-import { Color, Label, TextStyle } from 'bedrock-cui'
+import { Color, Label, TextStyle, form } from 'bedrock-cui'
 
 new Label('钻石').setColor(Color.hex('#3c2814'))
 new Label('钻石').setColor(Color.WHITE).setShadow().setFontScale(2)   // 白色、带阴影、两倍字号
@@ -18,7 +18,7 @@ new Label('钻石').setStyle(BODY)
 未设置尺寸时，`Label` 的大小由文字决定，不折行。设置了宽度时，文字由游戏在该宽度内折行：
 
 ```js
-import { Label, Length } from 'bedrock-cui'
+import { Label, Length, form } from 'bedrock-cui'
 
 new Label('一段较长的说明文字').setSize(110, Length.auto())   // 宽 110 像素，高随行数变化
 ```
@@ -35,7 +35,7 @@ new Label('一段较长的说明文字').setSize(110, Length.auto())   // 宽 11
 下面是同一句话分别交给 `Label`（游戏折行）和 `Paragraph`（软换行）的结果：
 
 ```js preview=compare 260x80
-import { Anchor, Color, Image, Label, Length, Panel, Paragraph, Size } from 'bedrock-cui'
+import { Anchor, Color, Image, Label, Length, Panel, Paragraph, Size, form } from 'bedrock-cui'
 
 const TEXT = '背包里一共 11 种物品，其中钻石有 3 个，每 2 个钻石加 1 根木棍可以合成 1 把钻石剑。'
 const INK = Color.hex('#3c2814')
@@ -54,7 +54,7 @@ compare.add(
 `Paragraph` 用于较长的文字。它与 `Label` 一样交给游戏折行，但会调整汉字与英文、数字交界处的间隔，避免上述的空白：
 
 ```js
-import { Anchor, Paragraph } from 'bedrock-cui'
+import { Anchor, Paragraph, form } from 'bedrock-cui'
 
 new Paragraph('背包里一共 11 种物品，其中钻石有 3 个。', 110).setAnchor(Anchor.TOP_LEFT)
 ```
@@ -91,10 +91,10 @@ new Label('§c红色§r 普通 §l粗体§r')
 由服务端脚本生成的文字通过表达式绑定到控件：
 
 ```js
-import { CollectionItem, Label, Length, form } from 'bedrock-cui'
+import { Label, Length, form } from 'bedrock-cui'
 
 // 显示第 5 个表单按钮的文字，去掉标记 'txt|'
-new CollectionItem('form_buttons', 5).add(
+form.button(5).add(
     new Label(form.buttonText.minus('txt|')).setSize(110, Length.auto()),
 )
 ```

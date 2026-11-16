@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { Label, Pages, Panel, Size } from '../dist/index.js'
+import { Label, Pages, Panel, Size, form } from '../dist/index.js'
 import { CuiApp } from '../dist/node/index.js'
 
 /** 两页的小书：服务端翻页箭头 + 原地不动 */
@@ -42,7 +42,7 @@ test('CuiApp.useSapdon：提交前钩子里登记界面 JSON（_ui_defs 交给 U
 
 test('form.buttonTexture：图片贴图绑定表单按钮的图标，照原版 server_form.json 编译（贴图与文件系统直接覆盖、空或加载中时隐藏）；集合项之外报错', async () => {
     const { CollectionItem, Image, Panel, compileNamespace, form, pagingButtons } = await import('../dist/index.js')
-    const root = new Panel().setSize(100, 40).add(new CollectionItem('form_buttons', 3).setSize(16, 16).add(new Image(form.buttonTexture).setName('icon').setSize(16, 16)))
+    const root = new Panel().setSize(100, 40).add(form.button(3).setSize(16, 16).add(new Image(form.buttonTexture).setName('icon').setSize(16, 16)))
     const r = compileNamespace('t', { root })
     const json = JSON.stringify(r.json ?? r)
     for (const s of ['"binding_name":"#form_button_texture","binding_name_override":"#texture"', '"binding_name":"#form_button_texture_file_system","binding_name_override":"#texture_file_system"', "(not ((#texture = '') or (#texture = 'loading')))"])
@@ -52,4 +52,15 @@ test('form.buttonTexture：图片贴图绑定表单按钮的图标，照原版 s
     assert.ok(outside.issues.some((i) => i.rule === 'collection-ref-outside'))
     // 带图标的按钮：{ text, icon }，按钮文字照常生成
     assert.deepEqual(pagingButtons({ title: 'x', prefix: 'P:', start: 'a', arrows: [] }, 'a', 'next', { 0: 'close|', 1: { text: 'ico|钻石', icon: 'textures/items/diamond' } }), ['close|', 'ico|钻石'])
+})
+
+test('form.button(n)：表单的第 n 个按钮——返回 form_buttons 集合第 n 项的容器，内部可读按钮的文字与图标；本身不可点击', async () => {
+    const { CollectionItem, FormButton, Label, Panel, compileNamespace, form } = await import('../dist/index.js')
+    const item = form.button(2)
+    assert.ok(item instanceof CollectionItem)
+    assert.ok(!(item instanceof FormButton), '不是可点击的 FormButton')
+    assert.deepEqual([item.collection, item.index], ['form_buttons', 2])
+    const r = compileNamespace('t', { root: new Panel().setSize(200, 40).add(item.setSize(160, 10).add(new Label(form.buttonText))) })
+    assert.deepEqual(r.issues.filter((i) => i.level === 'error'), [])
+    assert.notEqual(form.button(1), form.button(1), '每次调用返回新的容器')
 })

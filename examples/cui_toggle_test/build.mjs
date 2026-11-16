@@ -12,6 +12,8 @@ import { fileURLToPath } from 'node:url'
 const here = path.dirname(fileURLToPath(import.meta.url))
 const repo = path.join(here, '..', '..')
 await import('../../scripts/fetch-vanilla-textures.mjs')
+// 清空上次的输出：sapdon 只在清单不存在时生成清单，不清空的话 mod.info 中的新版本号不会生效
+fs.rmSync(path.join(here, 'dev'), { recursive: true, force: true })
 const link = path.join(here, 'node_modules', 'bedrock-cui')
 if (!fs.existsSync(link)) { fs.mkdirSync(path.dirname(link), { recursive: true }); fs.symlinkSync(repo, link, 'junction') }
 

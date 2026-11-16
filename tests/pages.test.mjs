@@ -1,7 +1,7 @@
 // 开关分页（客户端翻页，不经过服务端）与服务端表单挂接
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { Panel, Label, Image, Toggle, Pages, compileNamespace, finalize, layout, findBox, serverForm, walk } from '../dist/index.js'
+import { Panel, Label, Image, Toggle, Pages, compileNamespace, finalize, layout, findBox, serverForm, walk, form } from '../dist/index.js'
 
 function book() {
     const pages = new Pages('book').startAt('home').set({ size: [200, 100], anchor: 'top_left' })
@@ -101,13 +101,13 @@ test('serverForm：挂到原版服务端表单（工厂 + 标题门控 + 隐藏�
 
 test('静态检查：开关里读外层集合项的数据（真机读不到）；集合项放进开关状态面板里则可以', async () => {
     const { CollectionItem, Toggle, Label, Panel, compileNamespace, form } = await import('../dist/index.js')
-    const bad = new CollectionItem('form_buttons', 0).set({ size: [20, 20] })
+    const bad = form.button(0).set({ size: [20, 20] })
     const t = new Toggle('g', 0).set({ name: 'tg', size: [20, 20] })
     t.uncheckedHover.add(new Label(form.buttonText.minus('s0|')).set({ name: 'info' }))
     bad.add(t)
     assert.deepEqual(compileNamespace('t', { root: new Panel().set({ children: [bad] }) }).issues.map((i) => i.rule), ['collection-through-toggle'])
     const t2 = new Toggle('g', 0).set({ name: 'tg2', size: [20, 20] })
-    t2.uncheckedHover.add(new CollectionItem('form_buttons', 0).set({ size: [20, 20] }).add(new Label(form.buttonText.minus('s0|'))))
+    t2.uncheckedHover.add(form.button(0).set({ size: [20, 20] }).add(new Label(form.buttonText.minus('s0|'))))
     assert.deepEqual(compileNamespace('t', { root: new Panel().set({ children: [t2] }) }).issues, [])
 })
 

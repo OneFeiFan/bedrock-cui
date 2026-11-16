@@ -13,7 +13,7 @@
  * 编译与预览前，`finalize()` 把对象树拍成快照（RNode）：给没写名字的元素分配确定的名字（类型 + 同级序号），
  * 并让需要「全部建完再算」的元素（如 Pages 的页面显示条件）在这时收尾。
  */
-import { isExpr, type Expr } from './expr.js'
+import { _registerFormButtonFactory, PropRef, isExpr, propIndices, type Expr } from './expr.js'
 import type { Anchor, Dyn, Intrinsic, RGB, RNode, Size } from './node.js'
 import { Align, Anchor as AnchorValue, Color, Insets, Justify, Length, Size as SizeValue, Texture, TextStyle, Vec2, type LengthLike, type TextAlign } from './values.js'
 import type { Anchor as AnchorName } from './node.js'
@@ -144,7 +144,7 @@ export abstract class Element {
     set layer(v: number | undefined) { this.props.layer = v }
     /** 是否显示：布尔或表达式（表达式 → 绑定） */
     get visible(): boolean | Expr | undefined { return this.props.visible }
-    set visible(v: boolean | Expr | undefined) { this.props.visible = v }
+    set visible(v: boolean | Expr | undefined) { this.props.visible = v instanceof PropRef ? v.present : v }     // prop：有值时显示
     /** 透明度 0–1 */
     get alpha(): number | undefined { return this.props.alpha }
     set alpha(v: number | undefined) { this.props.alpha = v }
@@ -340,7 +340,7 @@ export class Image extends Element {
     }
     /** 贴图（Texture、路径或表达式） */
     get texture(): Texture | Expr { const t = this.props.texture; return isExpr(t) ? t : Texture.from(t) }
-    set texture(v: Texture | string | Expr) { this.props.texture = isExpr(v) ? v : Texture.from(v).path }
+    set texture(v: Texture | string | Expr) { this.props.texture = v instanceof PropRef ? v.icon : isExpr(v) ? v : Texture.from(v).path }     // prop：取它的图标
     setTexture(v: Texture | string | Expr): this { this.texture = v; return this }
     /** 保持宽高比（JSON UI 缺省 true；拉伸纯色贴图要关掉） */
     get keepRatio(): boolean | undefined { return this.props.keepRatio }
@@ -662,8 +662,33 @@ function snapshot(list: Element[], parentPath: string): RNode[] {
         const r: RNode = { type: el.type, name, path, props, children }
         const slots = el.slots()
         if (slots) r.slots = Object.fromEntries(Object.entries(slots).map(([k, p]) => [k, snapshot(p.children, `${path}/${k}`)]))
-        return r
+        return wrapProp(r)
     })
+}
+
+/** 位置与尺寸：包容器时移到容器上 */
+const GEOMETRY = ['size', 'anchor', 'anchorFrom', 'anchorTo', 'offset', 'gridPos', 'grow', 'minSize', 'maxSize'] as const
+
+/**
+ * 使用了界面 prop 的控件：包上读取对应按钮的容器（集合 form_buttons 的第 index 项）。
+ * 容器接管控件的位置与尺寸（名称、路径也归容器，静态检查的提示仍指向使用者写的控件），控件改为填满容器、路径加 /value。
+ * 读取按钮数据的容器需要像素尺寸——由集合项的静态检查报告。
+ */
+function wrapProp(r: RNode): RNode {
+    const used = new Set<number>()
+    for (const v of Object.values(r.props)) propIndices(v, used)
+    if (!used.size) return r
+    if (used.size > 1) throw new Error(`${r.path}：一个控件只能使用一个 prop（用到了 ${used.size} 个）。把它拆成嵌套的两个控件，各用一个`)
+    const index = [...used][0]
+    const outer: Record<string, unknown> = { collection: 'form_buttons', index }
+    const inner: Record<string, unknown> = { ...r.props }
+    for (const k of GEOMETRY) if (k in inner) { outer[k] = inner[k]; delete inner[k] }
+    inner.size = ['100%', '100%']
+    inner.anchor = 'top_left'
+    const valuePath = `${r.path}/value`
+    const repath = (n: RNode, from: string, to: string): RNode => ({ ...n, path: to + n.path.slice(from.length), children: n.children.map((c) => repath(c, from, to)), ...(n.slots ? { slots: Object.fromEntries(Object.entries(n.slots).map(([k, list]) => [k, list.map((c) => repath(c, from, to))])) } : {}) })
+    const value = repath({ ...r, name: 'value', props: inner }, r.path, valuePath)
+    return { type: 'collection_item', name: r.name, path: r.path, props: outer, children: [value] }
 }
 
 /**
@@ -696,3 +721,6 @@ export function finalize(root: Element | Element[], parentPath = ''): RNode[] {
 }
 
 export type { Expr }
+
+// form.button(n)：服务端表单的第 n 个按钮（集合 form_buttons 的第 n 项）
+_registerFormButtonFactory((index) => new CollectionItem('form_buttons', index))

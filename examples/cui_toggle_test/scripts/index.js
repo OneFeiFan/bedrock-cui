@@ -4,6 +4,7 @@ import { ActionFormData } from '@minecraft/server-ui'
 import { softWrap } from 'bedrock-cui/runtime'
 import { ServerPagesForm, lockCamera } from 'bedrock-cui/runtime/server-pages'
 import { paging } from './cui.generated.js'
+import propsDemo from '../ui/props-demo.screen.mjs'
 
 const TITLE_RESPONSIVE = "cui_ui:responsive"
 const SLOT_ITEMS = ['minecraft:diamond_sword', 'minecraft:diamond', 'minecraft:diamond', 'minecraft:stick']
@@ -75,4 +76,11 @@ system.afterEvents.scriptEventReceive.subscribe((e) => {
     if (!player) return
     if (e.id === 'cui:open') book.open(player)
     if (e.id === 'cui:responsive') openResponsive(player)
+    if (e.id === 'cui:props') propsDemo.open(player)              // 不传 props：item 取默认值
+})
+
+// ───── 界面模型：defineScreen 的界面由运行时打开（导入 ./cui.generated.js 时已登记清单） ─────
+// 绿宝石右键：脚本传入 item（其余 props 由界面中的 computed 计算）
+world.afterEvents.itemUse.subscribe((e) => {
+    if (e.itemStack.typeId === 'minecraft:emerald') propsDemo.open(e.source, { item: { text: '绿宝石（脚本传入）', icon: 'textures/items/emerald' } })
 })

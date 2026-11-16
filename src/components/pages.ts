@@ -83,7 +83,13 @@ export class Pages extends Panel {
         this.buttonBase = n
         return this
     }
-    private allocButton(): number { const i = this.nextButton ?? this.buttonBase; this.nextButton = i + 1; return i }
+    private allocButton(): number {
+        if (this.allocator) return this.allocator()
+        const i = this.nextButton ?? this.buttonBase; this.nextButton = i + 1; return i
+    }
+    private allocator?: () => number
+    /** @internal 界面（defineScreen）的翻页按钮与 props、按钮共用一个序号分配器 */
+    _useAllocator(f: () => number): this { this.allocator = f; return this }
 
     /**
      * 翻页箭头（服务端）：点了关掉表单，脚本按新页码重开。由两个**序号相同**的表单按钮组成——普通版（优先级 10）与聚焦版（文字带 F，优先级 100）；

@@ -5,7 +5,7 @@
  */
 import { form } from '../core/expr.js'
 import { Button, CollectionItem, Panel } from '../core/element.js'
-import { Anchor, Size } from '../core/values.js'
+import { Anchor, Size, type LengthLike } from '../core/values.js'
 
 /** 表单正文包含 tag 时才显示的面板 */
 export class FormGate extends Panel {
@@ -39,6 +39,13 @@ export class FormButton extends CollectionItem {
     get default() { return this.button.default }
     get hover() { return this.button.hover }
     get pressed() { return this.button.pressed }
+
+    /** 尺寸（像素）；改尺寸时内部的按钮同步 */
+    override get size(): Size | undefined { return super.size }
+    override set size(v: Size | [LengthLike | string, LengthLike | string] | undefined) {
+        super.size = v
+        if (this.button) this.button.size = v
+    }
 
     /** 子元素加到按钮里（始终显示） */
     override add(...items: Parameters<CollectionItem['add']>): this {

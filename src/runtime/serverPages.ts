@@ -11,7 +11,7 @@
  * 照真机结论做（见 core/serverPagesShared.ts）：重开时给刚才点击方向的箭头加 F（鼠标不动能连点）；「原地不动」原样重开；
  * 标题写页码；视角只在打开时锁一次、关时解开；**翻页过程中不发聊天消息**——否则进入地图后第一次翻页界面会消失一阵子。
  */
-import { InputPermissionCategory, type Player } from '@minecraft/server'
+import { InputPermissionCategory, system, type Player } from '@minecraft/server'
 import { ActionFormData } from '@minecraft/server-ui'
 import { buttonIconOf, pageTitle, pagingButtons, pagingResponse, type FormButtonSpec, type ServerPaging } from '../core/serverPagesShared.js'
 
@@ -26,6 +26,20 @@ export function lockCamera(player: Player, lock: boolean): void {
         const perms = player.inputPermissions
         if (perms.isPermissionCategoryEnabled(InputPermissionCategory.Camera) === lock) perms.setPermissionCategory(InputPermissionCategory.Camera, !lock)
     } catch { /* 玩家已离开等 */ }
+}
+
+/**
+ * 显示表单；玩家正忙（上一个表单还没关完，取消原因 UserBusy）时稍后重试。
+ * 点击后关闭、随即重新打开的表单（翻页、状态变化后的更新）点得很快时会遇到：不重试的话，表单像是被玩家关掉了。
+ * 每 2 刻（0.1 秒）重试一次，最多 30 次（约 1.5 秒）；仍然失败时按取消返回。
+ */
+export function showForm<R extends { canceled: boolean, cancelationReason?: string }>(
+    player: Player, form: { show(player: Player): Promise<R> }, retries = 30,
+): Promise<R> {
+    return form.show(player).then((r) => {
+        if (!r.canceled || r.cancelationReason !== 'UserBusy' || retries <= 0) return r
+        return new Promise<R>((resolve) => system.runTimeout(() => resolve(showForm(player, form, retries - 1)), 2))
+    })
 }
 
 export class ServerPagesForm {
@@ -54,7 +68,7 @@ export class ServerPagesForm {
         const form = new ActionFormData().title(pageTitle(this.routes, page)).body(this.body(player, page))
         const own = this.buttons(player, page)
         pagingButtons(this.routes, page, dir, own).forEach((text, i) => { const icon = buttonIconOf(own[i]); if (icon) form.button(text, icon); else form.button(text) })
-        form.show(player).then((r) => {
+        showForm(player, form).then((r) => {
             if (r.canceled || r.selection === undefined) { if (this.camera) lockCamera(player, false); this.closed?.(player, page); return }
             const next = pagingResponse(this.routes, r.selection, page, dir)
             if (next.kind !== 'own') return this.open(player, next.page, next.dir)
