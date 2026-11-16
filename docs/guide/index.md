@@ -5,6 +5,7 @@
 ### 入门
 
 - [简介](introduction.md)
+- [工作原理](how-it-works.md)
 - [快速上手](quick-start.md)
 
 ### 搭建界面
@@ -24,7 +25,6 @@
 
 ### 挂到游戏里
 
-- [附加包与服务端表单基础](addon-basics.md)
 - [服务端表单](server-form.md)
 - [翻页](paging.md)
 - [脚本端](runtime.md)

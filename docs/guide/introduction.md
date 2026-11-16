@@ -52,6 +52,6 @@ bedrock-cui 只用于服务端表单界面，不修改 HUD、物品栏等原版�
 ## 学习路径
 
 - [快速上手](quick-start.md)：创建项目、在浏览器中预览、构建并在游戏中打开。
-- [附加包与服务端表单基础](addon-basics.md)：不熟悉附加包开发时，先读这一节。
+- [工作原理](how-it-works.md)：原版的服务端表单是什么，bedrock-cui 怎样在它上面显示界面。
 - 指南：从[控件与组件树](elements.md)开始，按[目录](index.md)逐章介绍各项功能。
 - 参考：[各模块的 API](reference/api-core.md)、[静态检查规则](reference/lint.md)与[真机规则](reference/rules.md)。

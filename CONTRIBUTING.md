@@ -30,6 +30,10 @@ npm test
 | `docs/guide` | 手册；`docs/DESIGN.md` 是设计与真机测试的记录 |
 | `tests` | 测试 |
 
+## 发布到 npm 之前试用
+
+`bedrock-cui` 尚未发布到 npm 时，`npx bedrock-cui create` 无法使用。可以先全局安装仓库版本：`npm install -g github:OneFeiFan/bedrock-cui`，再运行 `bedrock-cui create my_ui`；新项目的 `package.json` 中把 `bedrock-cui` 的版本改为 `github:OneFeiFan/bedrock-cui`。
+
 ## 常用命令
 
 | 命令 | 作用 |

@@ -1,17 +1,15 @@
 # 快速上手
 
-本节演示用命令行创建项目、在浏览器中预览界面、再构建附加包并在游戏中打开的完整流程。
+本节演示创建项目、在浏览器中预览界面、构建附加包并在游戏中打开的完整流程。界面怎样显示在游戏中，见[工作原理](how-it-works.md)。
 
-## 两部分工作
+## 安装
 
-使用 bedrock-cui 时的工作分为两部分：
+需要 Node.js 22.12 或更高版本。bedrock-cui 有两种安装方式：
 
-- **描述界面**：用控件搭建界面，写在 `ui/` 目录中。这一部分只涉及 JavaScript，在浏览器中预览即可，不需要进入游戏。
-- **挂到游戏里**：界面通过服务端表单显示，由行为包脚本打开。这一部分涉及附加包，见「挂到游戏里」一章。
+- **新建项目**：用命令行创建一个已经配置好的项目（一个使用 bedrock-cui 的 [sapdon](https://github.com/Meteage/sapdon) 项目），附带一个示例界面。本节使用这种方式。
+- **加入已有的 sapdon 项目**：在项目中执行 `npm install bedrock-cui`，再添加配置文件，见[在 sapdon 中使用](sapdon.md)。
 
-本节先完成第一部分；第二部分使用项目自带的脚本，不需要修改。
-
-## 创建项目
+新建项目：
 
 ```bash
 npx bedrock-cui create my_ui
@@ -19,23 +17,22 @@ cd my_ui
 npm install
 ```
 
-::: tip
-发布到 npm 之前，先全局安装：`npm install -g github:OneFeiFan/bedrock-cui`，再运行 `bedrock-cui create my_ui`。
-:::
-
 生成的项目结构如下：
 
 ```
 my_ui/
-├─ cui.config.mjs        # 项目配置：有哪些界面
+├─ cui.config.mjs        # 项目配置：登记有哪些界面
 ├─ ui/book.mjs           # 示例界面：一本两页的小书
 ├─ scripts/index.js      # 行为包脚本：打开界面
-├─ main.mjs              # 构建入口
-├─ res/                  # 资源包文件（贴图等）
+├─ main.mjs              # 构建入口（sapdon）
+├─ res/                  # 资源包中的文件（贴图等）
 └─ build.config、mod.info # sapdon 的项目设置
 ```
 
-bedrock-cui 的项目同时是一个 [sapdon](https://github.com/Meteage/sapdon) 项目：bedrock-cui 负责界面与预览，清单、UUID 与打包由 sapdon 负责。
+使用 bedrock-cui 时的工作分为两部分：
+
+- **描述界面**：用控件搭建界面，写在 `ui/` 目录中。这部分只涉及 JavaScript，在浏览器中预览即可，不需要进入游戏。
+- **挂到游戏里**：行为包脚本打开服务端表单，游戏在表单上显示界面。新建的项目已经包含这部分的脚本，本节不需要修改它。
 
 ## 在浏览器中预览
 
@@ -43,7 +40,7 @@ bedrock-cui 的项目同时是一个 [sapdon](https://github.com/Meteage/sapdon)
 npm run dev
 ```
 
-打开终端中显示的地址（默认为 `http://localhost:5173`）。页面左侧列出项目中的界面，中间是按游戏规则绘制的预览，下方是静态检查的结果，右侧可以编辑表单的标题、正文与按钮文字。首次运行时会下载预览所需的字体。
+打开终端中显示的地址（默认为 `http://localhost:5173`）。页面左侧列出项目中的界面，中间是按游戏规则绘制的预览，下方是静态检查的结果，右侧可以修改模拟的表单内容。首次运行时会下载预览所需的字体。
 
 修改 `ui/book.mjs` 并保存后，预览自动刷新。
 
@@ -69,31 +66,33 @@ export function buildCard() {
 }
 ```
 
-`add()` 将控件加入面板。`setXxx()` 返回控件本身，因此可以链式调用。各类控件与布局方式见「搭建界面」一章。
+`card.add(…)` 把括号中的控件加入面板 `card`。每个 `setXxx(…)` 方法设置一项属性并返回控件本身，因此可以连续调用。控件与布局见「搭建界面」一章。
 
-在配置中登记这个界面：
+## 登记界面
 
-```js {3,8}
+界面要在配置中登记后，预览和构建才会包含它。打开 `cui.config.mjs`，加入标有 `← 新增` 的两行：
+
+```js
 // cui.config.mjs
 import { defineConfig } from 'bedrock-cui'
 import { buildBook } from './ui/book.mjs'
-import { buildCard } from './ui/card.mjs'
+import { buildCard } from './ui/card.mjs'                 // ← 新增
 
 export default defineConfig({
     namespace: 'book',
     screens: {
         'cui_ui:book': () => buildBook(),
-        'cui_ui:card': () => buildCard(),
+        'cui_ui:card': () => buildCard(),                // ← 新增
     },
     textures: ['res'],
 })
 ```
 
-`screens` 中的键是界面 id，值是返回根控件的函数。预览页面的界面列表中随即出现 `cui_ui:card`。
+`screens` 的每一项登记一个界面：键是界面 id，值是返回界面的函数。预览页面的界面列表中随即出现 `cui_ui:card`。
 
 ## 静态检查
 
-预览页面下方显示静态检查的结果。例如，对面板调用 `setContain()`（要求子控件不越出面板），并将正文的折行宽度改为 260：
+预览页面下方显示静态检查的结果。例如，对面板调用 `setContain()`，表示其中的控件不得越出面板；再把正文的折行宽度改为 260：
 
 ```js
 const card = new Panel().setName('card').setSize(200, 100).setContain()
@@ -101,13 +100,13 @@ const card = new Panel().setName('card').setSize(200, 100).setContain()
 new Paragraph('……', 260).setName('intro')
 ```
 
-预览页面与构建时均会给出：
+预览页面与构建时都会给出：
 
 ```
 警告 out-of-bounds root/panel0/card/intro：越出 root/panel0/card 的安全区（右 70 像素）
 ```
 
-路径由控件名组成。未命名的控件按类型和顺序自动命名（如 `label1`），因此建议为需要定位的控件设置名称。警告不影响构建；错误会使构建失败。
+路径由控件的名称组成（`setName(…)` 设置的名称）。未设置名称的控件按类型和顺序自动命名（如 `label1`），因此建议为需要定位的控件设置名称。警告不影响构建；错误会使构建失败。
 
 ## 构建并在游戏中打开
 
@@ -116,11 +115,12 @@ npm run build      # 构建，结果在 dev/ 中
 npm run pack       # 构建并打包为 dev/my_ui.mcaddon
 ```
 
-在 Windows 上，`npm run build` 还会将资源包与行为包复制到游戏的开发包目录。在游戏中新建世界并启用这两个包，手持书右键，即显示示例小书。
+在 Windows 上，`npm run build` 还会把资源包与行为包复制到游戏的开发包目录。在游戏中新建世界并启用这两个包，手持书右键，即显示示例小书。
 
-打开界面的是 `scripts/index.js`：
+显示小书的过程是：行为包脚本 `scripts/index.js` 打开一个标题为 `cui_ui:book` 的服务端表单；资源包中 bedrock-cui 生成的界面定义识别出这个界面 id，在表单上显示 `buildBook()` 返回的界面。
 
 ```js
+// scripts/index.js
 import { world } from '@minecraft/server'
 import { ServerPagesForm } from 'bedrock-cui/runtime/server-pages'
 import { paging } from './cui.generated.js'
@@ -132,4 +132,4 @@ world.afterEvents.itemUse.subscribe((e) => {
 })
 ```
 
-脚本打开一个标题为界面 id 的服务端表单，游戏随即显示对应的界面。`cui.generated.js` 由构建生成，包含各界面的翻页路由。这一部分的原理见[附加包与服务端表单基础](addon-basics.md)。
+示例小书有翻页功能，所以脚本使用 bedrock-cui 提供的 `ServerPagesForm`（它在内部使用 `ActionFormData`）打开表单；`cui.generated.js` 由构建生成，包含翻页所需的信息。翻页的原理见[翻页](paging.md)。要打开新登记的 `cui_ui:card`，脚本中写 `new ActionFormData().title('cui_ui:card').body('').show(player)` 即可。

@@ -60,7 +60,7 @@ world.afterEvents.itemUse.subscribe((e) => { if (e.itemStack.typeId === 'minecra
 手册：<https://onefeifan.github.io/bedrock-cui/>
 
 - [快速上手](https://onefeifan.github.io/bedrock-cui/quick-start.html)：创建项目、预览、构建并在游戏中打开；
-- [附加包与服务端表单基础](https://onefeifan.github.io/bedrock-cui/addon-basics.html)：不熟悉附加包开发时，先读这一节；
+- [工作原理](https://onefeifan.github.io/bedrock-cui/how-it-works.html)：原版的服务端表单，以及 bedrock-cui 怎样在它上面显示界面；
 - [组件](https://onefeifan.github.io/bedrock-cui/components/panel.html)：每个组件的示例与全部属性、方法；
 - [真机规则](https://onefeifan.github.io/bedrock-cui/reference/rules.html)：框架所依据的、在真机上测得的游戏行为。
 
