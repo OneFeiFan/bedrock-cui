@@ -15,6 +15,14 @@
 - 命令行 `bedrock-cui create`、`dev`、`build`；项目配置 `defineConfig()`（`cui.config.mjs`），界面可写成 `{ build, routed }`。
 - `form.buttonTexture`：图片显示表单按钮的图标，可显示任意已加载的贴图。
 - `form.button(n)`：表单的第 n 个按钮，返回读取该按钮内容的容器（代替 `new CollectionItem('form_buttons', n)`）。
+- 界面文件 `defineScreen({ id, props, state, computed, methods, onOpen, onUpdate, onClose, view })`：一个界面的数据、逻辑与视图写在一个文件中；
+  按钮用名字（`button('buy')` 与 `methods.buy`），序号由 bedrock-cui 分配；脚本中 `界面.open(玩家, props)`；事件 `this.emit()` / `界面.on()`；
+  定时器 `this.setInterval()` / `this.setTimeout()`；状态变化时合并刷新。
+- 动画 `Anim`（alpha、offset、size、color、clip、wait；then、loop、setEasing），任何控件 `setAnims()`。
+- `bedrock-cui create` 的模板改用界面文件。
+- 手册：新增「界面文件」「数据（props）」「逻辑」「动画」，重写「工作原理」「快速上手」「翻页」「表达式」「脚本端」；
+  底层 API（`form`、`FormButton`、`FormGate`、`CollectionItem`、`ServerPagesForm`）不再出现在手册与参考中，由界面文件代替。
+- `Texture.SOLID`：内置纯白贴图，用到时构建自动写进资源包。原版的 `textures/ui/white` 四周有 2 像素黑边，不能当作纯色。
 - `bedrock-cui/dom`：将控件树输出为普通网页。
 - 预览（`bedrock-cui dev`）：字宽切换、缩放、控件边框；图片染色（`setColor()`）。
 - 手册网站，含在线示例、组件页与 API 参考；适配手机阅读。

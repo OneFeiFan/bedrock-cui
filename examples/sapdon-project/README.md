@@ -5,9 +5,9 @@
 | 文件 | 作用 |
 |---|---|
 | `cui.config.mjs` | 项目配置：命名空间、界面、贴图目录、预览数据 |
-| `ui/book.mjs` | 示例界面：一本两页的小书 |
+| `ui/book.screen.mjs` | 示例界面：一本两页的小书（数据、逻辑、视图写在一个文件里） |
 | `main.mjs` | sapdon 的构建入口：`useSapdon(config, { GRegistry, UISystemRegistry })` |
-| `scripts/index.js` | 行为包脚本：`ServerPagesForm` 与构建生成的 `cui.generated.js` |
+| `scripts/index.js` | 行为包脚本：导入构建生成的 `cui.generated.js`，手持书右键时打开界面 |
 
 步骤：`npm install bedrock-cui`，加入上面的文件，`npx bedrock-cui dev` 预览，`npx sapdon compile` 构建。说明见手册「在 sapdon 中使用」。
 

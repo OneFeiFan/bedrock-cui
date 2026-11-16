@@ -5,11 +5,11 @@
 `Toggle` 是一个可以选中的控件。同一组（`group`）中的开关互斥，序号（`index`）标识组内的每个开关：
 
 ```js
-import { Image, Label, Size, Toggle } from 'bedrock-cui'
+import { Image, Label, Size, Texture, Toggle } from 'bedrock-cui'
 
 const tab = new Toggle('tabs', 0).setName('tab_items').setSize(40, 16)
 tab.unchecked.add(new Label('物品'))
-tab.checked.add(new Image('textures/ui/white').setKeepRatio(false).setSize(Size.full()), new Label('§l物品'))
+tab.checked.add(new Image(Texture.SOLID).setKeepRatio(false).setSize(Size.full()), new Label('§l物品'))
 ```
 
 开关的外观由四个状态面板组成，分别是 `unchecked`、`checked`、`uncheckedHover`、`checkedHover`，向其中加入控件即可。
@@ -65,5 +65,5 @@ detail.page('sword').add(
 游戏只在鼠标移动时重新判断悬停的控件。用开关连续翻页时，若鼠标不移动，第二次点击会落到错误的位置。目录、书签、弹出层这类每次都需要移动鼠标的操作适合用开关；「下一页」这类在同一位置连续点击的操作，应使用[服务端翻页](paging.md)。
 
 ::: warning
-开关内部的控件读取不到开关之外的 `form.button(n)` 的数据。需要在开关的状态面板中显示表单按钮的文字时，将 `form.button(n)` 放在状态面板内部。静态检查对此报告 `collection-through-toggle`。
+开关的状态面板中可以直接显示界面的数据（`props`）：bedrock-cui 在使用数据的控件处读取它。
 :::

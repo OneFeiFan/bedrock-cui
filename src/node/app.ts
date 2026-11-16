@@ -16,7 +16,8 @@ import type { TextureInfo } from '../layout/engine.js'
 import type { ServerPaging } from '../core/serverPagesShared.js'
 import { screenOf, type CuiConfig } from '../core/config.js'
 import { Screen, type ScreenManifest } from '../core/screen.js'
-import { renderGlyphSheet, textureInfoFrom } from './tools.js'
+import { encodePng, renderGlyphSheet, textureInfoFrom } from './tools.js'
+import { SOLID_TEXTURE } from '../core/values.js'
 
 /** 编译结果 */
 export interface CuiCompiled {
@@ -129,6 +130,8 @@ export class CuiApp {
             if (g.issues.length) issues.push(...g.issues.map((message) => ({ rule: 'glyph-sheet', level: 'error' as const, path: g.file, message })))
             glyphs.push([g.file, g.png])
         }
+        // 内置纯白贴图：界面用到时才写进资源包
+        if (JSON.stringify(files).includes(SOLID_TEXTURE)) glyphs.push([`${SOLID_TEXTURE}.png`, new Uint8Array(encodePng(2, 2, new Uint8Array(16).fill(255)))])
         const screens = Object.fromEntries([...this.manifests].map(([id, m]) => [id, paging[id] ? { ...m, paging: paging[id] } : m]))
         return { files: files as Record<string, object>, paging, screens, glyphs, issues }
     }
@@ -191,7 +194,7 @@ export class CuiApp {
                 if (fs.existsSync(to) && Buffer.compare(fs.readFileSync(to), Buffer.from(png)) === 0) continue
                 fs.mkdirSync(path.dirname(to), { recursive: true })
                 fs.writeFileSync(to, png)
-                if (!rpOut) console.warn(`[bedrock-cui] 字形图已更新：${path.relative(process.cwd(), to)}——res/ 在项目代码运行之前同步，请再构建一次`)
+                if (!rpOut) console.warn(`[bedrock-cui] 生成的贴图已更新：${path.relative(process.cwd(), to)}——res/ 在项目代码运行之前同步，请再构建一次`)
             }
         })
         return this

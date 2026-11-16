@@ -113,3 +113,20 @@ test('button()：同一序号的普通版（优先级 10）与聚焦版（100，
     assert.deepEqual([made.size.toJSON(), normal.size.toJSON(), focused.size.toJSON(), normal.button.size.toJSON()].map(String), Array(4).fill('70,18'))
     assert.deepEqual(compileNamespace('t', { root }).issues.filter((i) => i.level === 'error'), [])
 })
+
+test('previewForm：包含起始页的翻页箭头与「原地不动」按钮（手册网站的预览据此显示箭头）', () => {
+    const s = defineScreen({
+        id: 'cui_ui:pv', methods: { close() { } },
+        view({ button, pages }) {
+            const p = pages('b').startAt('p1')
+            p.page('p1').add(p.serverArrow('p1', 'p2', 'next', () => new Label('>'), 16, 12))
+            p.page('p2').add(p.serverArrow('p2', 'p1', 'prev', () => new Label('<'), 16, 12))
+            return new Panel().setSize(200, 100).add(p, p.stayButton(), button('close').setSize(12, 12))
+        },
+    })
+    const { manifest } = s.build()
+    const f = s.previewForm(manifest)
+    assert.ok(f.buttons.some((t) => /^go\d+\|F?$/.test(t)), `有翻页箭头：${JSON.stringify(f.buttons)}`)
+    assert.ok(f.buttons.includes('stay|'))
+    assert.ok(f.buttons.includes(manifest.buttons[0].tag), '自己的按钮仍在')
+})

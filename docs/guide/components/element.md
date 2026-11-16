@@ -30,7 +30,7 @@ panel.add(label)
 | `children` | 只读 | `Element[]` |  |
 | `parent` | — | `Element \| undefined` |  |
 | `size` | `setSize(size: SizeValue)`<br>`setSize(width: LengthLike, height: LengthLike)` | `Size \| undefined` | 尺寸 |
-| `offset` | `setOffset(offset: Vec2)`<br>`setOffset(x: LengthLike, y: LengthLike)` | `Vec2 \| undefined` | 偏移 |
+| `offset` | `setOffset(offset: Vec2)`<br>`setOffset(x: LengthLike \| Expr, y: LengthLike)` | `Vec2 \| undefined` | 偏移 |
 | `anchorFrom` | `setAnchorFrom()` | `Anchor \| undefined` | 父控件上的锚点 |
 | `anchorTo` | `setAnchorTo()` | `Anchor \| undefined` | 自身的锚点 |
 | `layer` | `setLayer()` | `number \| undefined` | 层级（相对父控件） |
@@ -48,6 +48,7 @@ panel.add(label)
 | `overflow` | `setOverflow()` | `boolean` | 允许越界（提示框、弹出物）：contain 检查跳过 |
 | `gridPos` | `setGridPos()` | `[number, number] \| undefined` | 在 grid 里的格位 [列, 行] |
 | `variables` | `setVariables()` | `Record<string, unknown> \| undefined` | JSON UI 变量（$name → 值） |
+| `anims` | `setAnims()` | `(string \| Anim)[] \| undefined` | 动画：Anim（编译时生成定义），或已有动画定义的引用（例如 '@my_ns.fade_in'） |
 
 **方法**
 

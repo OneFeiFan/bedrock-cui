@@ -13,9 +13,9 @@ new Image('textures/items/diamond').setSize(16, 16)
 默认情况下，图片保持贴图的宽高比，在控件范围内按比例缩放并居中。需要拉伸铺满时（例如纯色或渐变的贴图），关闭保持宽高比：
 
 ```js
-import { Image, Length, Size } from 'bedrock-cui'
+import { Image, Length, Size, Texture } from 'bedrock-cui'
 
-new Image('textures/ui/white').setKeepRatio(false).setSize(Length.pct(100), 1)   // 一条横线
+new Image(Texture.SOLID).setKeepRatio(false).setSize(Length.pct(100), 1)   // 一条横线
 ```
 
 ## 九宫格
@@ -51,9 +51,9 @@ export default defineConfig({
 `setColor()` 对贴图染色，`setAlpha()` 设置不透明度（0 到 1）：
 
 ```js
-import { Color, Image } from 'bedrock-cui'
+import { Color, Image, Texture } from 'bedrock-cui'
 
-new Image('textures/ui/white').setColor(Color.hex('#5b3a1c')).setAlpha(0.8)
+new Image(Texture.SOLID).setColor(Color.hex('#5b3a1c')).setAlpha(0.8)
 ```
 
 ## 取样区域与按比例裁剪

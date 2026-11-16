@@ -278,7 +278,7 @@ export function lint(roots: RNode[], options: LintOptions = {}): LintIssue[] {
         }
         // 按钮写百分比尺寸放进集合项：格位面板不设尺寸时会被算成以格高为边长的正方形
         if (n.type === 'collection_item' && (typeof n.props.size?.[0] !== 'number' || typeof n.props.size?.[1] !== 'number')) {
-            push('collection-item-size', 'error', n, '读取表单按钮的控件（显示 prop 的控件、button()、FormButton）需要像素尺寸，例如 setSize(120, 10)：编译成正方形网格需要知道边长，否则内容不会显示')
+            push('collection-item-size', 'error', n, '显示 props 的控件与 button() 需要像素尺寸，例如 setSize(120, 10)：编译成正方形网格需要知道边长，否则内容不会显示')
         }
     })
     return issues

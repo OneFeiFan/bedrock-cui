@@ -17,7 +17,7 @@ const book = () => {
 test('create：用 sapdon 的项目模板建项目，加上 bedrock-cui 的配置、示例界面、入口、脚本与示例贴图；mod.info 含 BP / RP 的 UUID', () => {
     const dir = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'cui-create-')), 'my_ui')
     create(dir)
-    for (const f of ['build.config', 'mod.info', 'cui.config.mjs', 'ui/book.mjs', 'main.mjs', 'scripts/index.js', 'res/textures/cui_example/panel.png', 'res/textures/cui_example/panel.json'])
+    for (const f of ['build.config', 'mod.info', 'cui.config.mjs', 'ui/book.screen.mjs', 'main.mjs', 'scripts/index.js', 'res/textures/cui_example/panel.png', 'res/textures/cui_example/panel.json'])
         assert.ok(fs.existsSync(path.join(dir, f)), f)
     const pkg = JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf8'))
     assert.equal(pkg.name, 'my_ui')

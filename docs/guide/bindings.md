@@ -1,147 +1,74 @@
-# 表达式与绑定
+# 表达式
 
-服务端表单的标题、正文与按钮文字由行为包脚本在打开表单时决定（见[工作原理](how-it-works.md)）。界面通过表达式读取这些数据：表达式在编译时转换为 JSON UI 的绑定，由游戏在运行时求值。
+表达式描述一个由游戏客户端在显示时计算的值，例如「这项数据中是否包含 VIP」「开关是否选中」。它们编译为 JSON UI 的绑定，可以用作控件的文字、显示条件等属性。本节介绍表达式的数据来源、运算与限制。
 
-以下示例的预览均模拟了一组表单数据，写在示例开头的 `data` 中。
+## 数据来源
 
-## 显示表单的正文
+表达式从两种数据开始：
 
-`form.text` 是表单正文。将它作为 `Label` 的文字，界面即显示脚本传入的正文：
+| 来源 | 写法 | 介绍 |
+|---|---|---|
+| 界面的数据 | `props.名字` | [数据（props）](props.md) |
+| 开关的状态 | `toggleState(开关名)` | 下文「开关的状态」 |
 
-```js preview=card 220x80 form=data
-import { Anchor, Color, Image, Label, Length, Panel, Size, form } from 'bedrock-cui'
-
-// 脚本：new ActionFormData().title('cui_ui:card').body('今天的任务：收集 3 个钻石。')
-const data = { title: 'cui_ui:card', text: '今天的任务：收集 3 个钻石。' }
-
-const card = new Panel().setSize(200, 60).add(
-    new Image('textures/ui/dialog_background_opaque').setSize(Size.full()),
-    new Label(form.text).setColor(Color.hex('#3c2814')).setSize(180, Length.auto()).setAnchor(Anchor.TOP_LEFT).setOffset(10, 8),
-)
-```
-
-表单数据有三个来源：
-
-| 表达式 | 内容 |
-|---|---|
-| `form.title` | 表单标题 |
-| `form.text` | 表单正文 |
-| `form.buttonText` | 某个表单按钮的文字（见下文「读取表单按钮的文字」） |
-| `form.buttonTexture` | 某个表单按钮的图标路径（见下文「显示按钮的图标」） |
+`props.名字` 本身就是一个表达式：用在 `Label` 上取它的文字，用在 `Image` 上取它的图标，用在 `setVisible()` 上表示「有值」。在它上面调用运算方法，得到新的表达式。
 
 ## 显示条件
 
-表达式也可以作为显示条件。`setVisible()` 接受一个表达式，其值为真时显示控件：
+`控件.setVisible(表达式)` 在表达式的值为真时显示控件。下面根据 `props.rank` 中是否包含 `VIP`，显示不同的文字：
 
-```js preview=card 220x60 form=data
-import { Anchor, Color, Image, Label, Panel, Size, form } from 'bedrock-cui'
+```js preview=card 220x60
+import { Color, Image, Label, Panel, Size, defineScreen } from 'bedrock-cui'
 
-// 正文中包含 #unlocked 标记，表示已解锁
-const data = { text: '#unlocked' }
-
-const card = new Panel().setSize(200, 40).add(
-    new Image('textures/ui/dialog_background_opaque').setSize(Size.full()),
-    new Label('§2已解锁').setVisible(form.text.contains('#unlocked')),
-    new Label('§4未解锁').setVisible(form.text.contains('#unlocked').not()),
-)
+const card = defineScreen({
+    id: 'cui_ui:card',
+    props: { rank: 'VIP 会员' },
+    view({ props }) {
+        const vip = props.rank.contains('VIP')
+        return new Panel().setSize(200, 40).add(
+            new Image('textures/ui/dialog_background_opaque').setSize(Size.full()),
+            new Label('§6欢迎，尊贵的会员').setSize(160, 10).setVisible(vip),
+            new Label('欢迎').setColor(Color.hex('#3c2814')).setSize(160, 10).setVisible(vip.not()),
+        )
+    },
+})
 ```
-
-正文中可以放置多个这样的标记，分别控制界面中不同部分的显示。
 
 ## 运算
 
-表达式通过方法组合，每个方法返回一个新的表达式：
+表达式的运算写成方法调用，返回新的表达式：
 
-| 方法 | 含义 |
-|---|---|
-| `contains(x)` | 是否包含 x |
-| `minus(x)` | 对字符串：去掉其中的 x；对数字：减法 |
-| `plus(x)`、`times(x)`、`div(x)`、`mod(x)` | 拼接或算术运算 |
-| `eq(x)`、`ne(x)`、`gt(x)`、`lt(x)`、`gte(x)`、`lte(x)` | 比较 |
-| `and(x)`、`or(x)`、`not()` | 逻辑运算 |
-| `isEmpty()` | 是否为空字符串 |
+| 方法 | 含义 | 真机 |
+|---|---|---|
+| `contains(x)` | 文字中是否包含 x | 已验证 |
+| `minus(x)` | 对文字：去掉其中的 x；对数字：减法 | 已验证 |
+| `eq(x)`、`ne(x)` | 相等、不相等 | 原版常用（`=`） |
+| `and(x)`、`or(x)`、`not()` | 逻辑运算 | 原版常用 |
+| `isEmpty()` | 是否为空字符串 | |
+| `times(x)`、`div(x)`、`mod(x)`、`plus(x)` | 算术运算；`plus` 对文字是拼接 | 只有整数（见下文） |
+| `gt(x)`、`lt(x)`、`gte(x)`、`lte(x)` | 大于、小于等比较 | **未验证，暂不使用**（见下文） |
 
-## 读取表单按钮的文字
+`props.名字.number` 把文字转为数字（JSON UI 中对数字文字做乘法即得到数字）。
 
-正文只有一段，而按钮可以有很多个，适合传递成组的数据，例如一列物品（见[工作原理](how-it-works.md#按钮在-bedrock-cui-中的用途)）。`form.button(n)` 表示表单的第 n 个按钮（从 0 开始，对应脚本中第 n 个 `button()`），它返回一个容器；在这个容器内部，`form.buttonText` 即该按钮的文字。
+## 限制
 
-下面的界面用前三个按钮的文字显示一列物品。每个按钮的文字以 `item|` 开头，显示时用 `minus()` 去掉：
+以下限制由真机测试得出：
 
-```js preview=list 220x80 form=data
-import { Anchor, Color, Column, Image, Label, Panel, Size, form } from 'bedrock-cui'
-
-// 脚本：.button('item|钻石 ×3').button('item|绿宝石 ×12').button('item|金锭 ×5')
-const data = { buttons: ['item|钻石 ×3', 'item|绿宝石 ×12', 'item|金锭 ×5'] }
-
-const rows = new Column().setGap(2).setAnchor(Anchor.TOP_LEFT).setOffset(10, 8)
-for (let i = 0; i < 3; i++) {
-    rows.add(form.button(i).setSize(160, 10).add(
-        new Label(form.buttonText.minus('item|')).setColor(Color.hex('#3c2814')).setAnchor(Anchor.TOP_LEFT),
-    ))
-}
-const list = new Panel().setSize(200, 50).add(new Image('textures/ui/dialog_background_opaque').setSize(Size.full()), rows)
-```
-
-`form.button(n)` 返回的容器需要设置像素尺寸。序号超出脚本实际添加的按钮数时，容器读取不到数据，内容保持空白。这个容器本身不可点击。
-
-需要点击时使用 `FormButton(n, …)`：它同样对应第 n 个按钮、可以读取按钮的文字，并且可以被点击，点击后表单关闭，脚本得到序号 n（见[服务端表单](server-form.md#表单按钮)）。
-
-## 显示按钮的图标
-
-`ActionFormData.button(文字, 图标路径)` 可以为按钮附带一个图标。在集合项内部，`form.buttonTexture` 即该按钮的图标路径，用作 `Image` 的贴图：
-
-```js preview=list 220x60 form=data
-import { Anchor, Color, Column, Image, Label, Panel, Size, form } from 'bedrock-cui'
-
-// 脚本：.button('ico|钻石', 'textures/items/diamond').button('ico|没有图标')
-const data = { buttons: [{ text: 'ico|钻石', icon: 'textures/items/diamond' }, 'ico|没有图标'] }
-
-const row = (i) => form.button(i).setSize(160, 16).add(
-    new Image(form.buttonTexture).setSize(16, 16).setAnchor(Anchor.TOP_LEFT),
-    new Label(form.buttonText.minus('ico|')).setColor(Color.hex('#3c2814')).setAnchor(Anchor.CENTER_LEFT).setOffset(20, 0),
-)
-const list = new Panel().setSize(200, 44).add(
-    new Image('textures/ui/dialog_background_opaque').setSize(Size.full()),
-    new Column().setGap(2).setAnchor(Anchor.TOP_LEFT).setOffset(8, 5).add(row(0), row(1)),
-)
-```
-
-图标由脚本在运行时决定，游戏加载了的贴图都可以显示，包括其他附加包中的物品。按钮没有图标时，图片隐藏。编译结果与原版服务端表单的按钮图标相同。
-
-## 按正文切换内容
-
-`FormGate(标记)` 是一个容器：表单正文包含该标记时，显示其中的内容。它相当于 `new Panel().setVisible(form.text.contains(标记))`，用于由脚本决定显示界面中的哪一部分：
-
-```js preview=card 220x60 form=data
-import { Anchor, Color, FormGate, Image, Label, Panel, Size, form } from 'bedrock-cui'
-
-// 脚本按玩家的进度传入 stage:2
-const data = { text: 'stage:2' }
-const INK = Color.hex('#3c2814')
-
-const card = new Panel().setSize(200, 40).add(
-    new Image('textures/ui/dialog_background_opaque').setSize(Size.full()),
-    new FormGate('stage:1').setSize(Size.full()).add(new Label('第一阶段：收集木头').setColor(INK)),
-    new FormGate('stage:2').setSize(Size.full()).add(new Label('第二阶段：制作工具').setColor(INK)),
-    new FormGate('stage:3').setSize(Size.full()).add(new Label('第三阶段：寻找钻石').setColor(INK)),
-)
-```
+- **运算只有整数**。除法是整数除法（`1 ÷ 4` 得 0），小数文字转为数字后得 0（`'0.6'` 得 0）。因此需要小数的属性（例如图片的裁剪比例）无法由运算得到。
+- **比较运算未经验证**。以 `(x >= 0) and (x < 1000)` 作为显示条件时，结果一直为假；原版的表达式中也从未用过比较运算。需要判断时，用 `contains()` 与相等代替，例如让数据带上前缀（`R400`、`D1000`），再判断是否包含 `R`。
+- **不引用任何数据的表达式是常量**，编译时直接算出结果，写成固定值。游戏不接受来源只有常数的绑定。
+- 绑定读取不到数据时，目标属性保持默认值，不会报错。
 
 ## 开关的状态
 
 `toggleState(开关名)` 读取一个开关是否选中，用于显示条件。开关的用法见[开关与分页](pages.md)：
 
 ```js
-import { Label, toggleState, form } from 'bedrock-cui'
+import { Label, toggleState } from 'bedrock-cui'
 
 new Label('§a已选中').setVisible(toggleState('show_details'))
 ```
 
 开关按名称查找，范围是整个界面。传入 `{ siblingScope: true }` 时，只在兄弟控件中查找。
 
-::: warning
-以下行为由真机测试得出：
-
-- 绑定读取不到数据时，目标属性保持默认值，不会报错。
-- 一个表达式同时读取表单数据与开关状态时，开关变化后它不会重新计算。应将两者分别用于不同的控件（静态检查：`mixed-sources`）。
-:::
+一个表达式同时读取界面的数据与开关状态时，开关变化后它不会重新计算（真机）。应将两者分别用于不同的控件，例如外层控件按开关显示、内层控件显示数据（静态检查：`mixed-sources`）。

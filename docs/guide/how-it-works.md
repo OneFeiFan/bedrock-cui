@@ -46,7 +46,7 @@ bedrock-cui 利用第 3 条特性，改写服务端表单的外观：
 
 1. 用 bedrock-cui 编写界面。构建时，界面被编译为 JSON UI 文件，放进附加包的资源包。
 2. 资源包同时改写原版的 `ui/server_form.json`：表单标题以 `cui_ui:` 开头时，隐藏原版的按钮列表；标题中包含某个界面的 id 时，在原处显示这个界面。
-3. 行为包脚本照常用 `ActionFormData` 打开表单，只是把标题写成界面 id。
+3. 行为包脚本调用界面的 `open()`，bedrock-cui 以界面 id 为标题打开服务端表单（内部使用 `ActionFormData`）。
 
 以下三个词在本手册中有确定的含义：
 
@@ -56,64 +56,45 @@ bedrock-cui 利用第 3 条特性，改写服务端表单的外观：
 | 界面 id | 登记界面时使用的名字，也是打开表单时写在标题里的文字，例如 `cui_ui:shop`。必须以 `cui_ui:` 开头，原版的按钮列表据此隐藏；冒号之后的部分自行命名。 |
 | 页 | `Pages` 组件中的一页。页属于某个界面的内部，用于在界面中切换内容（见[开关与分页](pages.md)），不是另一个界面。 |
 
-在配置中登记界面，在脚本中打开它：
+一个界面写在一个界面文件中，在项目配置中登记；行为包脚本打开它时，bedrock-cui 以界面 id 为标题打开一个服务端表单：
 
 ```js
-// cui.config.mjs（项目配置）
-import { defineConfig } from 'bedrock-cui'
-import { buildShop } from './ui/shop.mjs'
+// ui/shop.screen.mjs（界面文件）
+import { Label, Panel, defineScreen } from 'bedrock-cui'
 
-export default defineConfig({
-    namespace: 'shop',
-    screens: { 'cui_ui:shop': () => buildShop() },   // 界面 id → 返回界面的函数
+export default defineScreen({
+    id: 'cui_ui:shop',
+    view() {
+        return new Panel().setSize(200, 100).add(new Label('商店'))
+    },
 })
 ```
 
 ```js
-// 行为包脚本：标题写成界面 id，游戏显示 buildShop() 返回的界面
-new ActionFormData().title('cui_ui:shop').body('').show(player)
+// 行为包脚本：相当于 new ActionFormData().title('cui_ui:shop')……show(player)
+shop.open(player)
 ```
 
-## 界面怎样读取表单的内容
+界面文件的写法见[界面文件](screens.md)。
+
+## bedrock-cui 怎样传递数据与点击
 
 原版的服务端表单在显示时，向界面内部提供它的内容：标题、正文、每个按钮的文字与图标。bedrock-cui 的界面显示在服务端表单内部，所以能读取这些内容。
 
-bedrock-cui 用 `form` 对象（从 `'bedrock-cui'` 导入）表示「当前打开的服务端表单的内容」。`form` 本身不含数据：写进界面后，它被编译为 JSON UI 的绑定，游戏显示界面时从当前表单取值。
+界面上的内容全部由 bedrock-cui 绘制，原版的按钮列表不再显示。bedrock-cui 借用表单的按钮做两件事。这是 bedrock-cui 的做法，不是原版的特性：
 
-| 脚本中（`ActionFormData`） | 界面中（bedrock-cui） |
-|---|---|
-| `.title('cui_ui:shop')` | `form.title` |
-| `.body('今天的特价：钻石')` | `form.text` |
-| 第 n 个 `.button(文字, 图标)` | 在 `form.button(n)` 内部，用 `form.buttonText`、`form.buttonTexture` |
+1. **传递数据**：界面的每一项[数据（props）](props.md)占用一个表单按钮。脚本打开界面时，bedrock-cui 把数据写进这个按钮的文字与图标；界面中显示这项数据的控件，读取的就是这个按钮。
+2. **接收点击**：界面中用 `button(名字)` 创建的每个按钮也对应一个表单按钮。玩家点击它时，效果与点击原版的按钮相同：表单关闭，脚本得到这个按钮的序号，bedrock-cui 再把序号换回名字，调用同名的方法。
 
-下面的界面用一个 `Label` 显示表单的正文。示例中的 `data` 模拟脚本打开表单时传入的内容，只用于本页的预览：
+哪项数据、哪个按钮对应第几个表单按钮，由 bedrock-cui 在构建时分配，写进构建生成的 `cui.generated.js`。使用者只与名字打交道，接触不到序号。
 
-```js preview=card 220x60 form=data
-import { Color, Image, Label, Length, Panel, Size, form } from 'bedrock-cui'
-
-// 相当于脚本中的 .title('cui_ui:shop').body('今天的特价：钻石')
-const data = { title: 'cui_ui:shop', text: '今天的特价：钻石' }
-
-const card = new Panel().setSize(200, 40).add(
-    new Image('textures/ui/dialog_background_opaque').setSize(Size.full()),
-    new Label(form.text).setColor(Color.hex('#3c2814')).setSize(180, Length.auto()),
-)
-```
-
-`form` 的全部用法见[表达式与绑定](bindings.md)。
-
-## 按钮在 bedrock-cui 中的用途
-
-界面上的内容全部由 bedrock-cui 绘制，原版的按钮列表不再显示。脚本仍然可以添加按钮，这些按钮在 bedrock-cui 中有两种用途。这是 bedrock-cui 的用法，不是原版的特性：
-
-1. **向界面传递数据**：按钮的文字与图标可以被界面读取，显示在界面的任意位置。例如脚本添加三个按钮，文字分别为三种物品的名称与数量，界面把它们排成一个列表。读取第 n 个按钮的内容使用 `form.button(n)`，它返回一个容器，本身不可点击（见[表达式与绑定](bindings.md#读取表单按钮的文字)）。
-2. **接收点击**：界面中的 `FormButton(n, …)` 是一块可点击的区域，对应第 n 个按钮。玩家点击它时，效果与点击原版的第 n 个按钮相同：表单关闭，脚本得到序号 n（见[服务端表单](server-form.md#表单按钮)）。
+这个做法带来一些限制，例如显示数据的控件需要像素尺寸（读取按钮数据的方式要求），一个控件只能使用一项数据。这些限制写在[数据（props）](props.md#限制)中。
 
 ## 更新界面上的内容
 
-表单打开后内容不能修改。要更新界面上显示的数据，脚本需要关闭表单，再以新的内容重新打开。bedrock-cui 的[服务端翻页](paging.md)就是这样实现的。
+表单打开后内容不能修改。要更新界面上显示的数据，需要关闭表单，再以新的内容重新打开。bedrock-cui 在玩家点击按钮之后、逻辑修改了状态之后这样做（见[逻辑](logic.md#更新显示)），[翻页](paging.md)也是这样实现的。
 
-不需要脚本参与的切换，例如目录、标签页、弹出层，使用开关（`Toggle`、`Pages`）在界面内部完成，表单不关闭（见[开关与分页](pages.md)）。
+不需要脚本参与的切换，例如目录、标签页、弹出层，使用开关（`Toggle`、`Pages`）在界面内部完成，表单不关闭（见[开关与分页](pages.md)）。随时间连续变化的显示，由客户端的[动画](animation.md)完成。
 
 ## 附加包的组成
 

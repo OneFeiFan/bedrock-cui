@@ -20,9 +20,10 @@ import type { Size, LengthLike } from './values.js'
 import { PropRef } from './expr.js'
 import { FormButton } from '../components/form.js'
 import { Pages } from '../components/pages.js'
+import { pagingButtons, type FormButtonSpec } from './serverPagesShared.js'
 
-/** 一个 prop 的值：文字，或文字与图标 */
-export type PropItem = string | { text: string, icon?: string }
+/** 一个 prop 的值：文字（数字按文字传递），或文字与图标 */
+export type PropItem = string | number | { text: string, icon?: string }
 /** props 中的默认值：文字、文字与图标、是否显示（布尔值）、列表（数组，长度为最大项数） */
 export type PropDefault = PropItem | boolean | PropItem[]
 
@@ -91,7 +92,11 @@ export interface ScreenOptions {
     computed?: Record<string, (this: any) => unknown>
     /** 方法；与 button() 同名的方法在按钮被点击时调用 */
     methods?: Record<string, (this: any, ...args: any[]) => unknown>
-    /** 第一次打开前 */
+    /**
+     * 第一次打开前。逻辑中可用：this.player、this.close()、this.refresh()、this.emit(事件名, …)（脚本用 screen.on() 接收）、
+     * this.setInterval(函数, 刻数) / this.setTimeout(函数, 刻数)（界面关闭时自动取消）。
+     * 界面文件在构建时会被 Node 导入，不能在开头导入游戏的脚本模块（@minecraft/*）
+     */
     onOpen?(this: any): void
     /** 因状态变化重新打开后 */
     onUpdate?(this: any): void
@@ -113,10 +118,10 @@ export interface ScreenManifest {
 }
 
 const kindOf = (v: PropDefault): 'text' | 'item' | 'flag' | 'list' =>
-    Array.isArray(v) ? 'list' : typeof v === 'boolean' ? 'flag' : typeof v === 'string' ? 'text' : 'item'
+    Array.isArray(v) ? 'list' : typeof v === 'boolean' ? 'flag' : typeof v === 'string' || typeof v === 'number' ? 'text' : 'item'
 
-const textOf = (v: PropItem): string => (typeof v === 'string' ? v : v.text)
-const iconOf = (v: PropItem): string => (typeof v === 'string' ? '' : v.icon ?? '')
+const textOf = (v: PropItem): string => (typeof v === 'object' ? v.text : String(v))
+const iconOf = (v: PropItem): string => (typeof v === 'object' ? v.icon ?? '' : '')
 
 /** 脚本端运行时（bedrock-cui/runtime/screens 注册；核心模块不依赖游戏的脚本 API） */
 interface ScreenRuntimeHook {
@@ -142,12 +147,34 @@ export class Screen {
     /** 界面 id */
     get id(): string { return this.options.id }
 
+    /** 最近一次 build() 中创建的页面组（previewForm 用来写入起始页的翻页箭头） */
+    private lastPages: Pages[] = []
+
     /** 为玩家打开界面（行为包脚本中）；props 为传给界面的数据，未传的取 computed 或默认值。已打开时更新 props 并重新显示 */
     open(player: { readonly id: string }, props?: Record<string, unknown>): void { hook().open(this, player, props) }
     /** 关闭玩家的这个界面（之后调用 onClose） */
     close(player: { readonly id: string }): void { hook().close(this, player) }
     /** 玩家是否打开着这个界面 */
     isOpen(player: { readonly id: string }): boolean { return hook().isOpen(this, player) }
+
+    private listeners = new Map<string, Set<(player: any, ...args: any[]) => unknown>>()
+    /**
+     * 接收界面逻辑中 this.emit(事件名, …) 发出的事件（行为包脚本中登记）：处理和游戏打交道的事，例如给物品、扣金币。
+     * 处理函数得到玩家与 emit 的参数；可以是异步的。界面在事件处理完之后才重新打开，处理中对界面的更新（open() 传入新数据、修改状态）合并为一次。
+     */
+    on(event: string, handler: (player: any, ...args: any[]) => unknown): this {
+        let set = this.listeners.get(event)
+        if (!set) this.listeners.set(event, (set = new Set()))
+        set.add(handler)
+        return this
+    }
+    /** 取消 on() 登记的处理函数 */
+    off(event: string, handler: (player: any, ...args: any[]) => unknown): this {
+        this.listeners.get(event)?.delete(handler)
+        return this
+    }
+    /** @internal 运行时取事件的处理函数 */
+    _listeners(event: string): ((player: any, ...args: any[]) => unknown)[] { return [...(this.listeners.get(event) ?? [])] }
 
     /** 构建视图：返回控件树与清单（构建时调用） */
     build(): { root: Element, manifest: ScreenManifest } {
@@ -192,9 +219,11 @@ export class Screen {
             return new ScreenButton(index, tag, focusTag).setName(name)
         }
 
-        const pages = (group: string): Pages => new Pages(group)._useAllocator(alloc).useServerPages()
+        const created: Pages[] = []
+        const pages = (group: string): Pages => { const p = new Pages(group)._useAllocator(alloc).useServerPages(); created.push(p); return p }
 
         const root = this.options.view({ props: propsProxy, button, pages })
+        this.lastPages = created
         return { root, manifest }
     }
 
@@ -210,6 +239,14 @@ export class Screen {
             })
         }
         for (const b of manifest.buttons) { buttons[b.index] = b.tag; icons[b.index] = '' }
+        // 翻页箭头：起始页的箭头与「原地不动」按钮
+        for (const p of this.lastPages) {
+            const paging = p.serverPaging(this.id)
+            if (!paging.arrows.length && paging.stay === undefined) continue
+            const own: Record<number, FormButtonSpec> = {}
+            buttons.forEach((t, i) => { if (t !== undefined) own[i] = t })
+            pagingButtons(paging, paging.start, 'next', own).forEach((t, i) => { if (t) buttons[i] = t })
+        }
         return { buttons: Array.from(buttons, (x) => x ?? ''), icons: Array.from(icons, (x) => x ?? '') }
     }
 }

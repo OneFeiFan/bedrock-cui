@@ -10,7 +10,8 @@ import { mountPreview } from 'bedrock-cui/web'
 const STANDINS = {
     'textures/ui/dialog_background_opaque': { file: 'dialog.png', size: [16, 16], nineslice: 4 },
     'textures/ui/purpleBorder': { file: 'purple.png', size: [16, 16], nineslice: 4 },
-    'textures/ui/white': { file: 'white.png', size: [2, 2] },
+    'textures/ui/white': { file: 'white_vanilla.png', size: [15, 15] },     // 原版：四周 2 像素黑边
+    'textures/bedrock_cui/solid': { file: 'white.png', size: [2, 2] },     // Texture.SOLID
     'textures/items/diamond': { file: 'diamond.png', size: [16, 16] },
     'textures/items/stick': { file: 'stick.png', size: [16, 16] },
     'textures/items/diamond_sword': { file: 'sword.png', size: [16, 16] },
@@ -20,6 +21,13 @@ window.CUI = CUI
 /** form：模拟的表单数据 { title, text, buttons } */
 window.CUI_PREVIEW = (id, root, { w, h, base, form }) => {
     const el = document.getElementById(id)
+    // defineScreen 定义的界面：构建视图，用 props 的默认值作为预览的数据
+    if (root instanceof CUI.Screen) {
+        const { root: tree, manifest } = root.build()
+        const f = root.previewForm(manifest)
+        form = { title: root.id, buttons: f.buttons.map((b, i) => (f.icons[i] ? { text: b, icon: f.icons[i] } : b)) }
+        root = tree
+    }
     const textures = Object.fromEntries(Object.entries(STANDINS).map(([path, t]) => [path, { url: `${base}assets/textures/${t.file}`, size: t.size, ...(t.nineslice ? { nineslice: t.nineslice } : {}) }]))
     const scale = Math.max(1, Math.min(3, Math.floor((el.clientWidth || 600) / w)))
     const buttons = form?.buttons ?? []

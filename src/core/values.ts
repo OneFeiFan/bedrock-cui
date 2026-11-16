@@ -179,6 +179,9 @@ export class Insets {
  *
  *   const CELL = Texture.of('textures/ui/cell_image').withSize(10, 10).withBaseSize(5, 5).withNineslice(1)
  */
+/** 内置纯白贴图的路径（Texture.SOLID） */
+export const SOLID_TEXTURE = 'textures/bedrock_cui/solid'
+
 export class Texture {
     private static readonly registry = new Map<string, TextureMeta>()
 
@@ -187,6 +190,11 @@ export class Texture {
     }
 
     static of(path: string): Texture { return new Texture(path, {}) }
+    /**
+     * 纯白贴图（bedrock-cui 内置，用到时构建自动写进资源包）：配合颜色画纯色矩形，例如底色、进度条。
+     * 原版的 textures/ui/white 不是纯色：15×15，四周有 2 像素黑边（真机 1.52.0）
+     */
+    static readonly SOLID = new Texture(SOLID_TEXTURE, {})
     static from(v: Texture | string): Texture { return v instanceof Texture ? v : Texture.of(v) }
 
     /** 贴图像素尺寸 */

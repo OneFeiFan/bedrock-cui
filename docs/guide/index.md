@@ -16,19 +16,25 @@
 - [图片与贴图](images.md)
 - [叠放](layering.md)
 - [行内图标](inline-icons.md)
+- [字形图标](glyph-icons.md)
 
-### 让界面动起来
+### 界面文件
 
-- [表达式与绑定](bindings.md)
+- [界面文件](screens.md)
+- [数据（props）](props.md)
+- [逻辑](logic.md)
+- [翻页](paging.md)
+- [动画](animation.md)
+
+### 界面内的交互
+
 - [开关与分页](pages.md)
 - [滚动](scroll.md)
+- [表达式](bindings.md)
 
-### 挂到游戏里
+### 脚本
 
-- [服务端表单](server-form.md)
-- [翻页](paging.md)
 - [脚本端](runtime.md)
-- [字形图标](glyph-icons.md)
 
 ### 工具
 
@@ -57,15 +63,12 @@
 - [Scroll](components/scroll.md)
 - [Button](components/button.md)
 - [Toggle](components/toggle.md)
-- [form.button()](components/form-button-item.md)
 
 ### 组件
 
 - [Paragraph](components/paragraph.md)
 - [Text 与 InlineIcon](components/text.md)
 - [Pages](components/pages.md)
-- [FormButton](components/form-button.md)
-- [FormGate](components/form-gate.md)
 - [GlyphSheet](components/glyph-sheet.md)
 
 ## 参考

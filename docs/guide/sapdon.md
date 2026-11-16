@@ -45,10 +45,10 @@ registry.submit()
 行为包脚本的写法与新建的项目相同：
 
 ```js
-import { ServerPagesForm } from 'bedrock-cui/runtime/server-pages'
-import { paging } from './cui.generated.js'
+import './cui.generated.js'
+import book from '../ui/book.screen.mjs'
 
-const book = new ServerPagesForm(paging['cui_ui:book'])
+book.open(player)
 ```
 
 预览使用 `npx bedrock-cui dev`。

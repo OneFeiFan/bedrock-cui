@@ -14,6 +14,7 @@
  * 并让需要「全部建完再算」的元素（如 Pages 的页面显示条件）在这时收尾。
  */
 import { _registerFormButtonFactory, PropRef, isExpr, propIndices, type Expr } from './expr.js'
+import type { Anim } from './anim.js'
 import type { Anchor, Dyn, Intrinsic, RGB, RNode, Size } from './node.js'
 import { Align, Anchor as AnchorValue, Color, Insets, Justify, Length, Size as SizeValue, Texture, TextStyle, Vec2, type LengthLike, type TextAlign } from './values.js'
 import type { Anchor as AnchorName } from './node.js'
@@ -210,8 +211,16 @@ export abstract class Element {
     setWidth(w: LengthLike): this { this.size = (this.size ?? SizeValue.auto()).withWidth(w); return this }
     setHeight(h: LengthLike): this { this.size = (this.size ?? SizeValue.auto()).withHeight(h); return this }
     setOffset(offset: Vec2): this
-    setOffset(x: LengthLike, y: LengthLike): this
-    setOffset(a: Vec2 | LengthLike, b?: LengthLike): this {
+    /** x 可以是表达式（像素，例如由 prop 换算）：编译为 use_anchored_offset 与 #anchored_offset_value_x 的绑定，运行时由数据决定水平位置 */
+    setOffset(x: LengthLike | Expr, y: LengthLike): this
+    setOffset(a: Vec2 | LengthLike | Expr, b?: LengthLike): this {
+        if (isExpr(a)) {
+            if (typeof (b ?? 0) !== 'number') throw new Error('水平位置绑定表达式时，垂直位置须为像素数值')
+            this.props.offsetX = a
+            this.offset = Vec2.of(0, b ?? 0)
+            return this
+        }
+        delete this.props.offsetX
         this.offset = a instanceof Vec2 ? a : Vec2.of(a, b ?? 0)
         return this
     }
@@ -232,6 +241,10 @@ export abstract class Element {
     setLayer(n: number): this { this.layer = n; return this }
     setClassName(name: string): this { this.className = name; return this }
     setVisible(v: boolean | Expr): this { this.visible = v; return this }
+    /** 动画：Anim（编译时生成定义），或已有动画定义的引用（例如 '@my_ns.fade_in'）；表单打开时在客户端开始播放 */
+    get anims(): (Anim | string)[] | undefined { return this.props.anims }
+    set anims(v: (Anim | string)[] | undefined) { this.props.anims = v }
+    setAnims(...anims: (Anim | string)[]): this { this.anims = anims; return this }
     setAlpha(a: number): this { this.alpha = a; return this }
     /** 裁掉越出自身的子控件（clips_children） */
     setClip(on = true): this { this.props.clip = on || undefined; return this }
@@ -383,10 +396,6 @@ export class Image extends Element {
         this.clipDirection = a as 'left' | 'right' | 'up' | 'down' | 'center'; this.clipRatio = b
         return this
     }
-    /** 动画（JSON UI anims：动画定义的引用，例如 '@my_ns.fade_in'） */
-    get anims(): string[] | undefined { return this.props.anims }
-    set anims(v: string[] | undefined) { this.props.anims = v }
-    setAnims(...anims: string[]): this { this.anims = anims; return this }
 }
 
 /** 文字 */

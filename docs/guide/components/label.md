@@ -16,7 +16,7 @@ const card = new Panel().setSize(200, 70).add(
 )
 ```
 
-文字可以是表达式，例如 `new Label(form.text)` 显示表单正文，见[表达式与绑定](../bindings.md)。
+文字可以是界面的数据或表达式，例如 `new Label(props.greeting)`，见[数据（props）](../props.md)。
 
 ## API
 

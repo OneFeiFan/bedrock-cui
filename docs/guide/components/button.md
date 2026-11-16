@@ -1,13 +1,13 @@
 # Button
 
-`Button` 是界面内部的按钮，外观由 `default`、`hover`、`pressed` 三个状态面板组成，另可加入始终显示的子控件。点击后需要关闭表单、通知脚本时，使用 [`FormButton`](form-button.md)。
+`Button` 是界面内部的按钮，外观由 `default`、`hover`、`pressed` 三个状态面板组成，另可加入始终显示的子控件。点击后需要关闭表单、调用逻辑中的方法时，使用界面文件中的 `button(名字)`（见[逻辑](../logic.md#按钮与方法)）。
 
 ```js preview=card 160x60
-import { Button, Color, Image, Label, Panel, Size } from 'bedrock-cui'
+import { Button, Color, Image, Label, Panel, Size, Texture } from 'bedrock-cui'
 
 const button = new Button().setSize(80, 20)
 button.default.add(new Image('textures/ui/purpleBorder').setNineslice(4).setSize(Size.full()))
-button.hover.add(new Image('textures/ui/white').setKeepRatio(false).setColor(Color.hex('#6040a0')).setSize(Size.full()))
+button.hover.add(new Image(Texture.SOLID).setKeepRatio(false).setColor(Color.hex('#6040a0')).setSize(Size.full()))
 button.add(new Label('确定'))
 const card = new Panel().setSize(120, 40).add(new Image('textures/ui/dialog_background_opaque').setSize(Size.full()), button)
 ```

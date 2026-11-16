@@ -210,6 +210,8 @@ export class PropRef extends Expr {
     }
     /** prop 的图标（Image 的贴图） */
     get icon(): Expr { return ref('#form_button_texture', { kind: 'collection', collection: 'form_buttons', index: this.index }) }
+    /** prop 的数值（文字乘以 1 转为数字：JSON UI 中对数字字符串做乘法即得数字）。例：裁剪比例 setClipRatio('right', lit(1).minus(props.p.number.times(0.001))) */
+    get number(): Expr { return this.times(1) }
     /** prop 是否有值（显示条件） */
     get present(): Expr { return ref('#form_button_text', { kind: 'collection', collection: 'form_buttons', index: this.index }).contains(this.tag) }
 }
@@ -223,6 +225,18 @@ export function propIndices(v: unknown, out = new Set<number>()): Set<number> {
         if (o.k === 'ref' && (o.source as { kind?: string, index?: number })?.kind === 'collection' && typeof (o.source as { index?: number }).index === 'number') out.add((o.source as { index: number }).index)
         for (const x of Object.values(o)) if (x && typeof x === 'object') walk(x)
     }
-    walk(v instanceof Expr ? v.node : v)
+    // 只看表达式（prop 只出现在表达式里）；其他值（例如循环的动画链）不遍历
+    if (v instanceof Expr) walk(v.node)
     return out
+}
+
+/** 表达式是否引用了数据（绑定、开关状态）；不引用任何数据的是常量，编译时直接求值 */
+export function hasRefs(e: ExprLike): boolean {
+    const walk = (n: unknown): boolean => {
+        if (!n || typeof n !== 'object') return false
+        const o = n as Record<string, unknown>
+        if (o.k === 'ref') return true
+        return Object.values(o).some((x) => x && typeof x === 'object' && walk(x))
+    }
+    return e instanceof Expr ? walk(e.node) : false
 }

@@ -8,7 +8,8 @@ import path from 'node:path'
 import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import type { ServerResponse } from 'node:http'
-import { textureInfoFrom } from '../node/tools.js'
+import { encodePng, textureInfoFrom } from '../node/tools.js'
+import { SOLID_TEXTURE } from '../core/values.js'
 
 const pkgRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
 export const CONFIG_FILES = ['cui.config.mjs', 'cui.config.js']
@@ -51,6 +52,8 @@ function textureMap(dirs: string[]): Record<string, unknown> {
         }
         walk(dir)
     }
+    // 内置纯白贴图（Texture.SOLID）：没有放在任何目录里，由开发服务器生成
+    if (!map[SOLID_TEXTURE]) map[SOLID_TEXTURE] = { url: '/@cui/solid.png', size: [2, 2] }
     return map
 }
 
@@ -91,6 +94,10 @@ export async function dev(options: { root?: string, port?: number } = {}): Promi
                         const f = path.join(fontDir, path.basename(url))
                         if (fs.existsSync(f)) return send(res, f)
                         res.statusCode = 404; return res.end()
+                    }
+                    if (url === '/@cui/solid.png') {
+                        res.setHeader('Content-Type', 'image/png')
+                        return res.end(encodePng(2, 2, new Uint8Array(16).fill(255)))
                     }
                     if (url.startsWith('/@cui/tex/')) {
                         const rel = url.slice('/@cui/tex/'.length)

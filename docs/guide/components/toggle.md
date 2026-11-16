@@ -3,13 +3,13 @@
 `Toggle` 是可以选中的开关。同一组（`group`）的开关互斥，序号（`index`）标识组内的每个开关。外观由 `unchecked`、`checked`、`uncheckedHover`、`checkedHover` 四个状态面板组成。
 
 ```js preview=card 200x60
-import { Color, Image, Label, Panel, Row, Size, Toggle } from 'bedrock-cui'
+import { Color, Image, Label, Panel, Row, Size, Texture, Toggle } from 'bedrock-cui'
 
 const tab = (name, i) => {
     const t = new Toggle('tabs', i).setName(`tab_${i}`).setSize(50, 16)
     t.unchecked.add(new Label(name).setColor(Color.hex('#3c2814')))
     t.uncheckedHover.add(new Label(`§n${name}`).setColor(Color.hex('#3c2814')))
-    t.checked.add(new Image('textures/ui/white').setKeepRatio(false).setColor(Color.hex('#c8b48c')).setSize(Size.full()), new Label(`§l${name}`).setColor(Color.hex('#3c2814')))
+    t.checked.add(new Image(Texture.SOLID).setKeepRatio(false).setColor(Color.hex('#c8b48c')).setSize(Size.full()), new Label(`§l${name}`).setColor(Color.hex('#3c2814')))
     return t.setDefaultSelected(0)     // 同一组的开关都设置：默认选中第 0 个
 }
 const card = new Panel().setSize(180, 40).add(new Image('textures/ui/dialog_background_opaque').setSize(Size.full()), new Row().setGap(4).add(tab('物品', 0), tab('方块', 1), tab('生物', 2)))

@@ -31,14 +31,15 @@ export function lockCamera(player: Player, lock: boolean): void {
 /**
  * 显示表单；玩家正忙（上一个表单还没关完，取消原因 UserBusy）时稍后重试。
  * 点击后关闭、随即重新打开的表单（翻页、状态变化后的更新）点得很快时会遇到：不重试的话，表单像是被玩家关掉了。
- * 每 2 刻（0.1 秒）重试一次，最多 30 次（约 1.5 秒）；仍然失败时按取消返回。
+ * 每刻重试一次，最多 30 次（约 1.5 秒）；仍然失败时按取消返回。
  */
 export function showForm<R extends { canceled: boolean, cancelationReason?: string }>(
-    player: Player, form: { show(player: Player): Promise<R> }, retries = 30,
+    player: Player, form: { show(player: Player): Promise<R> }, retries = 30, onBusy?: () => void,
 ): Promise<R> {
     return form.show(player).then((r) => {
         if (!r.canceled || r.cancelationReason !== 'UserBusy' || retries <= 0) return r
-        return new Promise<R>((resolve) => system.runTimeout(() => resolve(showForm(player, form, retries - 1)), 2))
+        onBusy?.()                                            // 例如：刷新时再关一次没关掉的旧表单
+        return new Promise<R>((resolve) => system.runTimeout(() => resolve(showForm(player, form, retries - 1, onBusy)), 1))
     })
 }
 

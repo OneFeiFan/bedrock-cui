@@ -3,7 +3,7 @@
 `Image` 显示一张贴图。参数是资源包中的贴图路径，不含扩展名。
 
 ```js preview=card 220x90
-import { Anchor, Color, Image, Panel, Size } from 'bedrock-cui'
+import { Anchor, Color, Image, Panel, Size, Texture } from 'bedrock-cui'
 
 const card = new Panel().setSize(200, 70).add(
     // 九宫格：四角不变，四边与中间拉伸
@@ -11,7 +11,7 @@ const card = new Panel().setSize(200, 70).add(
     // 保持宽高比（默认）：缩放到控件范围内并居中
     new Image('textures/items/diamond').setSize(24, 24).setAnchor(Anchor.CENTER_LEFT).setOffset(12, 0),
     // 拉伸铺满：用于纯色贴图
-    new Image('textures/ui/white').setKeepRatio(false).setSize(120, 2).setColor(Color.hex('#a070f0')).setAnchor(Anchor.CENTER_RIGHT).setOffset(-12, 0),
+    new Image(Texture.SOLID).setKeepRatio(false).setSize(120, 2).setColor(Color.hex('#a070f0')).setAnchor(Anchor.CENTER_RIGHT).setOffset(-12, 0),
 )
 ```
 
@@ -37,7 +37,6 @@ const card = new Panel().setSize(200, 70).add(
 | `color` | `setColor()` | `Color \| undefined` | 染色 |
 | `clipDirection` | `setClipDirection()` | `"left" \| "right" \| "up" \| "down" \| "center" \| undefined` | 按比例裁剪的方向（进度条） |
 | `clipRatio` | `setClipRatio(ratio: number \| Expr)`<br>`setClipRatio(direction: 'left' \| 'right' \| 'up' \| 'down' \| 'center', ratio: number \| Expr)` | `number \| Expr \| undefined` | 按比例裁剪的比例（数字或表达式） |
-| `anims` | `setAnims()` | `string[] \| undefined` | 动画（JSON UI anims：动画定义的引用，例如 '@my_ns.fade_in'） |
 
 **方法**
 

@@ -23,5 +23,5 @@ for (let i = 1; i <= 20; i++) list.add(new Label(`第 ${i} 条`))
 固定长度的长文本，也可以用 `paginate()` 分成多页，配合[翻页](paging.md)显示。
 
 ::: warning
-`Scroll` 的内容在编译后成为命名空间中的独立元素，读取不到外层 `form.button(n)` 或 `FormButton` 的数据。需要在滚动区域中显示表单按钮的文字时，将 `form.button(n)` 放在 `Scroll` 内部。静态检查对此报告 `scroll-in-collection`。
+滚动区域中可以直接显示界面的数据（`props`）：bedrock-cui 在使用数据的控件处读取它。
 :::

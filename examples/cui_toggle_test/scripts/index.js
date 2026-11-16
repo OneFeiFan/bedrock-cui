@@ -5,6 +5,10 @@ import { softWrap } from 'bedrock-cui/runtime'
 import { ServerPagesForm, lockCamera } from 'bedrock-cui/runtime/server-pages'
 import { paging } from './cui.generated.js'
 import propsDemo from '../ui/props-demo.screen.mjs'
+import animLab from '../ui/anim-lab.screen.mjs'
+import progressLab from '../ui/progress-lab.screen.mjs'
+import measureLab from '../ui/measure-lab.screen.mjs'
+import { screenRuntime } from 'bedrock-cui/runtime/screens'
 
 const TITLE_RESPONSIVE = "cui_ui:responsive"
 const SLOT_ITEMS = ['minecraft:diamond_sword', 'minecraft:diamond', 'minecraft:diamond', 'minecraft:stick']
@@ -77,9 +81,28 @@ system.afterEvents.scriptEventReceive.subscribe((e) => {
     if (e.id === 'cui:open') book.open(player)
     if (e.id === 'cui:responsive') openResponsive(player)
     if (e.id === 'cui:props') propsDemo.open(player)              // 不传 props：item 取默认值
+    // 诊断（1.43.0）：出现异常后关掉表单，/scriptevent cui:dump 打印运行时最近的记录（时间为毫秒的后 5 位）
+    if (e.id === 'cui:dump') {
+        const lines = screenRuntime.trace().slice(-40)
+        player.sendMessage(`§e[运行时记录] 最近 ${lines.length} 条：`)
+        for (const l of lines) player.sendMessage(l)
+    }
 })
 
 // ───── 界面模型：defineScreen 的界面由运行时打开（导入 ./cui.generated.js 时已登记清单） ─────
+// 事件总线：界面中 this.emit('hello', 次数) → 播放音效，每满 5 次给一颗绿宝石（和游戏打交道的事留在脚本里）
+propsDemo.on('hello', (player, n) => {
+    player.playSound('random.orb')
+    if (n % 5 === 0) player.getComponent('minecraft:inventory')?.container?.addItem(new ItemStack('minecraft:emerald', 1))
+})
+
+// 钟右键：动画实验（1.44.0）
+world.afterEvents.itemUse.subscribe((e) => { if (e.itemStack.typeId === 'minecraft:clock') animLab.open(e.source) })
+// 望远镜右键：测量实验（1.49.0）
+world.afterEvents.itemUse.subscribe((e) => { if (e.itemStack.typeId === 'minecraft:spyglass') measureLab.open(e.source) })
+// 指南针右键：进度实验（1.48.0）
+world.afterEvents.itemUse.subscribe((e) => { if (e.itemStack.typeId === 'minecraft:compass') progressLab.open(e.source) })
+
 // 绿宝石右键：脚本传入 item（其余 props 由界面中的 computed 计算）
 world.afterEvents.itemUse.subscribe((e) => {
     if (e.itemStack.typeId === 'minecraft:emerald') propsDemo.open(e.source, { item: { text: '绿宝石（脚本传入）', icon: 'textures/items/emerald' } })

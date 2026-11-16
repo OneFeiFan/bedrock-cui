@@ -19,7 +19,6 @@
 | `Scroll` | 类 | 可滚动的区域，子控件纵向排列。 |
 | `Button` | 类 | 按钮。外观由 default、hover、pressed 三个状态面板组成。 |
 | `Toggle` | 类 | 开关。同组互斥；外观由四个状态面板组成。 |
-| `CollectionItem` | 类 | 集合中的一项。服务端表单的按钮用 form.button(n) 获得，不需要直接创建。 |
 | `Raw` | 类 | 原样输出的 JSON UI 元素。 |
 
 ## 组件
@@ -29,8 +28,6 @@
 | `Paragraph` | 类 | 较长的文字。默认软换行：交给游戏折行，调整汉字与英文、数字交界处的间隔。 |
 | `Text` | 类 | 可插入行内图标的文字，由 bedrock-cui 排版。 |
 | `Pages` | 类 | 多页内容：客户端开关切换，以及服务端翻页箭头。 |
-| `FormButton` | 类 | 对应服务端表单第 n 个按钮的可点击区域，按钮文字包含标记时显示。 |
-| `FormGate` | 类 | 表单正文包含标记时显示其内容的容器。 |
 
 ## 图标
 
@@ -60,8 +57,14 @@
 | 名称 | 种类 | 说明 |
 |---|---|---|
 | `defineScreen` | 函数 | 定义一个界面：数据（props）、逻辑（state、computed、methods、生命周期）与视图（view）写在一个文件中。 |
-| `Screen` | 类 | defineScreen() 返回的界面对象：id；行为包脚本中的 open(玩家, props)、close(玩家)、isOpen(玩家)；构建时的 build()、previewForm()。 |
+| `Screen` | 类 | defineScreen() 返回的界面对象：id；行为包脚本中的 open(玩家, props)、close(玩家)、isOpen(玩家)、on(事件名, 处理函数) / off()；构建时的 build()、previewForm()。 |
 | `ScreenButton` | 类 | button(名字) 返回的按钮：default、hover、pressed 三个状态，add() 加入始终显示的内容。 |
+
+## 动画
+
+| 名称 | 种类 | 说明 |
+|---|---|---|
+| `Anim` | 类 | 动画（客户端播放）：alpha、offset、size、color、clip（裁剪比例）、wait；then() 串成动画链，loop() 循环，setEasing() 设置缓动。用 setAnims() 加到任何控件上。 |
 
 ## 项目配置
 
@@ -74,7 +77,6 @@
 
 | 名称 | 种类 | 说明 |
 |---|---|---|
-| `form` | 常量 | 当前服务端表单的内容：title、text、buttonText、buttonTexture；form.button(n) 获得第 n 个按钮。 |
 | `toggleState` | 常量 | 某个开关是否选中的表达式。 |
 | `Expr` | 类 | 表达式。编译为 JSON UI 的绑定，由游戏在运行时求值。 |
 | `signal` | 常量 | 创建一个信号（可观察的值），用于向浏览器预览提供数据。 |
@@ -135,6 +137,8 @@
 | `CuiPreviewForm` | 接口 | 预览中某个界面的表单数据：title、text、buttons。 |
 | `CuiScreen` | 类型 | 配置中的一个界面：返回根控件的函数，或 { build, routed }。 |
 | `ScreenOptions` | 接口 | defineScreen() 的选项。 |
+| `AnimType` | 类型 | 动画的类型。 |
+| `AnimEasing` | 类型 | 动画的缓动方式。 |
 | `ButtonSlot` | 接口 | 按钮的一个状态：add() 加入的控件显示在该状态下。 |
 | `ScreenViewContext` | 接口 | 视图函数得到的参数：props、button()、pages()。 |
 | `ScreenManifest` | 接口 | 界面的清单：props 与按钮的名字及其对应的表单按钮序号。 |

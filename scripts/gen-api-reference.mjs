@@ -31,15 +31,12 @@ const PAGES = [
             ['Scroll', '可滚动的区域，子控件纵向排列。'],
             ['Button', '按钮。外观由 default、hover、pressed 三个状态面板组成。'],
             ['Toggle', '开关。同组互斥；外观由四个状态面板组成。'],
-            ['CollectionItem', '集合中的一项。服务端表单的按钮用 form.button(n) 获得，不需要直接创建。'],
             ['Raw', '原样输出的 JSON UI 元素。'],
         ]],
         ['组件', [
             ['Paragraph', '较长的文字。默认软换行：交给游戏折行，调整汉字与英文、数字交界处的间隔。'],
             ['Text', '可插入行内图标的文字，由 bedrock-cui 排版。'],
             ['Pages', '多页内容：客户端开关切换，以及服务端翻页箭头。'],
-            ['FormButton', '对应服务端表单第 n 个按钮的可点击区域，按钮文字包含标记时显示。'],
-            ['FormGate', '表单正文包含标记时显示其内容的容器。'],
         ]],
         ['图标', [
             ['InlineIcon', '行内图标，用于 Text。'],
@@ -60,15 +57,17 @@ const PAGES = [
         ]],
         ['界面（defineScreen）', [
             ['defineScreen', '定义一个界面：数据（props）、逻辑（state、computed、methods、生命周期）与视图（view）写在一个文件中。'],
-            ['Screen', 'defineScreen() 返回的界面对象：id；行为包脚本中的 open(玩家, props)、close(玩家)、isOpen(玩家)；构建时的 build()、previewForm()。'],
+            ['Screen', 'defineScreen() 返回的界面对象：id；行为包脚本中的 open(玩家, props)、close(玩家)、isOpen(玩家)、on(事件名, 处理函数) / off()；构建时的 build()、previewForm()。'],
             ['ScreenButton', 'button(名字) 返回的按钮：default、hover、pressed 三个状态，add() 加入始终显示的内容。'],
+        ]],
+        ['动画', [
+            ['Anim', '动画（客户端播放）：alpha、offset、size、color、clip（裁剪比例）、wait；then() 串成动画链，loop() 循环，setEasing() 设置缓动。用 setAnims() 加到任何控件上。'],
         ]],
         ['项目配置', [
             ['defineConfig', '定义项目配置（cui.config.mjs）：命名空间、界面、贴图目录、预览数据。bedrock-cui dev 与 useSapdon() 共用。'],
             ['screenOf', '取出配置中一个界面的构建函数与选项。'],
         ]],
         ['表达式与响应式', [
-            ['form', '当前服务端表单的内容：title、text、buttonText、buttonTexture；form.button(n) 获得第 n 个按钮。'],
             ['toggleState', '某个开关是否选中的表达式。'],
             ['Expr', '表达式。编译为 JSON UI 的绑定，由游戏在运行时求值。'],
             ['signal', '创建一个信号（可观察的值），用于向浏览器预览提供数据。'],
@@ -117,6 +116,8 @@ const PAGES = [
             ['CuiPreviewForm', '预览中某个界面的表单数据：title、text、buttons。'],
             ['CuiScreen', '配置中的一个界面：返回根控件的函数，或 { build, routed }。'],
             ['ScreenOptions', 'defineScreen() 的选项。'],
+            ['AnimType', '动画的类型。'],
+            ['AnimEasing', '动画的缓动方式。'],
             ['ButtonSlot', '按钮的一个状态：add() 加入的控件显示在该状态下。'],
             ['ScreenViewContext', '视图函数得到的参数：props、button()、pages()。'],
             ['ScreenManifest', '界面的清单：props 与按钮的名字及其对应的表单按钮序号。'],
@@ -167,9 +168,6 @@ const PAGES = [
         ]],
         ['bedrock-cui/runtime/server-pages', 'src/runtime/serverPages.ts', [
             ['服务端翻页', [
-                ['ServerPagesForm', '按路由表打开服务端表单并处理翻页。'],
-                ['lockCamera', '锁定或解除玩家的视角。'],
-                ['showForm', '显示表单；玩家正忙（上一个表单还没关完）时稍后重试。点击后立即重新打开的表单应使用它。'],
             ]],
             ['类型', [['ServerPaging', '一个界面的翻页路由表。'], ['ServerArrowRoute', '路由表中的一个翻页箭头。'], ['FormButtonSpec', 'setButtons() 中的一个按钮：文字，或 { text, icon }。']]],
         ]],
@@ -198,11 +196,13 @@ const PAGES = [
 ]
 
 /** 内部实现：不写进参考 */
-const INTERNAL = new Set(['BEDROCK_COLORS', 'Effect', 'Flex', 'GLYPH_HEIGHT', 'GLYPH_TOP', 'NBSP_BREAK_WIDTH', 'NO_LINE_END', 'NO_LINE_START', 'PLAIN', 'SCROLLBAR',
+const INTERNAL = new Set([
+    // 底层 API：CUI 内部使用（界面文件的 props 与 button() 代替它们），不出现在手册中
+    'form', 'FormButton', 'FormGate', 'CollectionItem', 'ServerPagesForm', 'lockCamera', 'showForm','BEDROCK_COLORS', 'Effect', 'Flex', 'GLYPH_HEIGHT', 'GLYPH_TOP', 'NBSP_BREAK_WIDTH', 'NO_LINE_END', 'NO_LINE_START', 'PLAIN', 'SCROLLBAR',
     'activeEffect', 'applyCode', 'asBool', 'batch', 'batchKey', 'boldExtra', 'buttonPayload', 'charWidth', 'compileExpr', 'drawOrder', 'evalExpr', 'evalOffset', 'evalTerms', 'finalize',
     'findBox', 'isAscii', 'isExpr', 'isWide', 'layout', 'layoutInline', 'lineWidth', 'lintLayout', 'lit', 'parseRich', 'parseSize', 'ref', 'registerGlyphWidth', 'richWidth',
     'stripFormat', 'styleCodes', 'unifontWidth', 'unregisterGlyph', 'usesChildren', 'usesSelf', 'usesUnifont', 'variable', 'walk', 'wrapDetailed',
-    'buttonTextOf', 'buttonIconOf', 'PropRef', 'propIndices', '_setScreenRuntime',
+    'buttonTextOf', 'buttonIconOf', 'PropRef', 'propIndices', '_setScreenRuntime', 'SOLID_TEXTURE', 'hasRefs',
     'decodePng', 'downscaleIcon', 'encodePng', 'inkOf', 'pngSize', 'runtimeFiles', 'drawText', 'PixelFonts',
     // 排版、编译与表达式内部的数据结构
     'SizeJson', 'AnchorName', 'Dyn', 'RGB', 'Intrinsic', 'RNode', 'Source', 'Op', 'ExprNode', 'Value', 'CompiledExpr', 'EvalEnv', 'TextureMeta', 'RunStyle', 'Run',

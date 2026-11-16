@@ -48,4 +48,4 @@ for (const f of ['dev/e2e_ui_RP/ui/book.json', 'dev/e2e_ui_RP/ui/server_form.jso
 const defs = JSON.parse(fs.readFileSync(path.join(project, 'dev/e2e_ui_RP/ui/_ui_defs.json'), 'utf8')).ui_defs
 if (!defs.includes('ui/book.json')) fail(`_ui_defs 里没有 ui/book.json：${defs}`)
 console.log(`端到端：create → build --pack 通过（${fs.statSync(mcaddon).size} 字节）`)
-fs.rmSync(work, { recursive: true, force: true })
+if (process.env.CUI_E2E_KEEP) console.log(`保留工作目录：${work}`); else fs.rmSync(work, { recursive: true, force: true })

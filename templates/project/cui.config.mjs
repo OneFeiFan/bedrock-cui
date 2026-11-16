@@ -1,18 +1,13 @@
 import { defineConfig } from 'bedrock-cui'
-import { buildBook } from './ui/book.mjs'
+import book from './ui/book.screen.mjs'
 
 export default defineConfig({
-    // 界面文件的命名空间（ui/book.json）
+    // 界面文件的命名空间（构建出 ui/book.json）
     namespace: 'book',
-    // 界面 id → 根控件。脚本以界面 id 为标题打开服务端表单时显示该界面
-    screens: {
-        'cui_ui:book': () => buildBook(),
-    },
+    // 项目中的界面
+    screens: [book],
     // 贴图所在的资源包目录（预览与静态检查读取）
     textures: ['res'],
-    // 预览中的表单数据
-    preview: {
-        viewport: [320, 200],
-        forms: { 'cui_ui:book': { buttons: ['close|'] } },
-    },
+    // 预览区域的大小
+    preview: { viewport: [320, 200] },
 })

@@ -5,7 +5,7 @@
 `Label` 显示一段文字：
 
 ```js
-import { Color, Label, TextStyle, form } from 'bedrock-cui'
+import { Color, Label, TextStyle } from 'bedrock-cui'
 
 new Label('钻石').setColor(Color.hex('#3c2814'))
 new Label('钻石').setColor(Color.WHITE).setShadow().setFontScale(2)   // 白色、带阴影、两倍字号
@@ -18,7 +18,7 @@ new Label('钻石').setStyle(BODY)
 未设置尺寸时，`Label` 的大小由文字决定，不折行。设置了宽度时，文字由游戏在该宽度内折行：
 
 ```js
-import { Label, Length, form } from 'bedrock-cui'
+import { Label, Length } from 'bedrock-cui'
 
 new Label('一段较长的说明文字').setSize(110, Length.auto())   // 宽 110 像素，高随行数变化
 ```
@@ -35,7 +35,7 @@ new Label('一段较长的说明文字').setSize(110, Length.auto())   // 宽 11
 下面是同一句话分别交给 `Label`（游戏折行）和 `Paragraph`（软换行）的结果：
 
 ```js preview=compare 260x80
-import { Anchor, Color, Image, Label, Length, Panel, Paragraph, Size, form } from 'bedrock-cui'
+import { Anchor, Color, Image, Label, Length, Panel, Paragraph, Size } from 'bedrock-cui'
 
 const TEXT = '背包里一共 11 种物品，其中钻石有 3 个，每 2 个钻石加 1 根木棍可以合成 1 把钻石剑。'
 const INK = Color.hex('#3c2814')
@@ -54,7 +54,7 @@ compare.add(
 `Paragraph` 用于较长的文字。它与 `Label` 一样交给游戏折行，但会调整汉字与英文、数字交界处的间隔，避免上述的空白：
 
 ```js
-import { Anchor, Paragraph, form } from 'bedrock-cui'
+import { Anchor, Paragraph } from 'bedrock-cui'
 
 new Paragraph('背包里一共 11 种物品，其中钻石有 3 个。', 110).setAnchor(Anchor.TOP_LEFT)
 ```
@@ -88,27 +88,29 @@ new Label('§c红色§r 普通 §l粗体§r')
 
 ## 运行期文字
 
-由服务端脚本生成的文字通过表达式绑定到控件：
+由脚本提供的文字是界面的[数据（props）](props.md)，在视图中直接显示：
 
 ```js
-import { Label, Length, form } from 'bedrock-cui'
+import { Label, Panel, defineScreen } from 'bedrock-cui'
 
-// 显示第 5 个表单按钮的文字，去掉标记 'txt|'
-form.button(5).add(
-    new Label(form.buttonText.minus('txt|')).setSize(110, Length.auto()),
-)
+const story = defineScreen({
+    id: 'cui_ui:story',
+    props: { story: '' },
+    view({ props }) {
+        // 显示数据的控件需要像素尺寸：宽 110，最多显示 6 行
+        return new Panel().setSize(130, 80).add(new Label(props.story).setSize(110, 60))
+    },
+})
 ```
 
-运行期文字的内容在构建时未知，无法预先处理。脚本在发送文字之前，可以用 `softWrap()` 做与 `Paragraph` 相同的处理：
+运行期文字的内容在构建时未知，`Paragraph` 无法预先处理。脚本在传入文字之前，可以用 `softWrap()` 做与 `Paragraph` 相同的处理（见[脚本端](runtime.md#softwrap)）：
 
 ```js
-// 行为包脚本
+// 接上例：行为包脚本（player 为玩家，text 为要显示的文字）
 import { softWrap } from 'bedrock-cui/runtime'
 
-actionForm.button('txt|' + softWrap(text, 110))
+story.open(player, { story: softWrap(text, 110) })
 ```
-
-`softWrap()` 的结果会缓存，同样的文字与宽度不会重复计算。
 
 ## 不同设备上的字宽
 

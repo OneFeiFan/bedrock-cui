@@ -68,6 +68,8 @@ function lineSet(spec) {
  */
 function previewScript(code, id, name, w, h, base, form) {
     const body = code.replace(/^import\s*\{([^}]*)\}\s*from\s*'bedrock-cui'\s*;?\s*$/gm, (_, names) => `const {${names}} = CUI`)
+        // 示例是普通脚本：去掉 export（export default x 整行去掉，export const / function 只去掉关键字）
+        .replace(/^export\s+default\s+\w+\s*;?\s*$/gm, '').replace(/^export\s+(?=const|let|function|class)/gm, '')
         .replace(/^export\s+(?=(function|const|class|let)\b)/gm, '')
     if (/^\s*import\s/m.test(body)) throw new Error(`在线示例只能从 'bedrock-cui' 导入：${id}`)
     return `<div class="cui-preview" id="${id}"></div>\n<p class="cui-preview-note">预览：按游戏的排版规则绘制。英文字母的字形与游戏不同；界面贴图以近似的替代图显示，物品图标以紫黑格占位（游戏中显示实际的贴图）。</p>\n` +
@@ -229,6 +231,8 @@ fs.writeFileSync(path.join(tex, 'dialog.png'), png(16, 16, (x, y) => {
 }))
 fs.writeFileSync(path.join(tex, 'purple.png'), png(16, 16, (x, y) => (edge(x, y) === 1 ? [80, 10, 170, 255] : [16, 0, 16, 255])))
 fs.writeFileSync(path.join(tex, 'white.png'), png(2, 2, () => [255, 255, 255, 255]))
+// 原版 textures/ui/white 的样子：15×15，四周 2 像素黑边（不是纯色——预览与游戏一致）
+fs.writeFileSync(path.join(tex, 'white_vanilla.png'), png(15, 15, (x, y) => (x < 2 || y < 2 || x > 12 || y > 12 ? [0, 0, 0, 255] : [255, 255, 255, 255])))
 // 物品图标：不模仿原版的样子，统一用紫黑格（游戏中贴图缺失时的样子），一看就知道是占位
 const missing = png(16, 16, (x, y) => ((x < 8) === (y < 8) ? [248, 0, 248, 255] : [0, 0, 0, 255]))
 for (const f of ['diamond.png', 'stick.png', 'sword.png']) fs.writeFileSync(path.join(tex, f), missing)

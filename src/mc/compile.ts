@@ -8,7 +8,8 @@
  * - 按钮继承 common.button（$pressed_button_name 缺省 button.form_button_click），三种状态各是一个子面板；
  * - 集合项（FormButton）编译成 sapdon 真机验证过的写法：正方形 grid + grid_position + 内层负偏移 + 集合绑定。
  */
-import { compileExpr, isExpr, type Expr } from '../core/expr.js'
+import { compileExpr, evalExpr, hasRefs, isExpr, type Expr } from '../core/expr.js'
+import type { Anim } from '../core/anim.js'
 import { finalize, type Element } from '../core/element.js'
 import type { RNode } from '../core/node.js'
 import { lint, lintLayout, type LintIssue, type LintOptions } from './lint.js'
@@ -46,6 +47,8 @@ const DYNAMIC: Record<string, { target: string, prop?: string }> = {
     text: { target: '#text', prop: 'text' },
     texture: { target: '#texture', prop: 'texture' },
     clipRatio: { target: '#clip_ratio', prop: 'clip_ratio' },
+    // 水平位置由数据决定：use_anchored_offset 下，偏移取 #anchored_offset_value_x / y（原版 HUD 的写法）
+    offsetX: { target: '#anchored_offset_value_x' },
 }
 
 class Compiler {
@@ -56,6 +59,20 @@ class Compiler {
     /** 当前根是否给绑定加 binding_condition: always（路由界面加；静态界面保持 1.5.4 的输出） */
     always = true
     constructor(private readonly namespace = '') { }
+
+    /** 动画：每一段成为命名空间顶层的一个定义（anim0、anim1……），用 next 串起来；同一个 Anim 只生成一次（循环的链也能处理） */
+    private animNames = new Map<Anim, string>()
+    private anim(a: Anim): string {
+        const hit = this.animNames.get(a)
+        if (hit) return `@${this.namespace}.${hit}`
+        const name = `anim${this.animNames.size}`
+        this.animNames.set(a, name)
+        const def: Json = { anim_type: a.type, duration: a.duration }
+        if (a.type !== 'wait') { def.easing = a.easing; def.from = a.from; def.to = a.to }
+        this.hoisted[name] = def
+        if (a.next) def.next = this.anim(a.next)           // 先登记名字再递归：循环的链指回已登记的第一段
+        return `@${this.namespace}.${name}`
+    }
     /** 当前元素要求 always（setBindingAlways） */
     private forceAlways = false
     private cond(): { binding_condition?: string } { return this.always || this.forceAlways ? { binding_condition: ALWAYS } : {} }
@@ -68,6 +85,14 @@ class Compiler {
 
     private controlInner(n: RNode, inCollection: string | undefined): Json {
         const p = n.props
+        // 不引用任何数据的表达式是常量：编译时求值、写成固定值（游戏不接受来源只有常数的绑定——真机 1.49.0：Must define a source property name）
+        for (const key of Object.keys(DYNAMIC)) {
+            const v = p[key]
+            if (!isExpr(v) || hasRefs(v)) continue
+            const value = evalExpr(v as Expr, { ref: () => '' })
+            if (key === 'offsetX') { p.offset = [Number(value), p.offset?.[1] ?? 0]; delete p.offsetX }
+            else p[key] = typeof value === 'number' || typeof value === 'boolean' ? value : String(value)
+        }
         // type 放在最前面，生成的 JSON 好读
         const TYPE: Record<string, string> = { panel: 'panel', stack: 'stack_panel', grid: 'grid', image: 'image', label: 'label' }
         const out: Json = TYPE[n.type] ? { type: TYPE[n.type] } : {}
@@ -100,8 +125,8 @@ class Compiler {
             // 贴图正好是 form.buttonTexture：照原版 server_form.json 的按钮图标写——贴图与文件系统直接覆盖，空或加载中时隐藏
             const node = (v as Expr).node
             if (key === 'texture' && node.k === 'ref' && node.name === '#form_button_texture') {
-                if (inCollection?.startsWith(THROUGH_TOGGLE)) this.issues.push({ rule: 'collection-through-toggle', level: 'error', path: n.path, message: '开关里读不到外层集合项的按钮图标。把 form.button(n) 放进开关的状态面板里' })
-                else if (!inCollection) this.issues.push({ rule: 'collection-ref-outside', level: 'error', path: n.path, message: 'form.buttonTexture 只能在 form.button(n) 或 FormButton 内部使用' })
+                if (inCollection?.startsWith(THROUGH_TOGGLE)) this.issues.push({ rule: 'collection-through-toggle', level: 'error', path: n.path, message: '开关里读不到外层集合项的按钮图标。开关内部读取开关之外的表单按钮数据（使用 props 时由 bedrock-cui 在控件处读取，不会出现）' })
+                else if (!inCollection) this.issues.push({ rule: 'collection-ref-outside', level: 'error', path: n.path, message: '表单按钮的图标只能在读取该按钮的容器内部使用（使用 props 时由 bedrock-cui 处理，不会出现）' })
                 if (!declaredCollections.size) bindings.push({ binding_type: 'collection_details', binding_collection_name: 'form_buttons' })
                 declaredCollections.add('form_buttons|#form_button_texture')
                 bindings.push(
@@ -118,7 +143,7 @@ class Compiler {
             }
             for (const g of c.globals) if (!declaredGlobals.has(g)) { declaredGlobals.add(g); bindings.push({ binding_name: g, ...this.cond() }) }
             for (const col of c.collections) {
-                if (inCollection?.startsWith(THROUGH_TOGGLE)) this.issues.push({ rule: 'collection-through-toggle', level: 'error', path: n.path, message: `开关里读不到外层集合项的 ${col.name}（真机：common.toggle 自带空集合名的 collection_details 绑定）。把 form.button(n) 放进开关的状态面板里` })
+                if (inCollection?.startsWith(THROUGH_TOGGLE)) this.issues.push({ rule: 'collection-through-toggle', level: 'error', path: n.path, message: `开关里读不到外层集合项的 ${col.name}（真机：common.toggle 自带空集合名的 collection_details 绑定）。开关内部读取开关之外的表单按钮数据（使用 props 时由 bedrock-cui 在控件处读取，不会出现）` })
                 else if (!inCollection) this.issues.push({ rule: 'collection-ref-outside', level: 'error', path: n.path, message: `${col.name} 只能在 ${col.collection} 的集合项（FormButton）里使用` })
                 const k2 = `${col.collection}|${col.name}`
                 if (!declaredCollections.has(k2)) {
@@ -134,6 +159,15 @@ class Compiler {
             bindings.push({ binding_type: 'view', source_property_name: c.text, target_property_name: spec.target, ...this.cond() })
             if (spec.prop) out[spec.prop] = spec.target
         }
+
+        if (isExpr(p.offsetX)) {
+            out.use_anchored_offset = true
+            out.property_bag = { ...(out.property_bag as object ?? {}), '#anchored_offset_value_x': 0, '#anchored_offset_value_y': Number(p.offset?.[1] ?? 0) }
+            delete out.offset
+        }
+
+        // 动画（任何控件）：Anim 生成定义并引用，字符串是已有定义的引用
+        if (p.anims?.length) out.anims = (p.anims as (Anim | string)[]).map((a) => (typeof a === 'string' ? a : this.anim(a)))
 
         // 各类型
         let key = n.name
@@ -152,7 +186,6 @@ class Compiler {
                 if (p.color) out.color = p.color
                 if (p.clipDirection) out.clip_direction = p.clipDirection
                 if (p.clipRatio !== undefined && !isExpr(p.clipRatio)) out.clip_ratio = p.clipRatio
-                if (p.anims) out.anims = p.anims
                 break
             case 'label':
                 out.type = 'label'
