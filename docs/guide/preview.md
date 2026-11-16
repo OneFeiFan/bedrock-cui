@@ -10,14 +10,16 @@ npm run dev          # 即 bedrock-cui dev
 
 - 左侧是界面列表；
 - 中间是按游戏规则绘制的预览，下方是静态检查的结果；
-- 右侧可以编辑表单的标题、正文与按钮文字，预览随之更新；
-- 点击翻页箭头时模拟服务端翻页；点击其他表单按钮时，记录脚本将收到的按钮序号。
+- 界面文件（`defineScreen`）的界面在浏览器中运行它的[逻辑](logic.md)：点击按钮调用方法，状态变化后重新显示，翻页与定时器照常工作；发出的事件与 `this.player.sendMessage()` 的消息写进日志（预览中没有行为包脚本处理事件）；
+- 动画按时间播放，界面重新显示时从头开始（见[动画](animation.md#在浏览器中)）。
 
 修改界面代码并保存后，预览自动刷新。`--port` 指定端口，默认为 5173。
 
 ## 预览的数据
 
-各界面的初始表单数据在配置的 `preview` 中设置：
+界面文件的界面，预览中的数据就是 `props` 的默认值，以及逻辑运行后计算出的值（见[数据（props）](props.md)）。
+
+模拟的屏幕尺寸在配置的 `preview` 中设置：
 
 ```js
 // cui.config.mjs
@@ -25,17 +27,12 @@ import { defineConfig } from 'bedrock-cui'
 
 export default defineConfig({
     namespace: 'book',
-    screens: { /* …… */ },
-    preview: {
-        viewport: [320, 200],                                    // 模拟的屏幕尺寸（界面像素）
-        forms: {
-            'cui_ui:book': { text: '#unlocked', buttons: ['close|', 'item|钻石 ×3'] },
-        },
-    },
+    screens: [ /* …… */ ],
+    preview: { viewport: [320, 200] },     // 模拟的屏幕尺寸（界面像素）
 })
 ```
 
-贴图取自配置的 `textures` 目录（默认为 `res`），尺寸与九宫格信息读自 PNG 及其同名的 `.json`。
+贴图取自配置的 `textures` 目录（默认为 `res`），尺寸与九宫格信息读自 PNG 及其同名的 `.json`。内置的纯白贴图 `Texture.SOLID` 由预览服务器提供。
 
 ## 字体
 

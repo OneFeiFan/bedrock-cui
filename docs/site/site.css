@@ -132,3 +132,40 @@ pre.code .line.hl { background: var(--hl); box-shadow: inset 3px 0 0 var(--brand
 .mock-form .mock-button { display: flex; align-items: center; justify-content: center; gap: 6px; height: 30px; margin-top: 4px; background: #8b8b8b; border: 2px solid #000; box-shadow: inset 2px 2px 0 #aaa, inset -2px -2px 0 #555; color: #fff; }
 .mock-form .mock-icon { width: 16px; height: 16px; background: conic-gradient(#f800f8 0 25%, #000 0 50%, #f800f8 0 75%, #000 0) 0 0 / 16px 16px; }
 .mock-form figcaption { margin-top: 10px; font-size: 12px; color: #3f3f3f; text-align: center; }
+
+/* 代码块的复制按钮 */
+.codebox { position: relative; }
+.codebox .copy { position: absolute; top: 8px; right: 8px; z-index: 1; padding: 2px 10px; font: 12px var(--font); color: var(--text-soft); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; cursor: pointer; opacity: 0; transition: opacity .15s; }
+.codebox:hover .copy, .codebox .copy:focus { opacity: 1; }
+@media (hover: none) { .codebox .copy { opacity: 1; } }
+
+/* 在线示例：代码 / 预览标签页、修改并运行、参数滑块 */
+.example { margin: 16px 0; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.example .ex-bar { display: flex; align-items: center; gap: 2px; padding: 4px 8px; background: var(--bg-soft); border-bottom: 1px solid var(--line); }
+.example .ex-bar [data-tab] { padding: 4px 12px; font: 13px var(--font); color: var(--text-soft); background: none; border: 0; border-bottom: 2px solid transparent; cursor: pointer; }
+.example .ex-bar [data-tab].on { color: var(--brand); border-bottom-color: var(--brand); }
+.example .ex-tools { margin-left: auto; }
+.example .ex-edit, .example .ex-actions button { padding: 3px 10px; font: 12px var(--font); color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; cursor: pointer; }
+.example .ex-edit:hover, .example .ex-actions button:hover { border-color: var(--brand); color: var(--brand); }
+.example .ex-pane { padding: 0 12px; }
+.example .ex-code pre.code { margin: 12px 0; }
+.example .ex-preview { padding: 12px; }
+.example .ex-preview .cui-preview-note { margin: 8px 0 0; }
+.example.editing .ex-code { border-bottom: 1px dashed var(--line); }
+.example .ex-editbox { margin: 12px 0; }
+.example .ex-editor { display: block; width: 100%; box-sizing: border-box; padding: 12px 14px; font: 13px/1.6 var(--mono); color: var(--text); background: var(--bg-code); border: 1px solid var(--line); border-radius: 6px; resize: vertical; tab-size: 4; }
+.example .ex-actions { display: flex; gap: 8px; margin-top: 8px; }
+.example .ex-vary { display: flex; align-items: center; gap: 10px; margin-top: 10px; font: 13px var(--mono); color: var(--text-soft); }
+.example .ex-vary input { flex: 1; max-width: 320px; accent-color: var(--brand); }
+.example .ex-error { margin: 8px 0 0; color: #c0392b; font: 13px var(--mono); white-space: pre-wrap; }
+
+/* 九宫格示意图（图片与贴图） */
+.nine-fig { margin: 16px auto; max-width: 420px; }
+.nine-grid { display: grid; grid-template-columns: 56px 1fr 56px; grid-template-rows: 44px 64px 44px; gap: 3px; }
+.nine-grid span { display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 13px; border-radius: 4px; text-align: center; }
+.nine-grid small { font-size: 11px; color: var(--text-soft); }
+.nine-grid .c { background: #c9b8e8; }
+.nine-grid .e { background: #e3d9f5; }
+.nine-grid .m { background: #f3eefb; }
+@media (prefers-color-scheme: dark) { .nine-grid .c { background: #5a4a7a; } .nine-grid .e { background: #463a62; } .nine-grid .m { background: #352c4a; } }
+.nine-fig figcaption { margin-top: 8px; font-size: 12px; color: var(--text-soft); text-align: center; }

@@ -11,9 +11,10 @@
  *   image  = keep_ratio 缺省 true：按贴图宽高比缩到矩形内并居中（九宫格贴图例外，直接拉伸）
  *   label  = default 尺寸取文字尺寸；宽度确定、高度 default 时按宽度折行
  */
+import { sampleAnims, type Anim } from '../core/anim.js'
 import { asBool, evalExpr, isExpr, type EvalEnv, type Expr, type Source, type Value } from '../core/expr.js'
 import type { Anchor, RNode, Size } from '../core/node.js'
-import { Texture } from '../core/values.js'
+import { SOLID_TEXTURE, Texture } from '../core/values.js'
 import { LINE_HEIGHT, measureText } from '../font/metrics.js'
 import { evalOffset, evalTerms, parseSize, usesChildren, usesSelf, type SizeSpec } from './units.js'
 
@@ -40,6 +41,8 @@ export interface Scope { collection?: { name: string, index: number } }
 
 export interface LayoutEnv {
     viewport: [number, number]
+    /** 动画开始后经过的秒数（预览播放动画；不给时控件保持初始状态） */
+    time?: () => number
     textures?: (path: string) => TextureInfo | undefined
     /** 滚动区域的滚动量（预览里接鼠标滚轮） */
     scrollOffset?: (path: string) => number
@@ -219,6 +222,10 @@ class Engine {
     /** 在父矩形里定位一个控件并排它的子控件 */
     place(n: RNode, parent: Rect, scope: Scope, z: number, clip: Rect | undefined, size?: [number, number]): Box | undefined {
         if (!this.visible(n, scope)) return undefined
+        // 动画：尺寸与位置在这里取当前值，透明度、颜色、裁剪比例在 finish() 中
+        const anim = this.env.time && n.props.anims ? sampleAnims(n.props.anims as (Anim | string)[], this.env.time()) : undefined
+        if (anim?.size) size = anim.size
+        if (anim?.offset) n = { ...n, props: { ...n.props, offset: anim.offset, offsetX: undefined } }
         const [w, h] = size ?? this.size(n, parent.w, parent.h, scope)
         const from = ANCHOR_POINT[(n.props.anchorFrom ?? n.props.anchor ?? 'center') as Anchor]
         const to = ANCHOR_POINT[(n.props.anchorTo ?? n.props.anchor ?? 'center') as Anchor]
@@ -228,6 +235,14 @@ class Engine {
     }
 
     finish(n: RNode, rect: Rect, scope: Scope, z: number, clip: Rect | undefined): Box {
+        const anim = this.env.time && n.props.anims ? sampleAnims(n.props.anims as (Anim | string)[], this.env.time()) : undefined
+        if (anim && (anim.alpha !== undefined || anim.color || anim.clipRatio !== undefined)) {
+            const p: Record<string, unknown> = { ...n.props }
+            if (anim.alpha !== undefined) p.alpha = anim.alpha
+            if (anim.color) p.color = anim.color
+            if (anim.clipRatio !== undefined) p.clipRatio = anim.clipRatio
+            n = { ...n, props: p }
+        }
         const myZ = z + (n.props.layer ?? 0)
         const box: Box = { node: n, rect, z: myZ, order: this.order++, clip, scope, children: [] }
         if (n.type === 'button' || n.type === 'toggle') box.enabled = this.enabled(n)
@@ -246,7 +261,7 @@ class Engine {
                 box.slice = [e[0] * kx, e[1] * ky, e[2] * kx, e[3] * ky]
             }
             box.draw = rect
-            const keep = n.props.keepRatio ?? true
+            const keep = n.props.keepRatio ?? tex !== SOLID_TEXTURE     // 内置纯白贴图缺省拉伸铺满
             if (keep && !box.nineslice && info?.size) {
                 const k = Math.min(rect.w / info.size[0], rect.h / info.size[1])
                 const dw = info.size[0] * k, dh = info.size[1] * k

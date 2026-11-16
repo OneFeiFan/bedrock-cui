@@ -66,13 +66,26 @@ function lineSet(spec) {
  * 在线示例：```js preview=变量名 宽x高 —— 显示代码，并在下方用像素预览显示该变量（模拟屏幕 宽×高）。
  * 代码只能从 'bedrock-cui' 导入（改写成从 window.CUI 取用）。
  */
-function previewScript(code, id, name, w, h, base, form) {
+function previewScript(code, id, name, w, h, base, form, opts = {}) {
     const body = code.replace(/^import\s*\{([^}]*)\}\s*from\s*'bedrock-cui'\s*;?\s*$/gm, (_, names) => `const {${names}} = CUI`)
         // 示例是普通脚本：去掉 export（export default x 整行去掉，export const / function 只去掉关键字）
         .replace(/^export\s+default\s+\w+\s*;?\s*$/gm, '').replace(/^export\s+(?=const|let|function|class)/gm, '')
         .replace(/^export\s+(?=(function|const|class|let)\b)/gm, '')
     if (/^\s*import\s/m.test(body)) throw new Error(`在线示例只能从 'bedrock-cui' 导入：${id}`)
-    return `<div class="cui-preview" id="${id}"></div>\n<p class="cui-preview-note">预览：按游戏的排版规则绘制。英文字母的字形与游戏不同；界面贴图以近似的替代图显示，物品图标以紫黑格占位（游戏中显示实际的贴图）。</p>\n` +
+    const esc = (t) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    // 参数滑块：vary=W:60-240 —— 代码中的 const W = 数字 由滑块决定，拖动时重新运行
+    const vary = opts.vary ? (() => {
+        const [, v, lo, hi] = opts.vary.match(/^(\w+):(-?\d+)-(-?\d+)$/) ?? []
+        const init = (code.match(new RegExp(`(?:const|let)\\s+${v}\\s*=\\s*(-?\\d+)`)) ?? [])[1]
+        return v && init ? `<label class="ex-vary">${v} = <output>${init}</output><input type="range" min="${lo}" max="${hi}" value="${init}" data-var="${v}"></label>` : ''
+    })() : ''
+    const first = opts.first ?? 'code'
+    return `<div class="example" data-id="${id}" data-name="${name.replace(/\(\)$/, '()')}" data-w="${w}" data-h="${h}" data-base="${base}"${form ? ` data-form="${form}"` : ''}>
+<div class="ex-bar"><button type="button" data-tab="code"${first === 'code' ? ' class="on"' : ''}>代码</button><button type="button" data-tab="preview"${first === 'preview' ? ' class="on"' : ''}>预览</button><span class="ex-tools"><button type="button" class="ex-edit">修改并运行</button></span></div>
+<div class="ex-pane ex-code"${first === 'code' ? '' : ' hidden'}>${opts.pre}</div>
+<div class="ex-pane ex-preview"${first === 'preview' ? '' : ' hidden'}><div class="cui-preview" id="${id}"></div>${vary}<p class="cui-preview-note">预览：按游戏的排版规则绘制。英文字母的字形与游戏不同；界面贴图以近似的替代图显示，物品图标以紫黑格占位（游戏中显示实际的贴图）。</p><p class="ex-error" hidden></p></div>
+<script type="text/plain" class="ex-src">${esc(code)}</script>
+</div>\n` +
         `<script>(() => {\n${body.replace(/<\/script/g, '<\\/script')}\nCUI_PREVIEW('${id}', ${name}, { w: ${w}, h: ${h}, base: '${base}'${form ? `, form: ${form}` : ''} })\n})()</script>\n`
 }
 
@@ -93,11 +106,15 @@ function renderMarkdown(src, file) {
                 const marks = lineSet(spec)
                 const lines = highlight(text, language).split('\n').map((l, i) => `<span class="line${marks.has(i + 1) ? ' hl' : ''}">${l || ' '}</span>`)
                 const note = marks.size ? '<p class="code-note">绿色背景的行是相对上一段代码新增或修改的部分。</p>\n' : ''
-                const pre = `<pre class="code" data-lang="${language}"><code>${lines.join('')}</code></pre>\n${note}`
+                // 每个代码块都带「复制」按钮
+                const pre = `<div class="codebox"><button type="button" class="copy">复制</button><pre class="code" data-lang="${language}"><code>${lines.join('')}</code></pre></div>\n${note}`
                 const pv = lang.match(/preview=(\w+(?:\(\))?)(?:\s+(\d+)x(\d+))?/)
                 if (!pv) return pre
                 const form = (lang.match(/form=(\w+)/) ?? [])[1]
-                return pre + previewScript(text, `pv-${++previews}`, pv[1], Number(pv[2] ?? 240), Number(pv[3] ?? 140), base, form)
+                const vary = (lang.match(/vary=(\S+)/) ?? [])[1]
+                // 学习章节：代码优先（正文逐段讲解代码）；组件页：预览优先（展示组件的样子）
+                const first = file.startsWith('components/') ? 'preview' : 'code'
+                return previewScript(text, `pv-${++previews}`, pv[1], Number(pv[2] ?? 240), Number(pv[3] ?? 140), base, form, { pre, vary, first })
             },
             link({ href, title, tokens }) {
                 const text = this.parser.parseInline(tokens)
@@ -203,7 +220,9 @@ const toggle = (open) => document.body.classList.toggle('nav-open', open)
 document.querySelector('.menu').addEventListener('click', () => toggle(!document.body.classList.contains('nav-open')))
 document.querySelector('.backdrop').addEventListener('click', () => toggle(false))
 document.querySelectorAll('.sidebar a').forEach((a) => a.addEventListener('click', () => toggle(false)))
+
 </script>
+<script src="${prefix}site.js"></script>
 </body>
 </html>
 `
@@ -212,6 +231,7 @@ document.querySelectorAll('.sidebar a').forEach((a) => a.addEventListener('click
     fs.writeFileSync(to, doc)
 }
 fs.copyFileSync(path.join(root, 'docs', 'site', 'site.css'), path.join(out, 'site.css'))
+fs.copyFileSync(path.join(root, 'docs', 'site', 'site.js'), path.join(out, 'site.js'))
 
 // 在线示例：浏览器脚本（bedrock-cui + 预览）、替代贴图、Unifont
 await viteBuild({

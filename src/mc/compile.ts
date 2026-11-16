@@ -8,6 +8,7 @@
  * - 按钮继承 common.button（$pressed_button_name 缺省 button.form_button_click），三种状态各是一个子面板；
  * - 集合项（FormButton）编译成 sapdon 真机验证过的写法：正方形 grid + grid_position + 内层负偏移 + 集合绑定。
  */
+import { SOLID_TEXTURE } from '../core/values.js'
 import { compileExpr, evalExpr, hasRefs, isExpr, type Expr } from '../core/expr.js'
 import type { Anim } from '../core/anim.js'
 import { finalize, type Element } from '../core/element.js'
@@ -179,6 +180,8 @@ class Compiler {
                 out.type = 'image'
                 if (!isExpr(p.texture)) out.texture = p.texture
                 if (p.keepRatio !== undefined) out.keep_ratio = p.keepRatio
+                // 内置纯白贴图：纯色没有宽高比可保持，未指定时拉伸铺满（JSON UI 缺省保持宽高比，2×2 的贴图会画成正方形）
+                else if (p.texture === SOLID_TEXTURE) out.keep_ratio = false
                 if (p.nineslice !== undefined) out.nineslice_size = p.nineslice
                 if (p.baseSize !== undefined) out.base_size = p.baseSize
                 if (p.uv) out.uv = p.uv

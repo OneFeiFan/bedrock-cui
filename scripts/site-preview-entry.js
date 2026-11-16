@@ -21,6 +21,9 @@ window.CUI = CUI
 /** form：模拟的表单数据 { title, text, buttons } */
 window.CUI_PREVIEW = (id, root, { w, h, base, form }) => {
     const el = document.getElementById(id)
+    // 重新运行（修改并运行、参数滑块）：先清理上一次的预览（动画的时钟随之停止）
+    el._cuiPreview?.dispose()
+    el.innerHTML = ''
     // defineScreen 定义的界面：构建视图，用 props 的默认值作为预览的数据
     if (root instanceof CUI.Screen) {
         const { root: tree, manifest } = root.build()
@@ -29,12 +32,13 @@ window.CUI_PREVIEW = (id, root, { w, h, base, form }) => {
         root = tree
     }
     const textures = Object.fromEntries(Object.entries(STANDINS).map(([path, t]) => [path, { url: `${base}assets/textures/${t.file}`, size: t.size, ...(t.nineslice ? { nineslice: t.nineslice } : {}) }]))
-    const scale = Math.max(1, Math.min(3, Math.floor((el.clientWidth || 600) / w)))
+    const width = el.clientWidth || el.closest('.example')?.clientWidth || 600     // 预览区隐藏时（代码优先）按外层容器的宽度
+    const scale = Math.max(1, Math.min(3, Math.floor(width / w)))
     const buttons = form?.buttons ?? []
     const data = form ? {
         title: CUI.signal(form.title ?? ''), formText: CUI.signal(form.text ?? ''),
         formButtons: CUI.signal(buttons.map((b) => (typeof b === 'string' ? b : b.text))),
         formButtonIcons: CUI.signal(buttons.map((b) => (typeof b === 'string' ? '' : b.icon ?? ''))),
     } : {}
-    mountPreview(el, { root, viewport: [w, h], scale, textures, fonts: { unifont: `${base}font/unifont.hex.gz` }, ...data })
+    el._cuiPreview = mountPreview(el, { root, viewport: [w, h], scale, textures, fonts: { unifont: `${base}font/unifont.hex.gz` }, ...data })
 }

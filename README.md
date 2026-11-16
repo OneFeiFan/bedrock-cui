@@ -11,7 +11,8 @@
 - **对象式的界面描述**：控件即对象，属性有类型，不需要手写 JSON UI。
 - **与游戏一致的预览**：字形、字宽、折行与叠放顺序，均与 PC 及安卓设备的实际显示核对过。
 - **构建时的静态检查**：文字越界、被图片遮挡、只在手机上出现的折行问题等，给出控件路径与偏差的像素数。
-- **服务端表单的运行时**：鼠标不动也能连续翻页，运行期文字的跨平台折行，按钮图标。
+- **界面文件**：一个界面的数据、逻辑与视图写在一个文件中，按钮用名字联系逻辑；鼠标不动也能连续点击与翻页。
+- **客户端动画**：透明度、位置、尺寸、裁剪比例的动画由游戏客户端播放。
 - **与 sapdon 配合**：新建或接入 [sapdon](https://github.com/Meteage/sapdon) 项目，清单、UUID 与打包由 sapdon 负责。
 
 ## 快速开始
@@ -26,31 +27,37 @@ npm run dev      # 在浏览器中预览
 npm run build    # 构建附加包；npm run pack 同时打包为 .mcaddon
 ```
 
-界面写在 `ui/` 中：
+一个界面写在一个文件中（`ui/*.screen.mjs`）：数据、逻辑、视图各占一块。
 
 ```js
-import { Anchor, Image, Label, Pages, Panel, Paragraph, Size } from 'bedrock-cui'
+import { Anchor, Image, Label, Panel, Size, defineScreen } from 'bedrock-cui'
 
-export function buildBook() {
-    const pages = new Pages('book').startAt('p1').setSize(Size.full())
-    pages.page('p1').add(
-        new Paragraph('正文按游戏的规则折行，PC 与手机上都排得整齐。', 210).setAnchor(Anchor.TOP_LEFT).setOffset(15, 28),
-        pages.serverArrow('p1', 'p2', 'next', (hover) => new Label(hover ? '§e>' : '>'), 16, 12).setAnchor(Anchor.BOTTOM_RIGHT),
-    )
-    pages.page('p2').add(new Label('第 2 页'))
-    return new Panel().setSize(240, 150).add(new Image('textures/ui/dialog_background_opaque').setSize(Size.full()), pages, pages.stayButton())
-}
+export default defineScreen({
+    id: 'cui_ui:shop',
+    props: { greeting: '欢迎光临' },                       // 数据
+    state() { return { coins: 10 } },                      // 逻辑：在游戏中运行
+    computed: { greeting() { return `金币：${this.coins}` } },
+    methods: { buy() { this.coins -= 1 } },
+    view({ props, button }) {                              // 视图：构建时编译为 JSON UI
+        const buy = button('buy').setSize(60, 18).setAnchor(Anchor.BOTTOM_RIGHT)
+        buy.default.add(new Label('购买'))
+        return new Panel().setSize(200, 100).add(
+            new Image('textures/ui/dialog_background_opaque').setSize(Size.full()),
+            new Label(props.greeting).setSize(160, 10).setAnchor(Anchor.TOP_LEFT).setOffset(10, 10),
+            buy,
+        )
+    },
+})
 ```
 
-行为包脚本打开它：
+行为包脚本只决定什么时候打开：
 
 ```js
 import { world } from '@minecraft/server'
-import { ServerPagesForm } from 'bedrock-cui/runtime/server-pages'
-import { paging } from './cui.generated.js'
+import './cui.generated.js'
+import shop from '../ui/shop.screen.mjs'
 
-const book = new ServerPagesForm(paging['cui_ui:book'])
-world.afterEvents.itemUse.subscribe((e) => { if (e.itemStack.typeId === 'minecraft:book') book.open(e.source) })
+world.afterEvents.itemUse.subscribe((e) => { if (e.itemStack.typeId === 'minecraft:emerald') shop.open(e.source) })
 ```
 
 已有的 sapdon 项目也可以接入，见手册[在 sapdon 中使用](https://onefeifan.github.io/bedrock-cui/sapdon.html)。
@@ -60,6 +67,7 @@ world.afterEvents.itemUse.subscribe((e) => { if (e.itemStack.typeId === 'minecra
 手册：<https://onefeifan.github.io/bedrock-cui/>
 
 - [快速上手](https://onefeifan.github.io/bedrock-cui/quick-start.html)：创建项目、预览、构建并在游戏中打开；
+- [界面文件](https://onefeifan.github.io/bedrock-cui/screens.html)：数据、逻辑与视图；
 - [工作原理](https://onefeifan.github.io/bedrock-cui/how-it-works.html)：原版的服务端表单，以及 bedrock-cui 怎样在它上面显示界面；
 - [组件](https://onefeifan.github.io/bedrock-cui/components/panel.html)：每个组件的示例与全部属性、方法；
 - [真机规则](https://onefeifan.github.io/bedrock-cui/reference/rules.html)：框架所依据的、在真机上测得的游戏行为。

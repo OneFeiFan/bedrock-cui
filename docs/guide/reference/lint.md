@@ -23,6 +23,7 @@
 | 规则 | 说明 |
 |---|---|
 | `collection-item-size` | 显示 props 的控件或 `button()` 没有像素尺寸，内容不会显示。用 `setSize(宽, 高)` 设置像素尺寸。 |
+| `decimal-arith` | 绑定的运算中有小数常数（例如 `× 0.16`）。运算只有整数（真机），小数会按整数计算；改用整数，或让脚本直接传入算好的整数。 |
 | `engine-wrap-short-line` | 由游戏折行的静态文字会在上一行末尾留下大段空白。应改用 `Paragraph`；运行期文字使用 `softWrap()`。 |
 | `flex-overflow` | 弹性布局的内容在某种屏幕尺寸下放不下。会变长的内容应放进 `Scroll`，或调大 `setMinSize()`。 |
 | `glyph-line-overlap` | 多行文字中的字形图标会压到相邻的行。应设置 `setLineSpacing(6)`。 |

@@ -52,10 +52,14 @@ registry.submit()
 
 ## 脚本的类型检查
 
-`checkScripts(行为包目录)`（`bedrock-cui/node`）用 TypeScript 编译器检查脚本中的 API 调用，返回错误信息的数组。需要安装 `typescript` 与 `@minecraft/server`、`@minecraft/server-ui`：
+`checkScripts(项目目录)`（`bedrock-cui/node`）用 TypeScript 编译器检查行为包脚本，返回错误信息的数组，例如拼错的方法名、少传的参数。项目目录中有 `cui.config.mjs` 时，它检查 `scripts/` 下的脚本，连同脚本导入的界面文件。需要在项目中安装 `typescript`（`npm i -D typescript`）；`@minecraft/server`、`@minecraft/server-ui` 的类型由新建的项目自带。
 
 ```js
 import { checkScripts } from 'bedrock-cui/node'
 
-const errors = await checkScripts('dev/my_ui_BP')
+const errors = await checkScripts('.')
+for (const e of errors) console.log(e)      // 例：scripts/index.js:3:6 Property 'opne' does not exist on type 'Screen'.
 ```
+
+不打包、用 `copyRuntime()` 的项目，传入行为包目录（例如 `checkScripts('my_pack_BP')`），检查其中 `scripts/` 下的脚本。
+

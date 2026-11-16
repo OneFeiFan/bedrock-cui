@@ -32,6 +32,8 @@ export interface FormPlatform<P extends ScreenPlayer = ScreenPlayer> {
     timeout?(fn: () => void, ticks: number): () => void
     /** 当前时间（毫秒；缺省 Date.now()） */
     now?(): number
+    /** 逻辑发出了事件（在交给脚本的处理函数之前调用；浏览器预览用来写日志） */
+    emitted?(player: P, event: string, args: unknown[]): void
 }
 
 type Manifest = ScreenManifest & { paging?: ServerPaging }
@@ -228,6 +230,7 @@ export class ScreenRuntime<P extends ScreenPlayer = ScreenPlayer> {
     private async deliver(inst: Instance): Promise<void> {
         while (inst.emits.length) {
             const [event, args] = inst.emits.shift()!
+            this.platform.emitted?.(inst.player as P, event, args)
             for (const handler of inst.screen._listeners(event)) {
                 try { await handler(inst.player, ...args) } catch (e) { console.warn(`[bedrock-cui] ${inst.screen.id} 的事件 ${event} 处理出错：${e}`) }
             }

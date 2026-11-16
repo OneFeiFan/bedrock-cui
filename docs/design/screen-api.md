@@ -321,19 +321,26 @@ world.afterEvents.itemUse.subscribe((e) => shop.open(e.source))
    删除「服务端表单」与 form.button() / FormButton / FormGate 三个组件页，其余页面中的旧写法全部改为 props；底层 API 从 API 参考中移除（标为内部）；
    编译器与静态检查的提示改用 props 的说法；previewForm 写入起始页的翻页箭头（网站预览显示箭头）；数字默认值按文字处理。
    待做：底层 API 仍可从主入口导入（测试书在用），下一个不兼容版本移出公开接口。
-3. 表达式：比较运算符 gt / lt / gte / lte 未经验证（1.46.0 的组合为假）——专门测试后决定保留或移除；手册写明运算只有整数、常量折叠。
-4. 静态检查：带动画（错开显示时间）的文字放宽 text-overlap；绑定中出现非整数常数时提示（运算只有整数）。
-5. 阶段 D：预览中运行逻辑（点击 → 方法 → 状态 → 更新；emit 写进日志）；预览播放动画（Anim）。
-6. checkScripts 在 sapdon 流程中检查项目的 scripts/ 源码。
+3. 表达式：比较运算——1.55.0 真机：A–F、H、I 正确（单个比较可用），G「(5>=0) and (5<10)」错误；手册改为「单独使用已验证，不要用 and 组合两个比较（拆成嵌套两层）」。
+   1.56.0 真机：J（5>=0）、K（(5>3) and (5<7)）、L（(5=5) and (5<7)）正确，G、M 错误——共同点是 >= 作为 and 的一边（单独的 >= 正确、and 本身正确）。
+   处理（1.57.0）：编译时 >= → not <、<= → not >（只用经验证的 <、>、not、and）。✅ 真机确认：除 B、E 外全部显示（G、M 改写后正确）。
+4. ✅ 静态检查：带动画的文字不报 text-overlap；新规则 decimal-arith（绑定运算中的小数常数）。
+5. 阶段 D：✅ `bedrock-cui dev` 中运行逻辑（浏览器平台：show 写入预览的数据、点击交回运行时、定时器、emit 与 sendMessage 写进日志；翻页由运行时接管；切换界面时关闭）；新入口 `bedrock-cui/runtime/core`（与平台无关的运行时，可在浏览器加载）；平台钩子 emitted。
+   ✅ 预览播放动画：`sampleAnims()`（链、循环、wait、缓动、播完保持）；布局引擎按 env.time 叠加动画值（尺寸与位置在 place，透明度、颜色、裁剪在 finish）；
+   mountPreview 有动画时逐帧推进时钟、`restartAnimations()`；开发预览在运行时每次显示时从头播放；手册网站「呼吸」示例实测透明度随时间变化。
+6. ✅ checkScripts 项目模式（目录中有 cui.config.mjs 时原地检查 scripts/ 与导入的界面文件）；顺带修正 cui.generated.js 的类型（清单标注 JSDoc 类型）。
+   发现：sapdon 项目模板自带的 scripts/custom_components/cropComponent.js 有 9 处类型错误（方块状态名、GameMode.creative 等）——转告 sapdon 作者。
 
 **二、手册网站功能（手册重建第 2 步）**
-7. 代码块「代码 / 预览」切换、复制按钮；可修改参数并重新运行的示例；九宫格图示；折行的交互演示。
+7. ✅ 代码块的复制按钮；在线示例为「代码 / 预览」标签页（学习章节代码优先、组件页预览优先）、修改并运行、参数滑块（vary）；九宫格示意图与对照预览；折行的滑块演示。
 
 **三、逐章重写（手册重建第 3 步，按用户通读反馈 feedback-log 第 13 条）**
-8. 控件与组件树（名称提前；add / remove / clone 的参数与写法统一；set() 说明）、尺寸与位置（锚点、Align 方位、setGrow、内边距与 setContain、适应屏幕）、
+8. ✅（控件与组件树、尺寸与位置、文字（并入行内图标）、图片与贴图、叠放、开关与分页、简介、README 已重写；顺带：Texture.SOLID 缺省拉伸）原计划： 控件与组件树（名称提前；add / remove / clone 的参数与写法统一；set() 说明）、尺寸与位置（锚点、Align 方位、setGrow、内边距与 setContain、适应屏幕）、
    文字（并入行内图标；setWrap 示例与默认值；softWrap 缓存）、图片与贴图（setKeepRatio 的句式、九宫格图示、贴图目录的含义；改正 textures/ui/white）、
    叠放（结论提前、setLayer 说明、控件树顺序由什么决定）、开关与分页（Pages 的页与界面的区别、可视化）；
    挂到游戏里：按 defineScreen 新模型重写（界面文件、props、逻辑、事件、生命周期、刷新与合并队列、动画、真机限制：整数运算、位置单位等）；表达式与绑定改写。
-9. 以新手视角通读（读者测试）；更新写作 Skill 与资产包。
+9. ✅ 读者测试（扫出只写方法名的提及并逐个核对；补全 setMetricsProfile 的参数）；四个 Skill 加入本轮的经验并重新打包；资产包更新。
+
+**进度（2026-11，用户授权连续工作）**：第 1–9 项完成。剩余：第 18 节暂存的计时显示组件（Timer / ProgressBar / Countdown）；行为包脚本体积优化（约 190 KB）；底层 API 在下一个不兼容版本移出公开接口；`bedrock-cui dev` 联动游戏（热更新）；第四部分需用户决定的事。
 
 **四、需要用户决定**：清除提交历史中的原版贴图；转告 sapdon 作者的问题；发布到 npm。测试书「特殊字符」页的 `$abc` 警告另查。

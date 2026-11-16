@@ -64,3 +64,17 @@ test('form.button(n)：表单的第 n 个按钮——返回 form_buttons 集合�
     assert.deepEqual(r.issues.filter((i) => i.level === 'error'), [])
     assert.notEqual(form.button(1), form.button(1), '每次调用返回新的容器')
 })
+
+test('checkScripts 项目模式：目录中有 cui.config.mjs 时原地检查 scripts/ 下的脚本', async () => {
+    const fs = await import('node:fs'), os = await import('node:os'), path = await import('node:path')
+    const { checkScripts } = await import('../dist/node/index.js')
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'cui-check-proj-'))
+    try {
+        fs.writeFileSync(path.join(dir, 'cui.config.mjs'), 'export default {}\n')
+        fs.mkdirSync(path.join(dir, 'scripts'))
+        fs.writeFileSync(path.join(dir, 'scripts', 'index.js'), "const n = 1\nn.toFixed(2)\nn.toFixd(2)\n")
+        const errors = await checkScripts(dir)
+        assert.equal(errors.length, 1)
+        assert.match(errors[0], /^scripts\/index\.js:3:3 .*toFixd/)
+    } finally { fs.rmSync(dir, { recursive: true, force: true }) }
+})

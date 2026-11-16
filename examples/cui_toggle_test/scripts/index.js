@@ -8,6 +8,7 @@ import propsDemo from '../ui/props-demo.screen.mjs'
 import animLab from '../ui/anim-lab.screen.mjs'
 import progressLab from '../ui/progress-lab.screen.mjs'
 import measureLab from '../ui/measure-lab.screen.mjs'
+import compareLab from '../ui/compare-lab.screen.mjs'
 import { screenRuntime } from 'bedrock-cui/runtime/screens'
 
 const TITLE_RESPONSIVE = "cui_ui:responsive"
@@ -98,6 +99,8 @@ propsDemo.on('hello', (player, n) => {
 
 // 钟右键：动画实验（1.44.0）
 world.afterEvents.itemUse.subscribe((e) => { if (e.itemStack.typeId === 'minecraft:clock') animLab.open(e.source) })
+// 红石粉右键：比较运算实验（1.55.0）
+world.afterEvents.itemUse.subscribe((e) => { if (e.itemStack.typeId === 'minecraft:redstone') compareLab.open(e.source) })
 // 望远镜右键：测量实验（1.49.0）
 world.afterEvents.itemUse.subscribe((e) => { if (e.itemStack.typeId === 'minecraft:spyglass') measureLab.open(e.source) })
 // 指南针右键：进度实验（1.48.0）

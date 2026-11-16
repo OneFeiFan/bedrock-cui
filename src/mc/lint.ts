@@ -80,7 +80,8 @@ function lintLayoutOnce(roots: RNode[], options: LintOptions = {}): LintIssue[] 
         }
         // 同一个容器里两个文字控件互相重叠（真机 1.20.0：line_padding 让文字控件变高，压住了下面的说明）。
         // 带动态显示条件的跳过（「是 / 否」这种同一位置二选一的写法是有意叠放）
-        const labels = b.children.filter((c) => c.node.type === 'label' && !isExpr(c.node.props.visible))
+        // 带动画的也跳过（用透明度等动画错开显示时间的文字，例如倒计时的数字，是有意叠放）
+        const labels = b.children.filter((c) => c.node.type === 'label' && !isExpr(c.node.props.visible) && !(c.node.props.anims as unknown[] | undefined)?.length)
         for (let i = 0; i < labels.length; i++) for (let j = i + 1; j < labels.length; j++) {
             const a = labels[i].rect, c = labels[j].rect
             const ox = Math.min(a.x + a.w, c.x + c.w) - Math.max(a.x, c.x), oy = Math.min(a.y + a.h, c.y + c.h) - Math.max(a.y, c.y)
@@ -216,7 +217,28 @@ export function lint(roots: RNode[], options: LintOptions = {}): LintIssue[] {
 
     // 开关的名字要全局唯一：别的控件按名字（source_control_name）读它的状态
     const toggles = new Map<string, RNode>()
+    // 绑定的运算只有整数（真机 1.51.0：1 ÷ 4 得 0、'0.6' × 1 得 0）：运算中出现小数常数时提示
+    const decimalIn = (e: unknown): number | undefined => {
+        let found: number | undefined
+        const visit = (x: unknown): void => {
+            if (!x || typeof x !== 'object' || found !== undefined) return
+            const o = x as { k?: string, op?: string, a?: unknown, b?: unknown, v?: unknown }
+            if (o.k === 'bin' && ['+', '-', '*', '/', '%'].includes(o.op ?? '')) {
+                for (const side of [o.a, o.b]) {
+                    const s = side as { k?: string, v?: unknown }
+                    if (s?.k === 'lit' && typeof s.v === 'number' && !Number.isInteger(s.v)) found = s.v
+                }
+            }
+            visit(o.a); visit(o.b)
+        }
+        visit(isExpr(e) ? e.node : undefined)
+        return found
+    }
     walk(roots, (n) => {
+        for (const [key, v] of Object.entries(n.props)) {
+            const d = decimalIn(v)
+            if (d !== undefined) push('decimal-arith', 'warning', n, `${key} 的表达式中有小数常数 ${d}：绑定的运算只有整数（真机），小数会按整数计算——改用整数，例如先乘后除，或让脚本直接传入算好的整数`)
+        }
         if (n.props.web) push('web-only', 'error', n, `${n.props.web.tag === 'a' ? 'Link' : 'Html'} 是网页专用的元素（bedrock-cui/dom），不能编译成 JSON UI`)
         checkSiblings(n.children)
         if (n.slots) for (const s of Object.values(n.slots)) checkSiblings(s)

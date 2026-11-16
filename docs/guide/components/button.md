@@ -7,7 +7,7 @@ import { Button, Color, Image, Label, Panel, Size, Texture } from 'bedrock-cui'
 
 const button = new Button().setSize(80, 20)
 button.default.add(new Image('textures/ui/purpleBorder').setNineslice(4).setSize(Size.full()))
-button.hover.add(new Image(Texture.SOLID).setKeepRatio(false).setColor(Color.hex('#6040a0')).setSize(Size.full()))
+button.hover.add(new Image(Texture.SOLID).setColor(Color.hex('#6040a0')).setSize(Size.full()))
 button.add(new Label('确定'))
 const card = new Panel().setSize(120, 40).add(new Image('textures/ui/dialog_background_opaque').setSize(Size.full()), button)
 ```

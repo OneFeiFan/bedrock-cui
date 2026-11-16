@@ -20,6 +20,11 @@
   定时器 `this.setInterval()` / `this.setTimeout()`；状态变化时合并刷新。
 - 动画 `Anim`（alpha、offset、size、color、clip、wait；then、loop、setEasing），任何控件 `setAnims()`。
 - `bedrock-cui create` 的模板改用界面文件。
+- 浏览器预览：`bedrock-cui dev` 运行界面的逻辑（点击、状态、翻页、定时器；事件与聊天消息写进日志）；预览播放动画。
+- 静态检查：带动画的文字不报 `text-overlap`；新规则 `decimal-arith`。`checkScripts()` 支持项目目录（原地检查 `scripts/`）。
+- 表达式：`gte` / `lte` 编译为 `not <` / `not >`（`>=` 作为 `and` 的一边时游戏解析出错）；常量表达式编译为固定值。
+- `Texture.SOLID` 未指定 `setKeepRatio()` 时拉伸铺满。
+- 手册网站：代码块复制按钮；在线示例的「代码 / 预览」标签页、修改并运行、参数滑块；「搭建界面」各章按读者反馈重写，「行内图标」并入「文字」。
 - 手册：新增「界面文件」「数据（props）」「逻辑」「动画」，重写「工作原理」「快速上手」「翻页」「表达式」「脚本端」；
   底层 API（`form`、`FormButton`、`FormGate`、`CollectionItem`、`ServerPagesForm`）不再出现在手册与参考中，由界面文件代替。
 - `Texture.SOLID`：内置纯白贴图，用到时构建自动写进资源包。原版的 `textures/ui/white` 四周有 2 像素黑边，不能当作纯色。

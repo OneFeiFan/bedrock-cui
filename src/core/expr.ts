@@ -145,7 +145,12 @@ export function compileExpr(e: ExprLike, varPrefix = 'v'): CompiledExpr {
                 return local
             }
             case 'not': return `(not ${visit(n.a)})`
-            case 'bin': return `(${visit(n.a)} ${n.op} ${visit(n.b)})`
+            // >= 与 <= 写成 not < / not >：真机 1.56.0 中 (x >= 0) and (…) 结果为假，单独的 >= 正确——游戏放在更大的表达式里时解析出错。
+            // 改写后只用 <、>、not、and，它们单独与组合使用都经真机验证
+            case 'bin':
+                if (n.op === '>=') return `(not (${visit(n.a)} < ${visit(n.b)}))`
+                if (n.op === '<=') return `(not (${visit(n.a)} > ${visit(n.b)}))`
+                return `(${visit(n.a)} ${n.op} ${visit(n.b)})`
         }
     }
     out.text = visit(node(e))

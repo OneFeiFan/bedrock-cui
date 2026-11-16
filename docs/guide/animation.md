@@ -28,14 +28,17 @@ new Label('欢迎').setAnims(Anim.alpha(0, 1, 0.5))
 
 `动画.then(下一段)` 在一段动画之后接上下一段，组成动画链；`动画.loop()` 让动画链播完后回到第一段，循环播放。
 
-```js
-import { Anim, Label } from 'bedrock-cui'
+```js preview=card 160x40
+import { Anim, Image, Label, Panel, Size } from 'bedrock-cui'
 
 // 「呼吸」：透明度在 1 与 0.2 之间来回变化
-new Label('等待中').setAnims(
-    Anim.alpha(1, 0.2, 1).setEasing('in_out_sine')
-        .then(Anim.alpha(0.2, 1, 1).setEasing('in_out_sine'))
-        .loop(),
+const card = new Panel().setSize(140, 30).add(
+    new Image('textures/ui/dialog_background_opaque').setSize(Size.full()),
+    new Label('§5等待中').setAnims(
+        Anim.alpha(1, 0.2, 1).setEasing('in_out_sine')
+            .then(Anim.alpha(0.2, 1, 1).setEasing('in_out_sine'))
+            .loop(),
+    ),
 )
 ```
 
@@ -66,4 +69,6 @@ const arrow = new Panel().setSize(22, 15).add(
 
 ## 在浏览器中
 
-浏览器预览目前不播放动画，只显示控件的初始状态。用 `wait` 或透明度错开显示时间的控件，在预览中会同时出现。
+`bedrock-cui dev` 与手册网站的预览播放动画：透明度、位置、尺寸、颜色与裁剪比例按时间变化，动画链、循环与缓动方式与游戏一致。界面因点击或刷新而重新显示时，动画从头开始，与游戏相同。
+
+以字符串引用的已有动画定义（例如 `setAnims('@my_ns.fade')`）在预览中不播放。

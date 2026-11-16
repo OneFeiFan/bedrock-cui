@@ -88,3 +88,49 @@ test('Texture.SOLID：内置纯白贴图——界面用到时编译结果附带 
     const unused = CuiApp.fromConfig({ namespace: 'n', screens: { 'cui_ui:b': () => new Panel().setSize(10, 10).add(new Label('x')) } }).compile()
     assert.ok(!unused.glyphs.some(([f]) => f.includes('bedrock_cui/solid')))
 })
+
+test('静态检查：带动画的文字叠放不报 text-overlap；绑定运算中的小数常数报 decimal-arith', async () => {
+    const { CuiApp } = await import('../dist/node/index.js')
+    const s = defineScreen({
+        id: 'cui_ui:d', props: { p: '0' },
+        view: ({ props }) => new Panel().setSize(200, 40).add(
+            new Panel().setSize(1, 8).setOffset(props.p.number.times(0.16), 0),
+            new Panel().setSize(1, 8).setOffset(props.p.number.times(160).div(1000), 10),
+            new Label('5').setAnims(Anim.alpha(1, 0, 1)), new Label('4').setAnims(Anim.alpha(0, 1, 1)),
+        ),
+    })
+    const rules = CuiApp.fromConfig({ namespace: 'n', screens: [s] }).compile().issues.map((i) => i.rule)
+    assert.deepEqual(rules.filter((r) => r === 'decimal-arith').length, 1, '只有 × 0.16 那一处')
+    assert.ok(!rules.includes('text-overlap'))
+})
+
+test('sampleAnims：动画链在某一时刻的值——播完的段取结束值、wait 保持、循环取模、整条链播完后保持最后的状态', async () => {
+    const { sampleAnims } = await import('../dist/core/anim.js')
+    const digit = Anim.alpha(0, 0, 2).then(Anim.alpha(1, 1, 1)).then(Anim.alpha(0, 0, 0.05))
+    assert.deepEqual([0.5, 2.5, 3.5].map((t) => sampleAnims([digit], t).alpha), [0, 1, 0])
+    const breathe = Anim.alpha(1, 0.2, 1).then(Anim.alpha(0.2, 1, 1)).loop()
+    assert.deepEqual([0, 1, 2, 3].map((t) => +sampleAnims([breathe], t).alpha.toFixed(2)), [1, 0.2, 1, 0.2])
+    assert.equal(sampleAnims([Anim.wait(1).then(Anim.alpha(0, 1, 1))], 0.5), undefined, 'wait 期间不改变')
+    assert.deepEqual(sampleAnims([Anim.size([0, 8], [160, 8], 10)], 5).size, [80, 8])
+    assert.equal(sampleAnims([Anim.clip(1, 0, 3)], 9).clipRatio, 0, '播完后保持结束值')
+    assert.equal(sampleAnims(['@ns.x'], 1), undefined, '字符串引用不播放')
+})
+
+test('比较运算：>= 与 <= 编译为 not < 与 not >（真机 1.56.0：>= 放在 and 中时结果错误）', async () => {
+    const { compileExpr, lit } = await import('../dist/core/expr.js')
+    const n = lit(5)
+    assert.equal(compileExpr(n.gte(0).and(n.lt(10))).text, '((not (5 < 0)) and (5 < 10))')
+    assert.equal(compileExpr(n.lte(4)).text, '(not (5 > 4))')
+    assert.ok(!/>=|<=/.test(compileExpr(n.gte(1).or(n.lte(2))).text))
+})
+
+test('Texture.SOLID：未指定 setKeepRatio() 时拉伸铺满（编译为 keep_ratio: false）；指定了则按指定', async () => {
+    const { Texture } = await import('../dist/index.js')
+    const root = new Panel().setSize(200, 40).add(
+        new Image(Texture.SOLID).setName('a').setSize(200, 24),
+        new Image(Texture.SOLID).setName('b').setSize(200, 24).setKeepRatio(true),
+    )
+    const json = JSON.stringify(compileNamespace('t', { root }).json)
+    assert.match(json, /"a@?[^"]*":\{[^}]*"keep_ratio":false/)
+    assert.match(json, /"b@?[^"]*":\{[^}]*"keep_ratio":true/)
+})

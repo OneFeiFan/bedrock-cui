@@ -148,7 +148,7 @@ export class CuiApp {
         return `// 由 bedrock-cui 生成，请勿手改（每次构建覆盖）\n` +
             `/** 界面 id → 翻页路由表（new ServerPagesForm(paging[界面 id])） @type {Record<string, import('${runtimeType}').ServerPaging>} */\n` +
             `export const paging = ${JSON.stringify(paging, null, 2)}\n` +
-            `/** defineScreen 定义的界面：界面 id → 清单（名字与按钮序号的对应） */\n` +
+            `/** defineScreen 定义的界面：界面 id → 清单（名字与按钮序号的对应） @type {Record<string, import('bedrock-cui').ScreenManifest & { paging?: import('${runtimeType}').ServerPaging }>} */\n` +
             `export const screens = ${JSON.stringify(screens, null, 2)}\n` +
             (Object.keys(screens).length ? `// 登记清单：之后界面的 open() / close() 可用\nimport { registerScreens } from 'bedrock-cui/runtime/screens'\nregisterScreens(screens)\n` : '')
     }

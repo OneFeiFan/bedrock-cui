@@ -11,7 +11,7 @@ const card = new Panel().setSize(200, 70).add(
     // 保持宽高比（默认）：缩放到控件范围内并居中
     new Image('textures/items/diamond').setSize(24, 24).setAnchor(Anchor.CENTER_LEFT).setOffset(12, 0),
     // 拉伸铺满：用于纯色贴图
-    new Image(Texture.SOLID).setKeepRatio(false).setSize(120, 2).setColor(Color.hex('#a070f0')).setAnchor(Anchor.CENTER_RIGHT).setOffset(-12, 0),
+    new Image(Texture.SOLID).setSize(120, 2).setColor(Color.hex('#a070f0')).setAnchor(Anchor.CENTER_RIGHT).setOffset(-12, 0),
 )
 ```
 

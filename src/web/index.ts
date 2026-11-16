@@ -63,6 +63,8 @@ export interface Preview {
     resetToggles(start?: Record<string, number>): void
     /** 改屏幕大小（界面像素）：看响应式布局在手机 / 平板 / 电脑上的样子 */
     resize(width: number, height: number): void
+    /** 动画从头播放（模拟游戏中界面重新打开：控件重新创建，动画从头开始） */
+    restartAnimations(): void
     readonly viewport: Signal<[number, number]>
     dispose(): void
 }
@@ -166,6 +168,11 @@ export function mountPreview(el: HTMLElement, options: PreviewOptions): Preview 
     const groups = signal<Record<string, string>>({})
     /** 服务端分页：模拟按路由打开到某页（组 → 初始选中序号） */
     const startOf = signal<Record<string, number>>({})
+    /** 动画：界面里有动画时逐帧推进的时钟（秒） */
+    const clock = signal(0)
+    let animStart = performance.now(), animFrame = 0
+    const hasAnims = (list: RNode[]): boolean => list.some((n) => (n.props.anims as unknown[] | undefined)?.some((a) => typeof a !== 'string') || hasAnims(n.children) || Object.values(n.slots ?? {}).some(hasAnims))
+    const tick = () => { clock.value = (performance.now() - animStart) / 1000; animFrame = requestAnimationFrame(tick) }
     /** 滚动区域的滚动量（路径 → 像素） */
     const scrolls = signal<Record<string, number>>({})
     const flags = signal<Record<string, boolean>>({})
@@ -295,11 +302,15 @@ export function mountPreview(el: HTMLElement, options: PreviewOptions): Preview 
     const render = effect(() => {
         // 读信号 → 建立依赖
         void formText.value; void formButtons.value; void formButtonIcons.value; void title.value; void outlines.value; void groups.value; void flags.value; void pixel.value; void startOf.value; void scrolls.value; void glyphLoaded.value; void tintLoaded.value; void dpr.value
+        const time = clock.value
         const vp = viewport.value
         screen.style.width = `${vp[0] * scale}px`; screen.style.height = `${vp[1] * scale}px`
         const st = { hover: hover.value, pressed: pressed.value }
-        current = layout(tree(), {
-            viewport: vp, data: data as never, translate: options.translate,
+        const nodesNow = tree()
+        // 有动画时开始逐帧推进（只启动一次）
+        if (!animFrame && hasAnims(nodesNow)) animFrame = requestAnimationFrame(tick)
+        current = layout(nodesNow, {
+            viewport: vp, data: data as never, translate: options.translate, time: () => time,
             textures: (p) => textures[p],
             buttonState: (path) => (st.pressed === path ? 'pressed' : st.hover === path ? 'hover' : 'default'),
             toggleChecked: checked,
@@ -374,8 +385,9 @@ export function mountPreview(el: HTMLElement, options: PreviewOptions): Preview 
         compiled: (ns = 'preview') => compileNamespace(ns, { root: rootEl() }, { textures: (p) => textures[p] }).json,
         resetToggles: (start?: Record<string, number>) => { groups.value = {}; flags.value = {}; startOf.value = start ?? {} },
         resize: (w: number, h: number) => { viewport.value = [w, h] },
+        restartAnimations: () => { animStart = performance.now(); clock.value = 0 },
         viewport,
-        dispose: () => { render.stop(); screen.remove() },
+        dispose: () => { render.stop(); cancelAnimationFrame(animFrame); screen.remove() },
     }
 }
 

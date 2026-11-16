@@ -191,7 +191,7 @@ export class Texture {
 
     static of(path: string): Texture { return new Texture(path, {}) }
     /**
-     * 纯白贴图（bedrock-cui 内置，用到时构建自动写进资源包）：配合颜色画纯色矩形，例如底色、进度条。
+     * 纯白贴图（bedrock-cui 内置，用到时构建自动写进资源包）：配合颜色画纯色矩形，例如底色、进度条。未指定 setKeepRatio() 时拉伸铺满控件。
      * 原版的 textures/ui/white 不是纯色：15×15，四周有 2 像素黑边（真机 1.52.0）
      */
     static readonly SOLID = new Texture(SOLID_TEXTURE, {})

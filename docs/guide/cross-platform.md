@@ -24,7 +24,7 @@ measureText(text, 1, 110).lines.length                                   // PC �
 withMetricsProfile('android', () => measureText(text, 1, 110).lines.length)  // 安卓下的行数
 ```
 
-`setMetricsProfile()` 切换全局的档案，`withMetricsProfile()` 只在回调期间切换。
+`setMetricsProfile(档案)` 切换全局的字宽档案（`'pc'` 或 `'android'`）；`withMetricsProfile(档案, 函数)` 只在函数运行期间切换，结束后恢复原来的档案。
 
 ## 框架中的处理
 

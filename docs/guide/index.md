@@ -15,7 +15,6 @@
 - [文字](text.md)
 - [图片与贴图](images.md)
 - [叠放](layering.md)
-- [行内图标](inline-icons.md)
 - [字形图标](glyph-icons.md)
 
 ### 界面文件
