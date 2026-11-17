@@ -1,7 +1,8 @@
 // 排版引擎：按 JSON UI 规则（锚点、尺寸单位、stack、grid、clip、layer、keep_ratio、文字、按钮态、集合项）
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { Panel, Size, Stack, Grid, Image, Label, FormGate, FormButton, buttonPayload, finalize, layout, findBox, textWidth } from '../dist/index.js'
+import { Panel, Size, Stack, Grid, Image, Label, finalize, layout, findBox, textWidth } from '../dist/index.js'
+import { FormGate, FormButton, buttonPayload } from '../dist/internal.js'
 
 const run = (root, env = {}) => layout(finalize(root), { viewport: [200, 100], ...env })
 const R = (b) => [b.rect.x, b.rect.y, b.rect.w, b.rect.h].map((v) => Math.round(v * 100) / 100)
@@ -106,7 +107,7 @@ test('动态数据：FormGate 按正文显示；按钮悬停态；FormButton 按
 })
 
 test('对象树：一个元素只能有一个父元素（加两处报错）；clone() 深拷贝含状态面板与实例字段', async () => {
-    const { Toggle, Panel, Label, FormButton } = await import('../dist/index.js')
+    const { Toggle, Panel, Label, FormButton } = { ...(await import('../dist/index.js')), ...(await import('../dist/internal.js')) }
     const tip = new Label('提示')
     const t = new Toggle('g', 0).set({ name: 't' })
     t.uncheckedHover.add(tip)

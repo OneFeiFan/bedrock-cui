@@ -27,7 +27,14 @@ import shop from '../ui/shop.screen.mjs'
 
 游戏的脚本环境不支持 `import 'bedrock-cui/runtime'` 这样的模块名，脚本需要打包。bedrock-cui 的项目由 sapdon 用 rollup 打包，脚本中按模块名书写即可。
 
-界面文件（`defineScreen`）依赖 bedrock-cui 的控件代码，只支持这种打包方式。脚本导入界面文件时，视图部分与控件代码也会被打包进去（游戏中不运行），行为包脚本因此约 190 KB，其中包括排版用的字宽表。
+界面文件（`defineScreen`）依赖 bedrock-cui 的控件代码，只支持这种打包方式。脚本导入界面文件时，视图部分与控件代码也会被打包进去（游戏中不运行，构建工具、静态检查与排版引擎等只在构建时用到的部分不会进入），新建项目的行为包脚本约 160 KB，其中包括排版用的字宽表。
+
+发布时，把 sapdon 的构建模式设为生产模式，脚本会被压缩（新建项目约 80 KB）：
+
+```
+// build.config
+{ "buildOptions": { "buildMode": "prod" } }
+```
 
 不使用界面文件、只需要 `softWrap()` 时，也可以不打包：`copyRuntime(目录)`（`bedrock-cui/node`）将 `bedrock-cui/runtime` 复制到指定目录，脚本以相对路径导入：
 

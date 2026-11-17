@@ -11,7 +11,7 @@
 - **对象式的界面描述**：控件即对象，属性有类型，不需要手写 JSON UI。
 - **与游戏一致的预览**：字形、字宽、折行与叠放顺序，均与 PC 及安卓设备的实际显示核对过。
 - **构建时的静态检查**：文字越界、被图片遮挡、只在手机上出现的折行问题等，给出控件路径与偏差的像素数。
-- **界面文件**：一个界面的数据、逻辑与视图写在一个文件中，按钮用名字联系逻辑；鼠标不动也能连续点击与翻页。
+- **界面文件**：一个界面的数据、逻辑与视图写在一个文件中，按钮用 `onClick()` 绑定方法；多页界面只需说明跳到哪一页，鼠标不动也能连续点击与翻页。
 - **客户端动画**：透明度、位置、尺寸、裁剪比例的动画由游戏客户端播放。
 - **与 sapdon 配合**：新建或接入 [sapdon](https://github.com/Meteage/sapdon) 项目，清单、UUID 与打包由 sapdon 负责。
 
@@ -34,17 +34,18 @@ import { Anchor, Image, Label, Panel, Size, defineScreen } from 'bedrock-cui'
 
 export default defineScreen({
     id: 'cui_ui:shop',
-    props: { greeting: '欢迎光临' },                       // 数据
-    state() { return { coins: 10 } },                      // 逻辑：在游戏中运行
-    computed: { greeting() { return `金币：${this.coins}` } },
+    props: { greeting: { type: String, default: '欢迎' } },     // 数据：脚本传入
+    state() { return { coins: 10 } },                              // 逻辑：在游戏中运行
+    computed: { coinText() { return `金币：${this.coins}` } },
     methods: { buy() { this.coins -= 1 } },
-    view({ props, button }) {                              // 视图：构建时编译为 JSON UI
-        const buy = button('buy').setSize(60, 18).setAnchor(Anchor.BOTTOM_RIGHT)
-        buy.default.add(new Label('购买'))
+    view({ greeting, coinText, buy, button }) {                    // 视图：构建时编译为 JSON UI
+        const b = button().onClick(buy).setSize(60, 18).setAnchor(Anchor.BOTTOM_RIGHT)
+        b.default.add(new Label('购买'))
         return new Panel().setSize(200, 100).add(
             new Image('textures/ui/dialog_background_opaque').setSize(Size.full()),
-            new Label(props.greeting).setSize(160, 10).setAnchor(Anchor.TOP_LEFT).setOffset(10, 10),
-            buy,
+            new Label(greeting).setSize(160, 10).setAnchor(Anchor.TOP_LEFT).setOffset(10, 10),
+            new Label(coinText).setSize(160, 10).setAnchor(Anchor.TOP_LEFT).setOffset(10, 26),
+            b,
         )
     },
 })

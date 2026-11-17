@@ -57,7 +57,7 @@ function textureMap(dirs: string[]): Record<string, unknown> {
     return map
 }
 
-export async function dev(options: { root?: string, port?: number } = {}): Promise<void> {
+export async function dev(options: { root?: string, port?: number, game?: number } = {}): Promise<void> {
     const root = path.resolve(options.root ?? '.')
     const configFile = findConfig(root)
     if (!configFile) throw new Error('当前目录没有 cui.config.mjs。用 bedrock-cui create <名字> 创建项目，或在项目根目录添加配置文件')
@@ -114,4 +114,40 @@ export async function dev(options: { root?: string, port?: number } = {}): Promi
     textureDirs = (config.textures ?? ['res']).map((d) => path.resolve(root, d))
     await server.listen()
     server.printUrls()
+    if (options.game) await linkGame(root, options.game)
+}
+
+/**
+ * 与游戏联动（bedrock-cui dev --game）：游戏中 /connect localhost:端口 连接；保存界面或资源后自动构建，
+ * 构建完成后向游戏发送 reload all（sapdon 在 Windows 上把构建结果复制到游戏的开发包目录）。
+ * 构建会写入 scripts/cui.generated.* 与 res/ 中生成的贴图：这些文件、以及构建期间的改动不触发下一次构建。
+ */
+async function linkGame(root: string, port: number): Promise<void> {
+    const { GameLink } = await import('./game.js')
+    const link = new GameLink(port)
+    link.onStatus = (t) => console.log(`[bedrock-cui] ${t}`)
+    link.onMessage = (m) => {
+        const body = (m as { body?: { statusMessage?: string, statusCode?: number } }).body
+        if (body?.statusMessage) console.log(`[bedrock-cui] 游戏：${body.statusMessage}`)
+    }
+    await link.start()
+    console.log(`  与游戏联动：在游戏中输入 /connect localhost:${port}\n`)
+    const watched = /^(ui|res|scripts)[\\/]|^cui\.config\./
+    const generated = /cui\.generated\.|[\\/]font[\\/]glyph_|bedrock_cui[\\/]/
+    let timer: ReturnType<typeof setTimeout> | undefined, building = false
+    const build = () => {
+        building = true
+        console.log('[bedrock-cui] 文件已修改，开始构建……')
+        const bin = path.join(pkgRoot, 'bin', 'bedrock-cui.mjs')
+        const r = spawnSync(process.execPath, [bin, 'build'], { cwd: root, stdio: 'inherit' })
+        setTimeout(() => { building = false }, 1000)          // 构建写出的文件引起的改动不再触发
+        if (r.status !== 0) { console.log('[bedrock-cui] 构建失败，没有通知游戏'); return }
+        const n = link.command('reload all')
+        console.log(n ? '[bedrock-cui] 已构建，游戏正在重新加载（reload all）' : '[bedrock-cui] 已构建；游戏未连接，没有发送 reload all')
+    }
+    fs.watch(root, { recursive: true }, (_, file) => {
+        if (!file || building || !watched.test(file) || generated.test(file)) return
+        clearTimeout(timer)
+        timer = setTimeout(build, 800)
+    })
 }

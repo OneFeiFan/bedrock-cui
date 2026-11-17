@@ -16,7 +16,7 @@ const card = new Panel().setSize(200, 70).add(
 )
 ```
 
-文字可以是界面的数据或表达式，例如 `new Label(props.greeting)`，见[数据（props）](../props.md)。
+文字可以是界面的数据或表达式，例如视图中的 `new Label(greeting)`，见[数据（props）](../props.md)。
 
 ## API
 

@@ -41,7 +41,7 @@ export function create(name: string, options: { description?: string, author?: s
     const sapdonVersion = JSON.parse(fs.readFileSync(path.join(sapdon, 'package.json'), 'utf8')).version
     pkg.name = project
     pkg.type = 'module'
-    pkg.scripts = { ...pkg.scripts, dev: 'bedrock-cui dev', build: 'bedrock-cui build', pack: 'bedrock-cui build --pack' }
+    pkg.scripts = { ...pkg.scripts, dev: 'bedrock-cui dev', 'dev:game': 'bedrock-cui dev --game', build: 'bedrock-cui build', pack: 'bedrock-cui build --pack' }
     pkg.dependencies = { ...pkg.dependencies, 'bedrock-cui': `^${self.version}`, sapdon: `^${sapdonVersion}` }
     fs.writeFileSync(pkgFile, JSON.stringify(pkg, null, 2) + '\n')
 

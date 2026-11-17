@@ -8,7 +8,7 @@
  * 行高 10（字形 8 + 行距 2）。`§x` 格式码不占宽度。
  */
 import { gameGlyphInk } from './gameGlyphs.js'
-import { UNIFONT_HALF } from './unifontWidths.js'
+import { unifontHalfAt } from './unifontWidths.js'
 
 export const LINE_HEIGHT = 10
 /** 字形（8 高）在一行（10 高）里的上缘：居中，比文字控件的顶端低 1（真机 1.24.0：同一行里放在行顶的图标比汉字高 1 像素） */
@@ -67,7 +67,7 @@ export function unifontWidth(ch: string): number {
     const ink = gameGlyphInk(cp)
     if (ink !== undefined) return ink / 2 + 1
     if (cp >= 0x20 && cp < 0x10000) {
-        const half = parseInt(UNIFONT_HALF[cp - 0x20], 36)
+        const half = parseInt(unifontHalfAt(cp - 0x20) ?? '0', 36)
         if (half) return half / 2
     }
     return 8.5

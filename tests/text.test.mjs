@@ -143,7 +143,7 @@ test('游戏折行（真机 1.20.1 / 1.23.0）：只在空格处换行；单词�
 })
 
 test('静态检查 engine-wrap-short-line：交给游戏折行的静态文字折出过短的行（游戏只在空格处换行，真机 1.23.0）；Paragraph、运行期文字、折得好的文字不报', async () => {
-    const { compileNamespace, Label, Panel, Paragraph, Length, form } = await import('../dist/index.js')
+    const { compileNamespace, Label, Panel, Paragraph, Length, form } = { ...(await import('../dist/index.js')), ...(await import('../dist/internal.js')) }
     const text = '页首有一张 1 层紫色小图抢先出现（1.22.0 的 G 没有它，被盖住）。'
     const rule = (...items) => compileNamespace('t', { root: new Panel().setSize(200, 200).add(...items) }).issues
         .filter((i) => i.rule === 'engine-wrap-short-line').map((i) => i.path.split('/').pop())

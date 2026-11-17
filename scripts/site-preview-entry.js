@@ -4,7 +4,7 @@
  * 字体只用 Unifont（英文字母也用它画——Minecraft 的 ascii.png 不能公开发布）；字宽仍按游戏的规则，折行与排版位置与游戏一致。
  */
 import * as CUI from 'bedrock-cui'
-import { mountPreview } from 'bedrock-cui/web'
+import { mountPreview, runScreenInBrowser } from 'bedrock-cui/web'
 
 /** 替代贴图（原版贴图是 Mojang 的资源）：由 build-site.mjs 生成在 assets/textures/ */
 const STANDINS = {
@@ -24,12 +24,15 @@ window.CUI_PREVIEW = (id, root, { w, h, base, form }) => {
     // 重新运行（修改并运行、参数滑块）：先清理上一次的预览（动画的时钟随之停止）
     el._cuiPreview?.dispose()
     el.innerHTML = ''
-    // defineScreen 定义的界面：构建视图，用 props 的默认值作为预览的数据
+    // defineScreen 定义的界面：构建视图，并在浏览器中运行它的逻辑（点击按钮调用方法、状态变化后重新显示）
+    let screen, manifest
     if (root instanceof CUI.Screen) {
-        const { root: tree, manifest } = root.build()
+        screen = root
+        const built = root.build()
+        manifest = built.manifest
         const f = root.previewForm(manifest)
         form = { title: root.id, buttons: f.buttons.map((b, i) => (f.icons[i] ? { text: b, icon: f.icons[i] } : b)) }
-        root = tree
+        root = built.root
     }
     const textures = Object.fromEntries(Object.entries(STANDINS).map(([path, t]) => [path, { url: `${base}assets/textures/${t.file}`, size: t.size, ...(t.nineslice ? { nineslice: t.nineslice } : {}) }]))
     const width = el.clientWidth || el.closest('.example')?.clientWidth || 600     // 预览区隐藏时（代码优先）按外层容器的宽度
@@ -40,5 +43,24 @@ window.CUI_PREVIEW = (id, root, { w, h, base, form }) => {
         formButtons: CUI.signal(buttons.map((b) => (typeof b === 'string' ? b : b.text))),
         formButtonIcons: CUI.signal(buttons.map((b) => (typeof b === 'string' ? '' : b.icon ?? ''))),
     } : {}
-    el._cuiPreview = mountPreview(el, { root, viewport: [w, h], scale, textures, fonts: { unifont: `${base}font/unifont.hex.gz` }, ...data })
+    let runner
+    el._cuiPreview = mountPreview(el, {
+        root, viewport: [w, h], scale, textures, fonts: { unifont: `${base}font/unifont.hex.gz` }, ...data,
+        onFormButton: (i) => { runner?.click(i) },
+    })
+    if (screen) {
+        // 日志写在预览下方（最新的一条）
+        const note = document.createElement('p')
+        note.className = 'cui-preview-log'
+        el.after(note)
+        el._cuiLog?.remove()
+        el._cuiLog = note
+        runner = runScreenInBrowser(screen, {
+            manifest, paging: screen.paging(), title: data.title, formButtons: data.formButtons, formButtonIcons: data.formButtonIcons,
+            log: (m) => { note.textContent = m },
+            onShow: () => el._cuiPreview?.restartAnimations(),
+        })
+        const dispose = el._cuiPreview.dispose
+        el._cuiPreview.dispose = () => { runner.stop(); dispose() }
+    }
 }

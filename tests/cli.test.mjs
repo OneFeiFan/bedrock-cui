@@ -3,7 +3,8 @@ import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { Label, Pages, Panel, Size, defineConfig } from '../dist/index.js'
+import { Label, Panel, Size, defineConfig } from '../dist/index.js'
+import { Pages } from '../dist/internal.js'
 import { CuiApp, useSapdon } from '../dist/node/index.js'
 import { create } from '../dist/cli/create.js'
 
@@ -25,7 +26,7 @@ test('create：用 sapdon 的项目模板建项目，加上 bedrock-cui 的配�
     assert.equal(pkg.scripts.dev, 'bedrock-cui dev')
     const info = JSON.parse(fs.readFileSync(path.join(dir, 'mod.info'), 'utf8'))
     assert.match(info.bp, /^[0-9a-f-]{36}$/); assert.match(info.rp, /^[0-9a-f-]{36}$/)
-    assert.match(fs.readFileSync(path.join(dir, 'main.mjs'), 'utf8'), /useSapdon\(config, \{ GRegistry, UISystemRegistry \}\)/)
+    assert.match(fs.readFileSync(path.join(dir, 'main.mjs'), 'utf8'), /useSapdon\(config, \{ GRegistry, UISystemRegistry, addPacketResolver \}\)/)
     assert.throws(() => create(dir), /已存在/)
 })
 

@@ -3,7 +3,8 @@ import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { Image, Pages, compileNamespace } from '../dist/index.js'
+import { Image, compileNamespace } from '../dist/index.js'
+import { Pages } from '../dist/internal.js'
 import { checkScripts, copyRuntime } from '../dist/node/index.js'
 
 
@@ -27,8 +28,8 @@ test('混合翻页（构建端）：serverArrow = 两个同序号表单按钮（
 })
 
 test('混合翻页的共享逻辑（脚本端 ServerPagesForm 与预览 ServerPagesPreview 共用）：按钮文字、刚才方向的箭头加 F、原地不动、翻页结果', async () => {
-    const { pagingButtons, pagingResponse, pageTitle } = await import('../dist/index.js')
-    const { ServerPagesPreview } = await import('../dist/web/index.js')
+    const { pagingButtons, pagingResponse, pageTitle } = { ...(await import('../dist/index.js')), ...(await import('../dist/internal.js')) }
+    const { ServerPagesPreview } = { ...(await import('../dist/web/index.js')), ...(await import('../dist/internal.js')) }
     const paging = { title: 'cui_ui:b', prefix: 'P:', start: 'a', stay: 12, arrows: [{ index: 10, from: 'a', to: 'b', dir: 'next' }, { index: 11, from: 'b', to: 'a', dir: 'prev' }] }
     assert.equal(pageTitle(paging, 'b'), 'cui_ui:b|P:b;')
     assert.deepEqual(pagingButtons(paging, 'a', 'next', { 0: 'close|' }), ['close|', '', '', '', '', '', '', '', '', '', 'go10|F', 'go11|', 'stay|'])

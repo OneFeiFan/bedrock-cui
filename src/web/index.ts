@@ -255,7 +255,8 @@ export function mountPreview(el: HTMLElement, options: PreviewOptions): Preview 
             if (b.clipRatio !== undefined && n.props.clipDirection) {
                 const k = Math.max(0, Math.min(1, b.clipRatio))
                 const dir = n.props.clipDirection
-                const ins = dir === 'left' ? `0 0 0 ${k * 100}%` : dir === 'right' ? `0 ${k * 100}% 0 0` : dir === 'up' ? `${k * 100}% 0 0 0` : dir === 'down' ? `0 0 ${k * 100}% 0` : `${k * 50}%`
+                // 方向是可见部分靠的一侧（真机 1.51.0：'left' 的可见部分靠左；原版火焰 'down' 从上往下燃尽）：裁掉的是另一侧
+                const ins = dir === 'left' ? `0 ${k * 100}% 0 0` : dir === 'right' ? `0 0 0 ${k * 100}%` : dir === 'up' ? `0 0 ${k * 100}% 0` : dir === 'down' ? `${k * 100}% 0 0 0` : `${k * 50}%`
                 d.style.clipPath = `inset(${ins})`
             }
         } else if (n.type === 'label' && pixel.value && drawPixelLabel(d, b, n, pixel.value)) {
@@ -414,4 +415,4 @@ export function mountDevtools(el: HTMLElement, preview: Preview): void {
         : '<li style="color:#8f8">没有问题</li>'
     q('json').textContent = JSON.stringify(preview.compiled(), null, 1)
 }
-export { ServerPagesPreview } from './serverPages.js'
+export * from './screenPreview.js'

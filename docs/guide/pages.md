@@ -1,75 +1,84 @@
-# 开关与分页
+# 页面
 
-开关（`Toggle`）是可以选中的控件，由游戏客户端切换，不需要脚本参与，表单也不关闭。`Pages` 用一组开关在界面内部切换多页内容，适合做标签页、目录、弹出层。本节介绍它们的用法与限制。
+一个界面可以有多页，例如图鉴的目录页与各个条目页。切换页面时，界面以那一页重新打开（服务端切换），因此鼠标不动也能连续点击「下一页」。本节介绍多页的写法，以及它与只在客户端切换的[选项卡](tabs.md)的区别。
 
-「页」与「界面」不同：界面是一整个界面文件，由行为包脚本作为服务端表单打开（见[界面文件](screens.md)）；页是一个界面内部的一部分内容，在客户端切换。同一个界面中可以有多组页。
+## 写法
 
-## Toggle
+有多页时，界面文件不写 `view`，改写 `pages`：每一页是一个函数，返回这一页的内容。页内用 `link(页名)`、`next()`、`prev()`、`back()` 创建跳转用的按钮，只需说明「去哪一页」，翻页的过程由 bedrock-cui 完成。各页共用的外框（背景、关闭按钮）写在 `layout` 中，参数 `page` 是当前页放置的位置。下面的示例在「预览」中可以点击跳转：
 
-`new Toggle(组名, 序号)` 创建一个开关。同一组中的开关互斥，同一时间只有一个被选中；序号区分组内的各个开关，必须是不重复的非负整数：
-
-```js
-import { Image, Label, Size, Texture, Toggle } from 'bedrock-cui'
-
-const tab = new Toggle('tabs', 0).setName('tab_items').setSize(40, 16)
-tab.unchecked.add(new Label('物品'))
-tab.checked.add(new Image(Texture.SOLID).setSize(Size.full()), new Label('§l物品'))
-```
-
-开关的外观由四个状态面板组成：`unchecked`（未选中）、`checked`（选中）、`uncheckedHover`、`checkedHover`（鼠标悬停时）。`开关.unchecked.add(控件…)` 把控件加入某个状态。
-
-`开关.setRadio(false)` 使开关脱离互斥，成为独立的复选框；`开关.setDefaultState(true)` 设置复选框一开始就是选中的。
-
-## Pages
-
-`new Pages(组名)` 创建一组页。`页面组.page(页名)` 创建一页并返回它的容器；`页面组.startAt(页名)` 设置一开始显示的页，未设置时为第一页。
-
-切换到某一页的控件由 `页面组.link(页名)` 创建：它返回一个开关，点击后显示对应的页。下面是两个标签页，在「预览」中可以点击切换：
-
-```js preview=book 220x110
-import { Anchor, Color, Image, Label, Pages, Panel, Size, Texture } from 'bedrock-cui'
+```js preview=guide 240x150
+import { Anchor, Color, Image, Label, Panel, Size, defineScreen } from 'bedrock-cui'
 
 const INK = Color.hex('#3c2814')
-const pages = new Pages('tabs').startAt('items').setSize(200, 70).setAnchor(Anchor.BOTTOM_CENTER)
-pages.page('items').add(new Label('这里是物品').setColor(INK))
-pages.page('blocks').add(new Label('这里是方块').setColor(INK))
 
-// 标签：未选中时显示名称，选中时加粗并带底色
-const tab = (key, name, x) => {
-    const t = pages.link(key).setSize(60, 16).setAnchor(Anchor.TOP_LEFT).setOffset(x, 4)
-    t.unchecked.add(new Label(name).setColor(INK))
-    t.uncheckedHover.add(new Label(`§e${name}`))
-    t.checked.add(new Image(Texture.SOLID).setColor(Color.hex('#c8b48c')).setSize(Size.full()), new Label(`§l${name}`).setColor(INK))
-    t.checkedHover.add(new Image(Texture.SOLID).setColor(Color.hex('#c8b48c')).setSize(Size.full()), new Label(`§l${name}`).setColor(INK))
-    return t
-}
+// 跳转按钮的外观：平时与鼠标悬停时
+const look = (b, text) => { b.default.add(new Label(text).setColor(INK)); b.hover.add(new Label(`§e${text}`)); return b }
 
-const book = new Panel().setSize(200, 96).add(
-    new Image('textures/ui/dialog_background_opaque').setSize(Size.full()),
-    tab('items', '物品', 10), tab('blocks', '方块', 74),
-    pages,
-)
+const guide = defineScreen({
+    id: 'cui_ui:guide',
+    pages: {
+        home: ({ link }) => new Panel().setSize(Size.full()).add(
+            new Label('目录').setColor(INK).setAnchor(Anchor.TOP_CENTER).setOffset(0, 10),
+            look(link('sword'), '· 钻石剑').setSize(80, 12).setAnchor(Anchor.TOP_LEFT).setOffset(20, 32),
+            look(link('apple'), '· 苹果').setSize(80, 12).setAnchor(Anchor.TOP_LEFT).setOffset(20, 48),
+        ),
+        sword: ({ back, next }) => new Panel().setSize(Size.full()).add(
+            new Label('钻石剑：攻击伤害 7').setColor(INK).setAnchor(Anchor.TOP_CENTER).setOffset(0, 10),
+            look(back(), '< 返回').setSize(50, 12).setAnchor(Anchor.BOTTOM_LEFT).setOffset(8, -6),
+            look(next(), '下一条 >').setSize(50, 12).setAnchor(Anchor.BOTTOM_RIGHT).setOffset(-8, -6),
+        ),
+        apple: ({ back, prev }) => new Panel().setSize(Size.full()).add(
+            new Label('苹果：恢复 4 点饥饿值').setColor(INK).setAnchor(Anchor.TOP_CENTER).setOffset(0, 10),
+            look(back(), '< 返回').setSize(50, 12).setAnchor(Anchor.BOTTOM_LEFT).setOffset(8, -6),
+            look(prev(), '< 上一条').setSize(50, 12).setAnchor(Anchor.BOTTOM_RIGHT).setOffset(-8, -6),
+        ),
+    },
+    layout: ({ page }) => new Panel().setSize(220, 130).add(
+        new Image('textures/ui/dialog_background_opaque').setSize(Size.full()),
+        page,
+    ),
+})
 ```
 
-同一页可以有多个入口，例如目录中的一行与书签。通过继承 `Toggle` 编写的组件，用 `页面组.attach(页名, 开关)` 关联到某一页。`页面组.showing(页名)` 返回「这一页正在显示」的表达式，可以用作书签选中时的显示条件。
+打开界面时显示 `pages` 中的第一页；`start: '页名'` 可以指定别的页。
 
-开关的状态面板与每一页中，都可以直接显示界面的数据（`props`）：bedrock-cui 在使用数据的控件处读取它。
+## 跳转
 
-## 弹出层
+| 写法 | 跳到 |
+|---|---|
+| `link(页名)` | 指定的页 |
+| `next()`、`prev()` | 按 `pages` 中定义的顺序，下一页、上一页 |
+| `back()` | 上一次所在的页。bedrock-cui 记录跳转的历史；没有历史时（例如刚打开界面），这个按钮不显示 |
 
-`Pages` 也可以做弹出层：一组只有「无」和「详情」两页的 `Pages` 放在内容之上。`页面组.blocker(页名)` 创建一个铺满、透明、无声的开关，放在弹出层的下面，拦截对下层内容的点击：
+它们返回的按钮与 `button()` 一样设置外观（`default`、`hover`、`pressed`、`add()`），需要像素尺寸，但不需要 `onClick()`。
+
+跳转之后，与跳转方向相同的按钮获得默认焦点：连续点击「下一条」或「返回」时，鼠标不动也会落在同一个按钮上（真机）。当前页没有这个方向的按钮时（例如最后一页），bedrock-cui 自动加入的「原地不动」按钮接住这次点击，界面原样重新打开。
+
+## 外框
+
+`layout` 返回各页共用的外框，参数中除了 `page`，还有 props、state、computed、methods 与 `button`，与 `view` 相同。例如在外框中放一个关闭按钮：
 
 ```js
-import { Label, Pages, Panel, Size } from 'bedrock-cui'
-
-const detail = new Pages('detail').startAt('none').setSize(Size.full()).setLayer(40)
-detail.page('none')
-detail.page('sword').add(
-    detail.blocker('sword'),                                   // 点击弹出层以外的区域时，停留在当前页
-    new Panel().setSize(150, 90).add(new Label('钻石剑 · 详情')),
-)
+layout: ({ page, button, close }) => new Panel().setSize(220, 130).add(
+    page,
+    button().onClick(close).setSize(12, 12),
+),
 ```
 
-## 客户端切换的限制
+省略 `layout` 时，各页铺满整个屏幕。
 
-游戏只在鼠标移动时重新判断悬停的控件。用开关连续翻页时，如果鼠标不移动，第二次点击会落到错误的位置（真机）。目录、书签、弹出层这类每次都要移动鼠标的操作，适合用开关；「下一页」这类在同一位置连续点击的操作，应当使用界面文件中的[服务端翻页](paging.md)。
+## 页面与选项卡
+
+| | 页面（`pages`） | [选项卡](tabs.md)（`Tabs`） |
+|---|---|---|
+| 切换的方式 | 服务端：界面以那一页重新打开 | 客户端：用开关切换，表单不关闭 |
+| 鼠标不动时连续点击 | 每次都落在同一个按钮上 | 第二次点击会落到错误的位置（真机） |
+| 切换的速度 | 有约 150 毫秒的过渡 | 立即 |
+| 适合 | 「下一页」这类在同一位置连续点击的翻页 | 目录、标签、弹出层这类每次都移动鼠标的切换 |
+
+两者可以同时使用：例如每一页中放一组选项卡。
+
+## 注意
+
+- 跳转时界面重新打开，方法与[事件](logic.md#通知行为包脚本)处理函数在这个过程中运行，其中不要向聊天栏发送消息：表单关闭与重新打开之间发送消息，会使界面消失数秒（真机）。
+- 界面打开期间，玩家的视角被锁定，避免点击时视角随鼠标移动；界面关闭时解除。

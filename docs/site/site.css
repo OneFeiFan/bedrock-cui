@@ -169,3 +169,6 @@ pre.code .line.hl { background: var(--hl); box-shadow: inset 3px 0 0 var(--brand
 .nine-grid .m { background: #f3eefb; }
 @media (prefers-color-scheme: dark) { .nine-grid .c { background: #5a4a7a; } .nine-grid .e { background: #463a62; } .nine-grid .m { background: #352c4a; } }
 .nine-fig figcaption { margin-top: 8px; font-size: 12px; color: var(--text-soft); text-align: center; }
+
+/* 在线示例运行逻辑时的日志（最新的一条） */
+.cui-preview-log { margin: 6px 0 0; min-height: 1.4em; font: 12px var(--mono); color: var(--brand); }

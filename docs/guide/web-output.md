@@ -49,7 +49,7 @@ const html = renderHtml(new Column().add(nav, new Html('<p>正文</p>', 'article
 
 ## 限制
 
-`renderHtml()` 输出的是静态的 HTML：表达式（`props.名字`、`toggleState()` 等）不求值，开关与 `Pages` 不响应点击。贴图路径默认转换为 `<路径>.png`，可通过 `assetUrl` 选项指定：
+`renderHtml()` 输出的是静态的 HTML：表达式（界面的数据、`toggleState()` 等）不求值，开关与选项卡不响应点击。贴图路径默认转换为 `<路径>.png`，可通过 `assetUrl` 选项指定：
 
 ```js
 // 接上例

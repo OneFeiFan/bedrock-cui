@@ -46,7 +46,7 @@ test('面向对象 API 完整：每个控件类的可写属性都有同名的 se
 })
 
 test('属性赋值与 set({...})：有类型的值与早期写法的原始值都能转换；Paragraph 改选项会重新折行；FormButton 改 tag 同步显示条件；Pages 有页面后不能改组名', async () => {
-    const { Anchor, Color, FormButton, Image, Label, Length, Pages, Panel, Paragraph, Size } = await import('../dist/index.js')
+    const { Anchor, Color, FormButton, Image, Label, Length, Pages, Panel, Paragraph, Size } = { ...(await import('../dist/index.js')), ...(await import('../dist/internal.js')) }
     // 属性赋值 = setXxx()
     const a = new Image('textures/ui/x'); a.color = Color.WHITE; a.keepRatio = false; a.nineslice = 4; a.anchorFrom = Anchor.TOP_RIGHT; a.anchorTo = Anchor.TOP_LEFT
     const b = new Image('textures/ui/x').setColor(Color.WHITE).setKeepRatio(false).setNineslice(4).setPlacement(Anchor.TOP_RIGHT, Anchor.TOP_LEFT)

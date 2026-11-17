@@ -229,7 +229,9 @@ class Engine {
         const [w, h] = size ?? this.size(n, parent.w, parent.h, scope)
         const from = ANCHOR_POINT[(n.props.anchorFrom ?? n.props.anchor ?? 'center') as Anchor]
         const to = ANCHOR_POINT[(n.props.anchorTo ?? n.props.anchor ?? 'center') as Anchor]
-        const ox = n.props.offsetX !== undefined ? Number(this.value(n.props.offsetX, scope, 0)) : evalOffset(n.props.offset?.[0], parent.w), oy = evalOffset(n.props.offset?.[1], parent.h)
+        // 位置绑定的单位是自身的宽（高）（真机）：值乘以自身尺寸
+        const ox = n.props.offsetX !== undefined ? Number(this.value(n.props.offsetX, scope, 0)) * w : evalOffset(n.props.offset?.[0], parent.w)
+        const oy = n.props.offsetY !== undefined ? Number(this.value(n.props.offsetY, scope, 0)) * h : evalOffset(n.props.offset?.[1], parent.h)
         const rect = { x: parent.x + from[0] * parent.w + ox - to[0] * w, y: parent.y + from[1] * parent.h + oy - to[1] * h, w, h }
         return this.finish(n, rect, scope, z, clip)
     }

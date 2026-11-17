@@ -10,7 +10,6 @@ export default defineScreen({
     id: 'cui_ui:progress_lab',
 
     // 当前进度（整数像素 0–160），文字带状态前缀：未开始 I0、进行中 R64、完成 D160
-    props: { px: 'I0' },
     state() { return { startedAt: 0 } },
     computed: {
         px() {
@@ -22,11 +21,10 @@ export default defineScreen({
     methods: {
         start() { this.startedAt = Date.now() },
         again() { },
-        close() { this.close() },
     },
 
-    view({ props, button }) {
-        const p = props.px.minus('I').minus('R').minus('D').times(1)     // 整数像素
+    view({ px, start: startIt, again: againIt, button, close: closeIt }) {
+        const p = px.minus('I').minus('R').minus('D').times(1)     // 整数像素
         const green = Color.hex('#3fa04a')
         const bar = new Panel().setSize(W, H).setAnchor(Anchor.TOP_LEFT).setOffset(40, 40).setClip(true).add(
             new Image(SOLID).setKeepRatio(false).setColor(Color.hex('#cfc3a3')).setSize(W, H).setAnchor(Anchor.TOP_LEFT),
@@ -34,25 +32,25 @@ export default defineScreen({
             new Panel().setSize(1, H).setAnchor(Anchor.TOP_LEFT).setOffset(p.minus(W), 0).add(
                 new Image(SOLID).setKeepRatio(false).setColor(green).setSize(W, H).setAnchor(Anchor.TOP_LEFT)),
             // 前进部分：1 像素宽的容器移到「进度」，里面的条匀速增长（W / T 像素每秒），超出右端的部分被裁掉
-            new Panel().setSize(1, H).setAnchor(Anchor.TOP_LEFT).setOffset(p, 0).setVisible(props.px.contains('R')).add(
+            new Panel().setSize(1, H).setAnchor(Anchor.TOP_LEFT).setOffset(p, 0).setVisible(px.contains('R')).add(
                 new Image(SOLID).setKeepRatio(false).setColor(green).setSize(0, H).setAnchor(Anchor.TOP_LEFT)
                     .setAnims(Anim.size([0, H], [W, H], T))),
         )
 
-        const start = button('start').setSize(60, 16).setAnchor(Anchor.BOTTOM_RIGHT).setOffset(-12, -8)
+        const start = button().onClick(startIt).setSize(60, 16).setAnchor(Anchor.BOTTOM_RIGHT).setOffset(-12, -8)
         start.default.add(new Image('textures/ui/purpleBorder').setNineslice(4).setSize(Size.full()), new Label('开始'))
         start.hover.add(new Image(SOLID).setKeepRatio(false).setColor(Color.hex('#6040a0')).setSize(Size.full()), new Label('§e开始'))
-        const again = button('again').setSize(80, 16).setAnchor(Anchor.BOTTOM_LEFT).setOffset(12, -8)
+        const again = button().onClick(againIt).setSize(80, 16).setAnchor(Anchor.BOTTOM_LEFT).setOffset(12, -8)
         again.default.add(new Image('textures/ui/purpleBorder').setNineslice(4).setSize(Size.full()), new Label('重新打开'))
         again.hover.add(new Image(SOLID).setKeepRatio(false).setColor(Color.hex('#6040a0')).setSize(Size.full()), new Label('§e重新打开'))
-        const close = button('close').setSize(12, 12).setAnchor(Anchor.TOP_RIGHT).setOffset(-6, 6)
+        const close = button().onClick(closeIt).setSize(12, 12).setAnchor(Anchor.TOP_RIGHT).setOffset(-6, 6)
         close.default.add(new Label('§4x'))
         close.hover.add(new Label('§cx'))
 
         return new Panel().setSize(240, 100).add(
             new Image('textures/ui/dialog_background_opaque').setSize(Size.full()),
             new Label('进度（10 秒）：').setColor(INK).setAnchor(Anchor.TOP_LEFT).setOffset(12, 12),
-            new Label(props.px).setColor(INK).setSize(60, 10).setAnchor(Anchor.TOP_LEFT).setOffset(100, 12),
+            new Label(px).setColor(INK).setSize(60, 10).setAnchor(Anchor.TOP_LEFT).setOffset(100, 12),
             bar, start, again, close,
         )
     },

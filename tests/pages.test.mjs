@@ -1,7 +1,8 @@
 // 开关分页（客户端翻页，不经过服务端）与服务端表单挂接
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { Panel, Label, Image, Toggle, Pages, compileNamespace, finalize, layout, findBox, serverForm, walk, form } from '../dist/index.js'
+import { Panel, Label, Image, Toggle, compileNamespace, finalize, layout, findBox, walk } from '../dist/index.js'
+import { Pages, serverForm, form } from '../dist/internal.js'
 
 function book() {
     const pages = new Pages('book').startAt('home').set({ size: [200, 100], anchor: 'top_left' })
@@ -100,7 +101,7 @@ test('serverForm：挂到原版服务端表单（工厂 + 标题门控 + 隐藏�
 })
 
 test('静态检查：开关里读外层集合项的数据（真机读不到）；集合项放进开关状态面板里则可以', async () => {
-    const { CollectionItem, Toggle, Label, Panel, compileNamespace, form } = await import('../dist/index.js')
+    const { CollectionItem, Toggle, Label, Panel, compileNamespace, form } = { ...(await import('../dist/index.js')), ...(await import('../dist/internal.js')) }
     const bad = form.button(0).set({ size: [20, 20] })
     const t = new Toggle('g', 0).set({ name: 'tg', size: [20, 20] })
     t.uncheckedHover.add(new Label(form.buttonText.minus('s0|')).set({ name: 'info' }))
@@ -129,7 +130,7 @@ test('启用 / 禁用：enabled 表达式 → #enabled 绑定；禁用的开关�
 })
 
 test('serverForm 多个界面：按标题路由，只创建标题完全相同的那一个；标题重复时报错', async () => {
-    const { serverForm, Panel, Label } = await import('../dist/index.js')
+    const { serverForm, Panel, Label } = { ...(await import('../dist/index.js')), ...(await import('../dist/internal.js')) }
     const { files } = serverForm({ namespace: 'two', panels: [{ panelId: 'cui_ui:book', content: new Panel().set({ children: [new Label('书')] }), routed: true }, { panelId: 'cui_ui:bookshelf', content: new Panel().set({ children: [new Label('书架')] }), routed: true }] })
     const ns = files['ui/two.json']
     const router = ns.root.controls[0].router
@@ -145,13 +146,13 @@ test('静态检查：开关序号必须是非负整数（-1 = 不强制、自动
 })
 
 test('静态检查 mixed-sources：一条表达式同时读开关状态与全局绑定（真机 1.5.2：开关变化不会触发重新计算）', async () => {
-    const { Panel, Label, compileNamespace, toggleState, form } = await import('../dist/index.js')
+    const { Panel, Label, compileNamespace, toggleState, form } = { ...(await import('../dist/index.js')), ...(await import('../dist/internal.js')) }
     const root = new Panel().set({ children: [new Label('a').set({ name: 'x', visible: toggleState('t').and(form.title.contains('P:')) })] })
     assert.deepEqual(compileNamespace('t', { root }).issues.map((i) => i.rule), ['mixed-sources'])
 })
 
 test('FormButton 默认聚焦优先级：default_focus_precedence', async () => {
-    const { FormButton, compileNamespace } = await import('../dist/index.js')
+    const { FormButton, compileNamespace } = { ...(await import('../dist/index.js')), ...(await import('../dist/internal.js')) }
     const { json } = compileNamespace('t', { b: new FormButton(12, 'go12|F', 28, 18).set({ focusPrecedence: 100 }) })
     const btn = json.b.controls[0].grid.controls[0].grid_item_012.controls[0].cell.controls[0]['button@common.button']
     assert.equal(btn.default_focus_precedence, 100)
@@ -164,7 +165,7 @@ test('静态检查 obfuscated-unifont：§k 出现在含汉字的文字里（真
 })
 
 test('服务端分页 = 路由变体：标题 <id>/<页名> → 同一界面 + 初始选中序号变量；这组开关继承、不写死；页面显示只读开关', async () => {
-    const { Pages, Label, Panel, serverForm, serverTitle } = await import('../dist/index.js')
+    const { Pages, Label, Panel, serverForm, serverTitle } = { ...(await import('../dist/index.js')), ...(await import('../dist/internal.js')) }
     const pages = new Pages('bk').startAt('home').useRoutePages()
     pages.page('home').add(new Label('目录'))
     pages.page('sword').add(new Label('剑'))
@@ -186,7 +187,7 @@ test('服务端分页 = 路由变体：标题 <id>/<页名> → 同一界面 + �
 })
 
 test('静态界面（routed: false）：放在根下按标题显示、分页用标题页码（锚点 + 页码开关）、绑定不加 always；路由界面照旧加 always', async () => {
-    const { Pages, Label, Panel, serverForm } = await import('../dist/index.js')
+    const { Pages, Label, Panel, serverForm } = { ...(await import('../dist/index.js')), ...(await import('../dist/internal.js')) }
     const pages = new Pages('bk').startAt('home').useServerPages()
     pages.page('home').add(new Label('目录'))
     pages.page('sword').add(new Label('剑'))

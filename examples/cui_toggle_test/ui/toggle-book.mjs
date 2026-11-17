@@ -10,7 +10,8 @@
  *   5. 诊断：最后一页列出每个开关的选中状态（同序号的开关会不会一起选中）
  */
 import { softWrap } from 'bedrock-cui/runtime'
-import { Anchor, Color, FormButton, GlyphSheet, Image, InlineIcon, Insets, Label, Length, Pages, Panel, Paragraph, Size, Stack, Text, TextStyle, Toggle, form, paginate, textWidth, toggleState } from 'bedrock-cui'
+import { Anchor, Color, GlyphSheet, Image, InlineIcon, Insets, Label, Length, Panel, Paragraph, Size, Stack, Text, TextStyle, Toggle, paginate, textWidth, toggleState } from 'bedrock-cui'
+import { FormButton, Pages, form } from 'bedrock-cui/internal'
 
 export const T = {
     book: 'textures/cui_test/book', line: 'textures/cui_test/line', rowHover: 'textures/cui_test/row_hover',

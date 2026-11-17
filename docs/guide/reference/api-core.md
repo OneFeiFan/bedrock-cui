@@ -19,6 +19,7 @@
 | `Scroll` | 类 | 可滚动的区域，子控件纵向排列。 |
 | `Button` | 类 | 按钮。外观由 default、hover、pressed 三个状态面板组成。 |
 | `Toggle` | 类 | 开关。同组互斥；外观由四个状态面板组成。 |
+| `Tabs` | 类 | 选项卡：在客户端切换的几块内容（tab(名称)、link(名称)、showing、blocker）；表单不关闭。 |
 | `Raw` | 类 | 原样输出的 JSON UI 元素。 |
 
 ## 组件
@@ -27,7 +28,6 @@
 |---|---|---|
 | `Paragraph` | 类 | 较长的文字。默认软换行：交给游戏折行，调整汉字与英文、数字交界处的间隔。 |
 | `Text` | 类 | 可插入行内图标的文字，由 bedrock-cui 排版。 |
-| `Pages` | 类 | 多页内容：客户端开关切换，以及服务端翻页箭头。 |
 
 ## 图标
 
@@ -57,8 +57,20 @@
 | 名称 | 种类 | 说明 |
 |---|---|---|
 | `defineScreen` | 函数 | 定义一个界面：数据（props）、逻辑（state、computed、methods、生命周期）与视图（view）写在一个文件中。 |
+| `PropSpec` | 接口 | props 中一项的声明：{ type, default, of, max }（同 Vue 的 props）。 |
+| `Item` | 类 | props 声明中的类型：文字与图标 { text, icon }。 |
+| `MethodRef` | 接口 | 视图中方法的引用（从视图参数中解构得到），用于 button().onClick(方法, …参数)。 |
+| `PageTools` | 接口 | 多页时页内的跳转：link(页名)、next()、prev()、back()，返回按钮。 |
 | `Screen` | 类 | defineScreen() 返回的界面对象：id；行为包脚本中的 open(玩家, props)、close(玩家)、isOpen(玩家)、on(事件名, 处理函数) / off()；构建时的 build()、previewForm()。 |
 | `ScreenButton` | 类 | button(名字) 返回的按钮：default、hover、pressed 三个状态，add() 加入始终显示的内容。 |
+
+## 计时显示
+
+| 名称 | 种类 | 说明 |
+|---|---|---|
+| `Timer` | 类 | 计时器：只记开始时刻与总时长；idle / of / start / pause / resume / reset；remaining、progress。驱动 ProgressBar 与 Countdown。 |
+| `ProgressBar` | 类 | 进度条：随计时器匀速前进，界面重新打开时从当时的进度接着走，在右端准确停下；setHead() 末端的竖条。 |
+| `Countdown` | 类 | 倒计时数字：剩余的整秒数，进行中时匀速滚动；setBackground() 有底色时在 0 处准确停下。 |
 
 ## 动画
 
@@ -88,10 +100,8 @@
 
 | 名称 | 种类 | 说明 |
 |---|---|---|
-| `serverForm` | 函数 | 将界面挂载到服务端表单，返回界面文件与静态检查结果。 |
 | `compileNamespace` | 函数 | 将控件树编译为一个 JSON UI 命名空间。 |
 | `lint` | 函数 | 对控件树做静态检查。 |
-| `serverTitle` | 函数 | 路由界面的表单标题。 |
 | `escapeText` | 函数 | 转义文字中会被游戏特殊处理的开头字符（# 与 $）。 |
 
 ## 文字与字宽
@@ -110,23 +120,12 @@
 | `NBSP` | 常量 | 不换行空格（U+00A0）。 |
 | `LINE_HEIGHT` | 常量 | 一行文字的高度：10 像素。 |
 
-## 混合翻页
-
-| 名称 | 种类 | 说明 |
-|---|---|---|
-| `pageTitle` | 常量 | 某一页的表单标题：<界面 id>\|P:<页名>;。 |
-| `pagingButtons` | 函数 | 某一页的全部表单按钮文字。ServerPagesForm 与 ServerPagesPreview 共用。 |
-| `pagingResponse` | 函数 | 点击某个按钮后的结果：翻页、原地不动或界面自己的按钮。 |
-| `arrowTag` | 常量 | 翻页箭头按钮文字的标记。 |
-| `STAY_TAG` | 常量 | 「原地不动」按钮文字的标记。 |
-
 ## 类型
 
 | 名称 | 种类 | 说明 |
 |---|---|---|
 | `ServerPaging` | 接口 | 一个界面的翻页路由表。 |
 | `ServerArrowRoute` | 接口 | 路由表中的一个翻页箭头。 |
-| `FormButtonSpec` | 类型 | 一个表单按钮：文字，或 { text, icon }。 |
 | `LintIssue` | 接口 | 静态检查的一项结果：rule、level、path、message。 |
 | `TextureInfo` | 接口 | 贴图信息：size、nineslice、baseSize。 |
 | `MetricsProfile` | 类型 | 字宽档案：'pc' 或 'android'。 |
@@ -140,9 +139,8 @@
 | `AnimType` | 类型 | 动画的类型。 |
 | `AnimEasing` | 类型 | 动画的缓动方式。 |
 | `ButtonSlot` | 接口 | 按钮的一个状态：add() 加入的控件显示在该状态下。 |
-| `ScreenViewContext` | 接口 | 视图函数得到的参数：props、button()、pages()。 |
+| `ScreenViewContext` | 类型 | 视图函数得到的参数：props、button()、pages()。 |
 | `ScreenManifest` | 接口 | 界面的清单：props 与按钮的名字及其对应的表单按钮序号。 |
-| `PropDefault` | 类型 | props 中的默认值：文字、文字与图标、是否显示、列表。 |
 | `PropItem` | 类型 | 一个 prop 的值：文字，或 { text, icon }。 |
 | `PropSlot` | 接口 | 一个 prop 占用的表单按钮：序号与标记。 |
 | `TextMetrics` | 接口 | measureText() 的结果：lines、width、height。 |
@@ -151,6 +149,4 @@
 | `TextAlign` | 类型 | 文字对齐：'left'、'center'、'right'。 |
 | `InlineIconSize` | 类型 | 行内图标的尺寸：8 或 16。 |
 | `GlyphIconOptions` | 接口 | GlyphSheet.icon() 的选项。 |
-| `ServerFormOptions` | 接口 | serverForm() 的选项。 |
-| `ServerFormPanel` | 接口 | serverForm() 中的一个界面：panelId、content、routed。 |
 | `LintOptions` | 接口 | 静态检查的选项：贴图信息、屏幕尺寸、字宽档案。 |

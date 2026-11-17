@@ -13,7 +13,7 @@ export class ServerPagesPreview {
     /** 按钮的图标路径（own 中写成 { text, icon } 的按钮） */
     readonly formButtonIcons: Signal<string[]>
     private page: string
-    private dir: 'prev' | 'next' = 'next'
+    private dir: 'prev' | 'next' | 'back' = 'next'
 
     constructor(readonly paging: ServerPaging, private own: (page: string) => Record<number, FormButtonSpec> = () => ({})) {
         this.page = paging.start

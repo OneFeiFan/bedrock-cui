@@ -3,7 +3,8 @@ import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { Label, Pages, Panel, Size, form } from '../dist/index.js'
+import { Label, Panel, Size } from '../dist/index.js'
+import { Pages, form } from '../dist/internal.js'
 import { CuiApp } from '../dist/node/index.js'
 
 /** 两页的小书：服务端翻页箭头 + 原地不动 */
@@ -35,13 +36,13 @@ test('CuiApp.useSapdon：提交前钩子里登记界面 JSON（_ui_defs 交给 U
     hooks[0]([])
     assert.deepEqual(registered.map((r) => [r.name, r.root, r.path]), [['demo', 'resource', 'ui/'], ['server_form', 'resource', 'ui/']])
     assert.deepEqual(defs, ['ui/demo.json', 'ui/server_form.json'])
-    assert.match(fs.readFileSync(path.join(dir, 'scripts', 'cui.generated.js'), 'utf8'), /import\('bedrock-cui\/runtime\/server-pages'\)/)
+    assert.match(fs.readFileSync(path.join(dir, 'scripts', 'cui.generated.js'), 'utf8'), /import\('bedrock-cui'\)\.ServerPaging/, '类型取自公开入口（bedrock-cui/runtime/server-pages 已移除）')
     assert.match(fs.readFileSync(path.join(dir, 'scripts', 'cui.generated.d.ts'), 'utf8'), /export declare const paging: Record<string, ServerPaging>/)
     assert.throws(() => hooks[0]([{ name: 'server_form', root: 'resource', path: 'ui/' }]), /同时用了 sapdon 的服务端表单界面/)
 })
 
 test('form.buttonTexture：图片贴图绑定表单按钮的图标，照原版 server_form.json 编译（贴图与文件系统直接覆盖、空或加载中时隐藏）；集合项之外报错', async () => {
-    const { CollectionItem, Image, Panel, compileNamespace, form, pagingButtons } = await import('../dist/index.js')
+    const { CollectionItem, Image, Panel, compileNamespace, form, pagingButtons } = { ...(await import('../dist/index.js')), ...(await import('../dist/internal.js')) }
     const root = new Panel().setSize(100, 40).add(form.button(3).setSize(16, 16).add(new Image(form.buttonTexture).setName('icon').setSize(16, 16)))
     const r = compileNamespace('t', { root })
     const json = JSON.stringify(r.json ?? r)
@@ -55,7 +56,7 @@ test('form.buttonTexture：图片贴图绑定表单按钮的图标，照原版 s
 })
 
 test('form.button(n)：表单的第 n 个按钮——返回 form_buttons 集合第 n 项的容器，内部可读按钮的文字与图标；本身不可点击', async () => {
-    const { CollectionItem, FormButton, Label, Panel, compileNamespace, form } = await import('../dist/index.js')
+    const { CollectionItem, FormButton, Label, Panel, compileNamespace, form } = { ...(await import('../dist/index.js')), ...(await import('../dist/internal.js')) }
     const item = form.button(2)
     assert.ok(item instanceof CollectionItem)
     assert.ok(!(item instanceof FormButton), '不是可点击的 FormButton')
@@ -76,5 +77,28 @@ test('checkScripts 项目模式：目录中有 cui.config.mjs 时原地检查 sc
         const errors = await checkScripts(dir)
         assert.equal(errors.length, 1)
         assert.match(errors[0], /^scripts\/index\.js:3:3 .*toFixd/)
+    } finally { fs.rmSync(dir, { recursive: true, force: true }) }
+})
+
+test('useSapdon：给出 addPacketResolver 时，认领 bedrock-cui 的界面文件，以紧凑的 JSON 文本写出', async () => {
+    const { CuiApp } = await import('../dist/node/index.js')
+    const { Panel } = await import('../dist/index.js')
+    let hook, resolver
+    const registered = []
+    const sapdon = {
+        GRegistry: { register: (name, root, path, data) => registered.push({ name, root, path, data }), beforeSubmit: (h) => { hook = h } },
+        UISystemRegistry: { addOuterUIdefs() { } },
+        addPacketResolver: (fn, opts) => { resolver = fn; assert.equal(opts.id, 'bedrock-cui:compact-ui') },
+    }
+    const os = await import('node:os'), path = await import('node:path'), fs = await import('node:fs')
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'cui-compact-'))
+    try {
+        CuiApp.fromConfig({ namespace: 'n', screens: { 'cui_ui:a': () => new Panel().setSize(10, 10) } }).useSapdon(sapdon, { scriptsDir: path.join(dir, 'scripts'), resDir: path.join(dir, 'res') })
+        hook([])
+        const other = { name: 'items', root: 'behavior', path: 'items/', data: {} }
+        const out = resolver({ entries: [...registered, other] })
+        assert.ok(out.files.length >= 2 && out.files.every((f) => f.format === 'text' && f.ext === 'json' && !f.data.includes('\n')))
+        assert.ok(!out.consumed.includes(other), '别的注册项不认领')
+        assert.deepEqual(JSON.parse(out.files.find((f) => f.name === 'n').data), registered.find((e) => e.name === 'n').data)
     } finally { fs.rmSync(dir, { recursive: true, force: true }) }
 })

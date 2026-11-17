@@ -150,12 +150,12 @@ new Label('§c红色§r 普通 §l粗体§r')
 ```js
 import { Label, Panel, defineScreen } from 'bedrock-cui'
 
-const story = defineScreen({
+const storyBook = defineScreen({
     id: 'cui_ui:story',
-    props: { story: '' },
-    view({ props }) {
+    props: { story: { type: String } },
+    view({ story }) {
         // 显示数据的控件需要像素尺寸：宽 110，最多显示 6 行
-        return new Panel().setSize(130, 80).add(new Label(props.story).setSize(110, 60))
+        return new Panel().setSize(130, 80).add(new Label(story).setSize(110, 60))
     },
 })
 ```
@@ -166,7 +166,7 @@ const story = defineScreen({
 // 接上例：行为包脚本（player 为玩家，text 为要显示的文字）
 import { softWrap } from 'bedrock-cui/runtime'
 
-story.open(player, { story: softWrap(text, 110) })
+storyBook.open(player, { story: softWrap(text, 110) })
 ```
 
 ## 不同设备上的字宽

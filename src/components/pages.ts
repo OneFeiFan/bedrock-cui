@@ -70,7 +70,7 @@ export class Pages extends Panel {
         return this
     }
 
-    // ───────── 混合翻页：服务端翻页箭头（真机 1.4.0–1.26.0 验证的做法，脚本端配 cui/runtime/server-pages 的 ServerPagesForm） ─────────
+    // ───────── 混合翻页：服务端翻页箭头（真机 1.4.0–1.26.0 验证的做法，脚本端配 bedrock-cui/internal/server-pages 的 ServerPagesForm；界面文件的 pages 在内部使用它） ─────────
 
     private arrows: ServerArrowRoute[] = []
     private buttonBase = 10
@@ -96,6 +96,14 @@ export class Pages extends Panel {
      * 脚本重开时给「刚才点击方向」的箭头加 F，鼠标不动也能连续翻页。art(hover) 每次调用都要返回新的元素（普通 / 悬停 / 按下各用一份）。
      * 需要 useServerPages()；返回的面板自己摆放位置（setAnchor / setOffset）。
      */
+    /** @internal 界面文件的 link() / next() / prev()：只登记路由（从哪页到哪页、方向），返回分配的序号；按钮由调用者创建 */
+    _link(from: string, to: string, dir: 'prev' | 'next'): number {
+        if (this.serverMode?.kind !== 'title') this.useServerPages()
+        const index = this.allocButton()
+        this.arrows.push({ index, from, to, dir })
+        return index
+    }
+
     serverArrow(from: string, to: string, dir: 'prev' | 'next', art: (hover: boolean) => Element | Element[], width: number, height: number): Panel {
         if (this.serverMode?.kind !== 'title') this.useServerPages()
         const index = this.allocButton()
@@ -241,4 +249,17 @@ export class Pages extends Panel {
         }
     }
 
+}
+
+/**
+ * 选项卡：在客户端切换的多块内容（用开关实现，切换时表单不关闭，不需要脚本参与）。
+ * 与界面文件的「页」不同：页由服务端切换（界面以那一页重新打开），适合「下一页」这类在同一位置连续点击的操作。
+ *
+ *   const tabs = new Tabs('bag').startAt('items')
+ *   tabs.tab('items').add(…)               // 一块内容
+ *   tabs.link('items')                     // 切换到它的开关
+ */
+export class Tabs extends Pages {
+    /** 创建一块内容，返回它的容器 */
+    tab(name: string): Panel { return this.page(name) }
 }

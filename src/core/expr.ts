@@ -116,6 +116,26 @@ export interface CompiledExpr {
  * 编译表达式。字符串字面量一律提升成变量（`$v0`）：JSON UI 表达式里的字符串字面量不能含单引号，
  * 提升后任意内容都安全（sapdon 的门控也是这样写的）。
  */
+/**
+ * 让 not 只出现在表达式的开头（真机：单独的 not、作为 and 左边的 not 都正确；
+ * 1.59.0 not (not X) 的外层 not 没有生效，1.60.0 作为 or 右边的 not 结果错误）：
+ *   not (not X) → X；(not A) or (not B) → not (A and B)；(not A) and (not B) → not (A or B)（德摩根律，等价）
+ */
+function normalizeNot(n: ExprNode): ExprNode {
+    if (n.k === 'not') {
+        const a = normalizeNot(n.a)
+        return a.k === 'not' ? a.a : { k: 'not', a }
+    }
+    if (n.k === 'bin') {
+        const a = normalizeNot(n.a), b = normalizeNot(n.b)
+        if ((n.op === 'or' || n.op === 'and') && a.k === 'not' && b.k === 'not') {
+            return { k: 'not', a: { k: 'bin', op: n.op === 'or' ? 'and' : 'or', a: a.a, b: b.a } }
+        }
+        return { ...n, a, b }
+    }
+    return n
+}
+
 export function compileExpr(e: ExprLike, varPrefix = 'v'): CompiledExpr {
     const out: CompiledExpr = { text: '', globals: [], collections: [], controls: [], variables: {} }
     let vi = 0
@@ -153,13 +173,15 @@ export function compileExpr(e: ExprLike, varPrefix = 'v'): CompiledExpr {
                 return `(${visit(n.a)} ${n.op} ${visit(n.b)})`
         }
     }
-    out.text = visit(node(e))
+    out.text = visit(normalizeNot(node(e)))
     return out
 }
 
 // ───────────────────────────── 求值（预览） ─────────────────────────────
 
 export interface EvalEnv {
+    /** 精确的除法（常量折叠：由 bedrock-cui 在构建时算出）；缺省为整数除法（与游戏中绑定的运算一致） */
+    exact?: boolean
     /** 读数据来源（预览里来自信号：表单正文、按钮文字、开关状态） */
     ref(name: string, source: Source): Value
     /** 读变量 */
@@ -184,7 +206,7 @@ export function evalExpr(e: ExprLike, env: EvalEnv): Value {
                         if (typeof a === 'number' && typeof b === 'number') return a - b
                         return String(b) === '' ? String(a) : String(a).split(String(b)).join('')
                     case '*': return Number(a) * Number(b)
-                    case '/': return Number(a) / Number(b)
+                    case '/': return env.exact ? Number(a) / Number(b) : Math.trunc(Number(a) / Number(b))      // 绑定的运算只有整数（真机 1.51.0：1 ÷ 4 = 0）
                     case '%': return Number(a) % Number(b)
                     case '=': return typeof a === 'number' && typeof b === 'number' ? a === b : String(a) === String(b)
                     case '>': return Number(a) > Number(b)
@@ -210,6 +232,10 @@ export const asBool = (v: Value) => truthy(v)
  * 读取按钮数据需要在对应的集合项内部：快照时自动给使用它的控件包上容器（使用者看不到序号、标记与容器）。
  */
 export class PropRef extends Expr {
+    /** 定义 prop 时的默认值（组件据此得知例如计时器的总时长） */
+    defaultValue?: unknown
+    /** @internal 需要计时结束时刷新一次的组件数（没有底色的 Countdown：它的动画会滚过 0） */
+    _refreshAtEndCount?: number
     constructor(readonly propName: string, readonly index: number, readonly tag: string) {
         super(ref('#form_button_text', { kind: 'collection', collection: 'form_buttons', index }).minus(tag).node)
     }

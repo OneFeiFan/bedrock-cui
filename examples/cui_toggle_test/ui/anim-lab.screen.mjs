@@ -14,7 +14,6 @@ export default defineScreen({
 
     // 进度（千分比）由脚本在每次打开时算出，通过 prop 传进界面。文字带状态前缀：未开始 I0、进行中 R400、完成 D1000
     // （1.46.0 用 >= 判断显示，原版表达式从未用过比较运算符，真机「没动静」——改为只用「包含」与「去掉文字后乘以 1」）
-    props: { progress: 'I0' },
     state() { return { startedAt: 0 } },
     computed: {
         progress() {
@@ -27,10 +26,9 @@ export default defineScreen({
     methods: {
         start() { this.startedAt = Date.now() },
         again() { },                 // 什么也不做：点击后表单重新打开，观察动画是否从头播放
-        close() { this.close() },
     },
 
-    view({ props, button }) {
+    view({ progress, start: startIt, again: againIt, button, close: closeIt }) {
         const title = (text, y) => new Label(text).setColor(INK).setAnchor(Anchor.TOP_LEFT).setOffset(12, y)
 
         // A 数字倒计时：6 个文字叠在同一位置
@@ -73,8 +71,8 @@ export default defineScreen({
 
         // G 进度条：已完成部分按数值裁剪；前进部分放在当前进度处、匀速增长（超出右端的部分被裁掉）
         // 数值：去掉状态前缀后乘以 1；进行中：文字包含 R
-        const p = props.progress.minus('I').minus('R').minus('D').times(1)
-        const running = props.progress.contains('R')
+        const p = progress.minus('I').minus('R').minus('D').times(1)
+        const running = progress.contains('R')
         const bar = new Panel().setSize(W, H).setAnchor(Anchor.TOP_LEFT).setOffset(12, 132).setClip(true).add(
             new Image(Texture.SOLID).setKeepRatio(false).setColor(Color.hex('#cfc3a3')).setSize(W, H).setAnchor(Anchor.TOP_LEFT),
             new Image(Texture.SOLID).setKeepRatio(false).setColor(Color.hex('#3fa04a')).setSize(W, H).setAnchor(Anchor.TOP_LEFT)
@@ -93,15 +91,15 @@ export default defineScreen({
                 .add(new Image(Texture.SOLID).setKeepRatio(false).setColor(Color.hex('#3060c0')).setSize(0, H).setAnchor(Anchor.TOP_LEFT)
                     .setAnims(Anim.size([0, H], [W, H], T))),
         )
-        const reading = new Label(props.progress).setColor(INK).setSize(60, 10).setAnchor(Anchor.TOP_LEFT).setOffset(180, 131)
-        const start = button('start').setSize(60, 16).setAnchor(Anchor.BOTTOM_RIGHT).setOffset(-12, -8)
+        const reading = new Label(progress).setColor(INK).setSize(60, 10).setAnchor(Anchor.TOP_LEFT).setOffset(180, 131)
+        const start = button().onClick(startIt).setSize(60, 16).setAnchor(Anchor.BOTTOM_RIGHT).setOffset(-12, -8)
         start.default.add(new Image('textures/ui/purpleBorder').setNineslice(4).setSize(Size.full()), new Label('开始'))
         start.hover.add(new Image(Texture.SOLID).setKeepRatio(false).setColor(Color.hex('#6040a0')).setSize(Size.full()), new Label('§e开始'))
 
-        const again = button('again').setSize(80, 18).setAnchor(Anchor.BOTTOM_LEFT).setOffset(12, -10)
+        const again = button().onClick(againIt).setSize(80, 18).setAnchor(Anchor.BOTTOM_LEFT).setOffset(12, -10)
         again.default.add(new Image('textures/ui/purpleBorder').setNineslice(4).setSize(Size.full()), new Label('重新打开'))
         again.hover.add(new Image(Texture.SOLID).setKeepRatio(false).setColor(Color.hex('#6040a0')).setSize(Size.full()), new Label('§e重新打开'))
-        const close = button('close').setSize(12, 12).setAnchor(Anchor.TOP_RIGHT).setOffset(-6, 6)
+        const close = button().onClick(closeIt).setSize(12, 12).setAnchor(Anchor.TOP_RIGHT).setOffset(-6, 6)
         close.default.add(new Label('§4x'))
         close.hover.add(new Label('§cx'))
 

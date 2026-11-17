@@ -64,7 +64,7 @@ export class ServerPagesForm {
     setLockCamera(on: boolean): this { this.camera = on; return this }
 
     /** 打开到某页；dir = 默认聚焦哪个方向的箭头（缺省 next） */
-    open(player: Player, page: string = this.routes.start, dir: 'prev' | 'next' = 'next'): void {
+    open(player: Player, page: string = this.routes.start, dir: 'prev' | 'next' | 'back' = 'next'): void {
         if (this.camera) lockCamera(player, true)
         const form = new ActionFormData().title(pageTitle(this.routes, page)).body(this.body(player, page))
         const own = this.buttons(player, page)

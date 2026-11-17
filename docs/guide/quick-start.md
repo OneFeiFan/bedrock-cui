@@ -31,11 +31,11 @@ my_ui/
 
 一个界面写在一个文件里（`ui/*.screen.mjs`），文件中分为三块：
 
-- **数据**（`props`）：界面显示的数据与默认值。行为包脚本打开界面时可以传入别的值；
-- **逻辑**（`methods` 等）：在游戏中运行，例如点击按钮后做什么；
-- **视图**（`view`）：返回控件树，即界面的样子。视图在构建时运行一次，编译为游戏读取的界面文件。
+- **数据**（`props`）：行为包脚本传给界面的数据，例如玩家的名字、物品的数量。在这里定义每项数据和它的默认值；脚本打开界面时传入实际的值，没有传入的显示默认值；
+- **逻辑**（`state`、`methods` 等）：在游戏中运行，例如点击按钮后做什么；
+- **视图**（`view`；有多页时为 `pages` 与 `layout`）：返回控件树，即界面的样子。视图在构建时运行一次，编译为游戏读取的界面文件，相当于 Vue 的模板。
 
-浏览器预览只需要视图；逻辑在游戏中运行。界面怎样显示在游戏中，见[工作原理](how-it-works.md)。
+示例小书 `ui/book.screen.mjs` 有两页，所以视图写在 `pages` 中（见[页面](pages.md)）。浏览器预览中也会运行逻辑：点击按钮、翻页都与游戏中一样。界面怎样显示在游戏中，见[工作原理](how-it-works.md)。
 
 ## 在浏览器中预览
 
@@ -45,7 +45,7 @@ npm run dev
 
 打开终端中显示的地址（默认为 `http://localhost:5173`）。页面左侧列出项目中的界面，中间是按游戏规则绘制的预览，下方是静态检查的结果，右侧可以修改模拟的表单内容。首次运行时会下载预览所需的字体。
 
-修改 `ui/book.mjs` 并保存后，预览自动刷新。
+修改 `ui/book.screen.mjs` 并保存后，预览自动刷新。在游戏中查看实际效果时，可以用 `npm run dev:game` 让游戏随着保存自动重新加载（见[浏览器预览](preview.md#与游戏联动)）。
 
 ## 新建一个界面
 
@@ -58,16 +58,18 @@ import { Anchor, Color, Image, Label, Panel, Paragraph, Size, defineScreen } fro
 const card = defineScreen({
     id: 'cui_ui:card',
 
-    // 数据：问候语，默认为「欢迎」
-    props: { greeting: '欢迎' },
+    // 数据：行为包脚本打开界面时传入的问候语，没有传入时显示「欢迎」
+    props: {
+        greeting: { type: String, default: '欢迎' },
+    },
 
-    // 视图
-    view({ props }) {
+    // 视图：从参数中取出要用的数据
+    view({ greeting }) {
         return new Panel().setName('card').setSize(200, 100).add(
             // 背景图，与面板同样大小
             new Image('textures/ui/dialog_background_opaque').setSize(Size.full()),
-            // 问候语：显示 props.greeting，水平居中，距顶部 8 像素
-            new Label(props.greeting).setColor(Color.hex('#3c2814')).setSize(120, 10).setAnchor(Anchor.TOP_CENTER).setOffset(0, 8),
+            // 问候语：显示数据 greeting，水平居中，距顶部 8 像素
+            new Label(greeting).setColor(Color.hex('#3c2814')).setSize(120, 10).setAnchor(Anchor.TOP_CENTER).setOffset(0, 8),
             // 正文：在 180 像素处折行
             new Paragraph('正文按给定的宽度折行。', 180).setName('intro').setAnchor(Anchor.TOP_LEFT).setOffset(10, 26),
         )
@@ -78,7 +80,8 @@ export default card
 
 - `defineScreen({ … })` 定义一个界面。`id` 是界面 id：脚本打开表单时，表单的标题就是它；
 - `new Panel()` 创建一块面板，`.add(…)` 把括号中的控件加入面板。每个 `setXxx(…)` 设置一项属性并返回控件本身，因此可以连续调用；
-- `props.greeting` 表示「数据中的 greeting」：预览中显示默认值「欢迎」，游戏中显示脚本传入的值。显示数据的控件需要像素尺寸（这里是 `setSize(120, 10)`）。
+- `props` 声明脚本传给界面的数据：`greeting` 是文字（`type: String`），默认值为「欢迎」；
+- 视图的参数中有声明过的数据，`view({ greeting })` 取出 `greeting`。`new Label(greeting)` 在预览中显示默认值「欢迎」，在游戏中显示脚本传入的值。显示数据的控件需要像素尺寸（这里是 `setSize(120, 10)`）。
 
 这个界面没有逻辑，所以只有数据和视图两块。控件与布局见「搭建界面」一章。
 

@@ -1,9 +1,9 @@
 // bedrock-cui dev 的预览页面：读取项目配置，按界面逐个预览；右侧编辑表单数据；服务端翻页可直接点击。
 import config from 'virtual:cui-config'
 import TEXTURES from 'virtual:cui-textures'
-import { Pages, Screen, compileNamespace, screenOf, setMetricsProfile, signal } from 'bedrock-cui'
-import { ServerPagesPreview, mountPreview } from 'bedrock-cui/web'
-import { ScreenRuntime } from 'bedrock-cui/runtime/core'
+import { Screen, compileNamespace, screenOf, setMetricsProfile, signal } from 'bedrock-cui'
+import { Pages, ServerPagesPreview } from 'bedrock-cui/internal'
+import { mountPreview, runScreenInBrowser } from 'bedrock-cui/web'
 
 // 界面：defineScreen 定义的界面（数组），或「界面 id → 函数」
 const entries = Array.isArray(config.screens)
@@ -63,34 +63,17 @@ function show(id) {
     $('f-text').value = form.text ?? ''
     $('f-buttons').value = (form.buttons ?? []).map((b) => (typeof b === 'string' ? b : b.icon ? `${b.text} @ ${b.icon}` : b.text)).join('\n')
     const title = signal($('f-title').value), text = signal($('f-text').value), buttons = signal(texts()), buttonIcons = signal(icons())
-    // defineScreen 的界面：在浏览器中运行它的逻辑（点击 → 方法 → 状态 → 重新显示；翻页、定时器、事件写进日志）
+    // defineScreen 的界面：在浏览器中运行它的逻辑（共用 bedrock-cui/web 的 runScreenInBrowser）
     stopRuntime?.()
     stopRuntime = undefined
-    let pending, previewRef
+    let runner, previewRef
     if (built.screen) {
-        const player = { id: 'preview', name: '玩家', sendMessage: (m) => log(`聊天栏：${m}`), playSound: () => { } }
-        const rt = new ScreenRuntime({
-            show(_, spec) {
-                title.value = spec.title
-                buttons.value = spec.buttons.map((b) => b.text)
-                buttonIcons.value = spec.buttons.map((b) => b.icon ?? '')
-                previewRef?.restartAnimations()          // 游戏中重新打开时控件重新创建，动画从头开始
-                return new Promise((resolve) => { pending = resolve })
-            },
-            // 关闭当前表单：刷新时也会调用（随即显示新表单），只有界面真正关闭时才写日志
-            close() {
-                const r = pending; pending = undefined
-                r?.({ canceled: true, cancelationReason: 'UserClosed' })
-                queueMicrotask(() => { if (!rt.isOpen(built.screen, player)) log('界面已关闭（点击左侧的界面名重新打开）') })
-            },
-            schedule: (fn) => queueMicrotask(fn),
-            interval: (fn, ticks) => { const h = setInterval(fn, ticks * 50); return () => clearInterval(h) },
-            timeout: (fn, ticks) => { const h = setTimeout(fn, ticks * 50); return () => clearTimeout(h) },
-            emitted: (_, event, args) => log(`发出事件「${event}」（${args.map(String).join('，')}）：游戏中交给脚本的 on('${event}') 处理`),
+        runner = runScreenInBrowser(built.screen, {
+            manifest: built.manifest, paging: built.screen.paging(), title, formButtons: buttons, formButtonIcons: buttonIcons,
+            log: (m) => log(m === '界面已关闭' ? '界面已关闭（点击左侧的界面名重新打开）' : m),
+            onShow: () => previewRef?.restartAnimations(),          // 游戏中重新打开时控件重新创建，动画从头开始
         })
-        rt.register({ [id]: paging ? { ...built.manifest, paging } : built.manifest })
-        rt.open(built.screen, player)
-        stopRuntime = () => rt.close(built.screen, player)
+        stopRuntime = () => runner.stop()
     }
     const sim = paging && !built.screen ? new ServerPagesPreview(paging, own) : undefined
 
@@ -105,17 +88,11 @@ function show(id) {
         fonts: { unifont: '/@cui/font/unifont.hex.gz', ascii: '/@cui/font/ascii.png' },
         title: sim ? sim.title : title, formText: text, formButtons: sim ? sim.formButtons : buttons, formButtonIcons: sim ? sim.formButtonIcons : buttonIcons,
         onFormButton: (i, t) => {
-            if (pending) {
-                const r = pending; pending = undefined
-                const named = built.manifest?.buttons.find((b) => b.index === i)
-                if (named) log(`点击了按钮「${named.name}」：调用 methods.${named.name}()`)
-                r({ canceled: false, selection: i })
-                return
-            }
+            if (runner?.click(i)) return
             const before = sim?.current
             if (sim && sim.press(i, preview)) return log(sim.current === before ? `停留在 ${sim.current}（原地不动）` : `翻到 ${sim.current}`)
             const named = built.manifest?.buttons.find((b) => b.index === i)
-            if (named) return log(`点击了按钮「${named.name}」：游戏中调用 methods.${named.name}()`)
+            if (named) return log(`点击了按钮：游戏中调用 ${named.method}()`)
             log(`点击了表单按钮 ${i}「${t}」：游戏中表单关闭，脚本收到序号 ${i}`)
         },
     })

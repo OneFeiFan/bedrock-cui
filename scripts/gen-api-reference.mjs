@@ -31,12 +31,12 @@ const PAGES = [
             ['Scroll', '可滚动的区域，子控件纵向排列。'],
             ['Button', '按钮。外观由 default、hover、pressed 三个状态面板组成。'],
             ['Toggle', '开关。同组互斥；外观由四个状态面板组成。'],
+            ['Tabs', '选项卡：在客户端切换的几块内容（tab(名称)、link(名称)、showing、blocker）；表单不关闭。'],
             ['Raw', '原样输出的 JSON UI 元素。'],
         ]],
         ['组件', [
             ['Paragraph', '较长的文字。默认软换行：交给游戏折行，调整汉字与英文、数字交界处的间隔。'],
             ['Text', '可插入行内图标的文字，由 bedrock-cui 排版。'],
-            ['Pages', '多页内容：客户端开关切换，以及服务端翻页箭头。'],
         ]],
         ['图标', [
             ['InlineIcon', '行内图标，用于 Text。'],
@@ -57,8 +57,17 @@ const PAGES = [
         ]],
         ['界面（defineScreen）', [
             ['defineScreen', '定义一个界面：数据（props）、逻辑（state、computed、methods、生命周期）与视图（view）写在一个文件中。'],
+            ['PropSpec', 'props 中一项的声明：{ type, default, of, max }（同 Vue 的 props）。'],
+            ['Item', 'props 声明中的类型：文字与图标 { text, icon }。'],
+            ['MethodRef', '视图中方法的引用（从视图参数中解构得到），用于 button().onClick(方法, …参数)。'],
+            ['PageTools', '多页时页内的跳转：link(页名)、next()、prev()、back()，返回按钮。'],
             ['Screen', 'defineScreen() 返回的界面对象：id；行为包脚本中的 open(玩家, props)、close(玩家)、isOpen(玩家)、on(事件名, 处理函数) / off()；构建时的 build()、previewForm()。'],
             ['ScreenButton', 'button(名字) 返回的按钮：default、hover、pressed 三个状态，add() 加入始终显示的内容。'],
+        ]],
+        ['计时显示', [
+            ['Timer', '计时器：只记开始时刻与总时长；idle / of / start / pause / resume / reset；remaining、progress。驱动 ProgressBar 与 Countdown。'],
+            ['ProgressBar', '进度条：随计时器匀速前进，界面重新打开时从当时的进度接着走，在右端准确停下；setHead() 末端的竖条。'],
+            ['Countdown', '倒计时数字：剩余的整秒数，进行中时匀速滚动；setBackground() 有底色时在 0 处准确停下。'],
         ]],
         ['动画', [
             ['Anim', '动画（客户端播放）：alpha、offset、size、color、clip（裁剪比例）、wait；then() 串成动画链，loop() 循环，setEasing() 设置缓动。用 setAnims() 加到任何控件上。'],
@@ -76,10 +85,8 @@ const PAGES = [
             ['effect', '信号变化时执行的回调。'],
         ]],
         ['编译与检查', [
-            ['serverForm', '将界面挂载到服务端表单，返回界面文件与静态检查结果。'],
             ['compileNamespace', '将控件树编译为一个 JSON UI 命名空间。'],
             ['lint', '对控件树做静态检查。'],
-            ['serverTitle', '路由界面的表单标题。'],
             ['escapeText', '转义文字中会被游戏特殊处理的开头字符（# 与 $）。'],
         ]],
         ['文字与字宽', [
@@ -95,17 +102,9 @@ const PAGES = [
             ['NBSP', '不换行空格（U+00A0）。'],
             ['LINE_HEIGHT', '一行文字的高度：10 像素。'],
         ]],
-        ['混合翻页', [
-            ['pageTitle', '某一页的表单标题：<界面 id>|P:<页名>;。'],
-            ['pagingButtons', '某一页的全部表单按钮文字。ServerPagesForm 与 ServerPagesPreview 共用。'],
-            ['pagingResponse', '点击某个按钮后的结果：翻页、原地不动或界面自己的按钮。'],
-            ['arrowTag', '翻页箭头按钮文字的标记。'],
-            ['STAY_TAG', '「原地不动」按钮文字的标记。'],
-        ]],
         ['类型', [
             ['ServerPaging', '一个界面的翻页路由表。'],
             ['ServerArrowRoute', '路由表中的一个翻页箭头。'],
-            ['FormButtonSpec', '一个表单按钮：文字，或 { text, icon }。'],
             ['LintIssue', '静态检查的一项结果：rule、level、path、message。'],
             ['TextureInfo', '贴图信息：size、nineslice、baseSize。'],
             ['MetricsProfile', "字宽档案：'pc' 或 'android'。"],
@@ -121,7 +120,6 @@ const PAGES = [
             ['ButtonSlot', '按钮的一个状态：add() 加入的控件显示在该状态下。'],
             ['ScreenViewContext', '视图函数得到的参数：props、button()、pages()。'],
             ['ScreenManifest', '界面的清单：props 与按钮的名字及其对应的表单按钮序号。'],
-            ['PropDefault', 'props 中的默认值：文字、文字与图标、是否显示、列表。'],
             ['PropItem', '一个 prop 的值：文字，或 { text, icon }。'],
             ['PropSlot', '一个 prop 占用的表单按钮：序号与标记。'],
             ['TextMetrics', 'measureText() 的结果：lines、width、height。'],
@@ -130,8 +128,6 @@ const PAGES = [
             ['TextAlign', "文字对齐：'left'、'center'、'right'。"],
             ['InlineIconSize', '行内图标的尺寸：8 或 16。'],
             ['GlyphIconOptions', 'GlyphSheet.icon() 的选项。'],
-            ['ServerFormOptions', 'serverForm() 的选项。'],
-            ['ServerFormPanel', 'serverForm() 中的一个界面：panelId、content、routed。'],
             ['LintOptions', '静态检查的选项：贴图信息、屏幕尺寸、字宽档案。'],
         ]],
     ]]] },
@@ -166,16 +162,12 @@ const PAGES = [
             ]],
             ['类型', [['SoftWrapOptions', 'softWrap() 的选项。'], ['WrapOptions', 'preWrap() 的选项。'], ['MetricsProfile', "字宽档案：'pc' 或 'android'。"]]],
         ]],
-        ['bedrock-cui/runtime/server-pages', 'src/runtime/serverPages.ts', [
-            ['服务端翻页', [
-            ]],
-            ['类型', [['ServerPaging', '一个界面的翻页路由表。'], ['ServerArrowRoute', '路由表中的一个翻页箭头。'], ['FormButtonSpec', 'setButtons() 中的一个按钮：文字，或 { text, icon }。']]],
-        ]],
     ] },
     { file: 'api-web.md', title: 'bedrock-cui/web', intro: '浏览器预览。', modules: [['bedrock-cui/web', 'src/web/index.ts', [
         ['预览', [
             ['mountPreview', '在网页元素中按游戏的规则绘制界面。'],
-            ['ServerPagesPreview', '在预览中模拟服务端翻页。'],
+            ['runScreenInBrowser', '在浏览器中运行界面文件的逻辑（bedrock-cui dev 与手册网站的预览共用）：点击 → 方法 → 重新显示；游戏 API 为模拟对象。'],
+            ['ScreenPreviewOptions', 'runScreenInBrowser 的选项：清单、路由表、预览的表单数据、日志。'],
             ['mountDevtools', '预览的调试面板：控件边框、表单数据。'],
             ['loadPixelFonts', '加载预览使用的点阵字体。'],
         ]],
@@ -198,7 +190,7 @@ const PAGES = [
 /** 内部实现：不写进参考 */
 const INTERNAL = new Set([
     // 底层 API：CUI 内部使用（界面文件的 props 与 button() 代替它们），不出现在手册中
-    'form', 'FormButton', 'FormGate', 'CollectionItem', 'ServerPagesForm', 'lockCamera', 'showForm','BEDROCK_COLORS', 'Effect', 'Flex', 'GLYPH_HEIGHT', 'GLYPH_TOP', 'NBSP_BREAK_WIDTH', 'NO_LINE_END', 'NO_LINE_START', 'PLAIN', 'SCROLLBAR',
+    'sampleAnims', 'AnimSample', 'DataKind','BEDROCK_COLORS', 'Effect', 'Flex', 'GLYPH_HEIGHT', 'GLYPH_TOP', 'NBSP_BREAK_WIDTH', 'NO_LINE_END', 'NO_LINE_START', 'PLAIN', 'SCROLLBAR',
     'activeEffect', 'applyCode', 'asBool', 'batch', 'batchKey', 'boldExtra', 'buttonPayload', 'charWidth', 'compileExpr', 'drawOrder', 'evalExpr', 'evalOffset', 'evalTerms', 'finalize',
     'findBox', 'isAscii', 'isExpr', 'isWide', 'layout', 'layoutInline', 'lineWidth', 'lintLayout', 'lit', 'parseRich', 'parseSize', 'ref', 'registerGlyphWidth', 'richWidth',
     'stripFormat', 'styleCodes', 'unifontWidth', 'unregisterGlyph', 'usesChildren', 'usesSelf', 'usesUnifont', 'variable', 'walk', 'wrapDetailed',

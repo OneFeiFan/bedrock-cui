@@ -1,7 +1,8 @@
 // 绑定表达式：编译成 JSON UI 字符串 / 预览求值（node --test tests/）
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { form, compileExpr, evalExpr, toggleState, lit, variable } from '../dist/index.js'
+import { compileExpr, evalExpr, toggleState, lit, variable } from '../dist/index.js'
+import { form } from '../dist/internal.js'
 
 test('编译：包含判断、字面量提升成变量、全局绑定声明', () => {
     const c = compileExpr(form.text.contains("ITM:3;"))

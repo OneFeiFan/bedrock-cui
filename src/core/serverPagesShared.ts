@@ -46,7 +46,8 @@ export const pageTitle = (routes: Pick<ServerPaging, 'title' | 'prefix'>, page: 
  * 某一页的全部表单按钮文字（脚本端 ServerPagesForm 与预览 ServerPagesPreview 共用——行为一致）：
  * 翻页箭头写 go<序号>|，刚才点击方向、且在这一页上的箭头加 F；「原地不动」写 stay|；其余取 own（界面自己的按钮），没有的写空。
  */
-export function pagingButtons(paging: ServerPaging, page: string, dir: 'prev' | 'next', own: Record<number, FormButtonSpec> = {}): string[] {
+/** dir 为 back（界面文件的「返回」）时，没有箭头获得聚焦版 */
+export function pagingButtons(paging: ServerPaging, page: string, dir: 'prev' | 'next' | 'back', own: Record<number, FormButtonSpec> = {}): string[] {
     const last = Math.max(-1, ...Object.keys(own).map(Number), ...paging.arrows.map((a) => a.index), paging.stay ?? -1)
     const out: string[] = []
     for (let i = 0; i <= last; i++) {
@@ -57,8 +58,8 @@ export function pagingButtons(paging: ServerPaging, page: string, dir: 'prev' | 
 }
 
 /** 点了第 index 个按钮之后：翻页（到哪页、默认聚焦哪个方向）/ 原地不动（重开当前页）/ 界面自己的按钮 */
-export function pagingResponse(paging: ServerPaging, index: number, page: string, dir: 'prev' | 'next'):
-    { kind: 'turn', page: string, dir: 'prev' | 'next' } | { kind: 'stay', page: string, dir: 'prev' | 'next' } | { kind: 'own', index: number } {
+export function pagingResponse(paging: ServerPaging, index: number, page: string, dir: 'prev' | 'next' | 'back'):
+    { kind: 'turn', page: string, dir: 'prev' | 'next' } | { kind: 'stay', page: string, dir: 'prev' | 'next' | 'back' } | { kind: 'own', index: number } {
     const arrow = paging.arrows.find((a) => a.index === index)
     if (arrow) return { kind: 'turn', page: arrow.to, dir: arrow.dir }
     if (index === paging.stay) return { kind: 'stay', page, dir }

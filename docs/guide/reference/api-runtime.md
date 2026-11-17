@@ -4,9 +4,7 @@
 
 本页由 `scripts/gen-api-reference.mjs` 生成并与源码核对。详细用法见指南中的相关章节。
 
-## bedrock-cui/runtime
-
-### 文字
+## 文字
 
 | 名称 | 种类 | 说明 |
 |---|---|---|
@@ -20,25 +18,10 @@
 | `setMetricsProfile` | 函数 | 切换全局的字宽档案。 |
 | `withMetricsProfile` | 函数 | 在回调期间使用指定的字宽档案。 |
 
-### 类型
+## 类型
 
 | 名称 | 种类 | 说明 |
 |---|---|---|
 | `SoftWrapOptions` | 接口 | softWrap() 的选项。 |
 | `WrapOptions` | 接口 | preWrap() 的选项。 |
 | `MetricsProfile` | 类型 | 字宽档案：'pc' 或 'android'。 |
-
-## bedrock-cui/runtime/server-pages
-
-### 服务端翻页
-
-| 名称 | 种类 | 说明 |
-|---|---|---|
-
-### 类型
-
-| 名称 | 种类 | 说明 |
-|---|---|---|
-| `ServerPaging` | 接口 | 一个界面的翻页路由表。 |
-| `ServerArrowRoute` | 接口 | 路由表中的一个翻页箭头。 |
-| `FormButtonSpec` | 类型 | setButtons() 中的一个按钮：文字，或 { text, icon }。 |

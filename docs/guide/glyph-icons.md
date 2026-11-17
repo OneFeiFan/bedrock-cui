@@ -54,9 +54,9 @@ import { Label, Panel, defineScreen } from 'bedrock-cui'
 
 const bag = defineScreen({
     id: 'cui_ui:bag',
-    props: { info: '' },
-    view({ props }) {
-        return new Panel().setSize(130, 60).add(new Label(props.info).setSize(110, 40).setLineSpacing(6))
+    props: { info: { type: String } },
+    view({ info }) {
+        return new Panel().setSize(130, 60).add(new Label(info).setSize(110, 40).setLineSpacing(6))
     },
 })
 ```

@@ -2,6 +2,7 @@
  * 界面（defineScreen）的脚本端运行时：用游戏的 ActionFormData 显示表单（bedrock-cui/runtime/screens）。
  * 构建生成的 cui.generated.js 导入本模块并登记清单；行为包脚本的入口导入 cui.generated.js 之后，界面的 open() / close() 即可使用。
  */
+import * as mc from '@minecraft/server'
 import { system, type Player } from '@minecraft/server'
 import { ActionFormData, uiManager } from '@minecraft/server-ui'
 import { _setScreenRuntime } from '../core/screen.js'
@@ -20,6 +21,7 @@ export const screenRuntime = new ScreenRuntime<Player>({
     },
     close(player) { uiManager.closeAllForms(player) },
     lockCamera,
+    mc,                                       // 逻辑中的 this.mc
     schedule(fn) { system.run(fn) },          // 刷新合并到下一刻
     interval(fn, ticks) { const id = system.runInterval(fn, ticks); return () => system.clearRun(id) },
     timeout(fn, ticks) { const id = system.runTimeout(fn, ticks); return () => system.clearRun(id) },

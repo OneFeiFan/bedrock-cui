@@ -49,7 +49,7 @@ label.color = Color.WHITE                              // 直接赋值
 label.set({ color: Color.WHITE, layer: 2 })            // 一次设置多项
 ```
 
-`控件.set({ 属性名: 值, … })` 中，值会转换为对应的类型，例如 `size: [100, 20]` 与 `size: Size.of(100, 20)` 等价。
+`控件.set({ 属性名: 值, … })` 是创建之后一次设置多项属性的方法，值会转换为对应的类型，例如 `size: [100, 20]` 与 `size: Size.of(100, 20)` 等价。它与构造函数无关：构造函数只接收必需的参数（不再接收包含各项属性的对象）。
 
 ## 组成组件树
 
@@ -97,17 +97,9 @@ const card = new Panel().add(
 const title = card.find('title')              // 在子控件的子控件中也能找到
 ```
 
-`容器.remove(控件)` 把一个**直接**子控件从容器中移除，参数是控件本身（不是名称）。移除后，这个控件可以加入别的容器。要移除更深一层的控件，在它的父控件上调用 `remove()`：控件的 `parent` 属性就是它的父控件。
+`容器.remove(控件)` 把容器的一个直接子控件移除，参数是控件本身（不是名称）。移除后，这个控件可以加入别的容器。
 
-```js
-import { Label, Panel } from 'bedrock-cui'
-
-const card = new Panel().add(
-    new Panel().setName('header').add(new Label('钻石').setName('title')),
-)
-const title = card.find('title')
-title.parent.remove(title)                    // 从 header 中移除；card.remove(title) 不会生效
-```
+组件树在构建时一次搭好，通常不需要移除控件：需要「有时显示、有时不显示」时，用显示条件（`setVisible()`，见[数据（props）](props.md)）。`remove()` 主要用于自定义组件在内部重新搭建自己的子控件。子控件不应去修改它的父控件或兄弟控件。
 
 `控件.clone()` 复制控件及其全部子控件，返回的副本没有父控件，可以加入任何容器。副本的名称与原控件相同，所以把它加入同一个容器时，需要另设名称：
 

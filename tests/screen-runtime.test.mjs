@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { Label, Panel, defineScreen, _setScreenRuntime } from '../dist/index.js'
+import { Item, Label, Panel, defineScreen, _setScreenRuntime } from '../dist/index.js'
 import { CuiApp } from '../dist/node/index.js'
 import { ScreenRuntime } from '../dist/runtime/screenRuntime.js'
 
@@ -24,39 +24,39 @@ function setup(options) {
     runtime.register(manifests)
     _setScreenRuntime(runtime)
     const m = manifests[screen.id]
-    const click = async (name) => { const b = m.buttons.find((x) => x.name === name); platform.shown.at(-1).resolve({ canceled: false, selection: b.index }); await tick(); await tick() }
+    const click = async (name, nth = 0) => { const b = m.buttons.filter((x) => x.method === name)[nth]; platform.shown.at(-1).resolve({ canceled: false, selection: b.index }); await tick(); await tick() }
     return { screen, platform, runtime, m, click }
 }
 
 const P = { id: 'player-1' }
 const shopOptions = (calls = []) => ({
     id: 'cui_ui:shop',
-    props: { greeting: '默认问候', item: { text: '钻石', icon: 'textures/items/diamond' }, vip: false },
+    props: { item: { type: Item, default: { text: '钻石', icon: 'textures/items/diamond' } }, vip: { type: Boolean } },
     state() { return { coins: 10 } },
-    computed: { greeting() { return `金币：${this.coins}` } },
+    computed: { coinText() { return `金币：${this.coins}` } },
     methods: {
-        buy() { calls.push(`buy ${this.player.id}`); this.coins -= 1 },
+        buy(n = 1) { calls.push(`buy ${this.player.id} ${n}`); this.coins -= n },
         leave() { this.close() },
         async slow() { await tick(); this.coins = 100 },
     },
     onOpen() { calls.push('onOpen') },
     onUpdate() { calls.push('onUpdate') },
     onClose() { calls.push(`onClose ${this.coins}`) },
-    view({ props, button }) {
+    view({ coinText, item, vip, buy, leave, slow, button }) {
         return new Panel().setSize(200, 100).add(
-            new Label(props.greeting).setSize(180, 10), new Label(props.item).setSize(100, 10), new Label('会员').setSize(40, 10).setVisible(props.vip),
-            button('buy').setSize(40, 16), button('leave').setSize(40, 16), button('slow').setSize(40, 16))
+            new Label(coinText).setSize(180, 10), new Label(item).setSize(100, 10), new Label('会员').setSize(40, 10).setVisible(vip),
+            button().onClick(buy).setSize(40, 16), button().onClick(leave).setSize(40, 16), button().onClick(slow).setSize(40, 16), button().onClick(buy, 5).setSize(40, 16))
     },
 })
 
-test('open：按清单生成表单——标题为界面 id，props 依次取 computed、open() 传入的值、默认值；布尔值为 true 时写标记', async () => {
+test('open：按清单生成表单——标题为界面 id；props 取 open() 传入的值或默认值，computed 由状态计算；布尔值为 true 时写标记', async () => {
     const calls = []
     const { screen, platform, m } = setup(shopOptions(calls))
     screen.open(P, { vip: true })
     const form = platform.shown[0].form
     assert.equal(form.title, 'cui_ui:shop')
-    const at = (name) => form.buttons[m.props.find((p) => p.name === name).slots[0].index]
-    assert.deepEqual(at('greeting'), { text: '@p0|金币：10' }, 'computed')
+    const at = (name) => form.buttons[m.data.find((p) => p.name === name).slots[0].index]
+    assert.deepEqual(at('coinText'), { text: '@p0|金币：10' }, 'computed')
     assert.deepEqual(at('item'), { text: '@p1|钻石', icon: 'textures/items/diamond' }, '默认值（文字与图标）')
     assert.deepEqual(at('vip'), { text: '@p2|' }, 'open() 传入的布尔值')
     assert.equal(form.buttons[m.buttons[0].index].text, '@b3|', '按钮写普通版的标记')
@@ -64,17 +64,20 @@ test('open：按清单生成表单——标题为界面 id，props 依次取 com
     assert.ok(screen.isOpen(P))
 })
 
-test('点击按钮：调用同名方法（this 可读写状态、this.player）→ onUpdate → 以新的 props 重新打开，刚才点击的按钮写聚焦标记', async () => {
+test('点击按钮：调用绑定的方法（带参数；this 可读写状态、this.player）→ onUpdate → 以新的数据重新打开，刚才点击的按钮写聚焦标记', async () => {
     const calls = []
     const { screen, platform, click } = setup(shopOptions(calls))
     screen.open(P)
     await click('buy')
-    assert.deepEqual(calls, ['onOpen', 'buy player-1', 'onUpdate'])
+    assert.deepEqual(calls, ['onOpen', 'buy player-1 1', 'onUpdate'])
     const form = platform.shown.at(-1).form
     assert.equal(platform.shown.length, 2)
     assert.equal(form.buttons[0].text, '@p0|金币：9', 'computed 随状态变化')
     assert.equal(form.buttons[3].text, '@b3|F', '刚才点击的 buy 获得默认焦点')
     assert.equal(form.buttons[4].text, '@b4|')
+    await click('buy', 1)
+    assert.equal(calls.at(-2), 'buy player-1 5', '同一个方法绑定到另一个按钮，带参数 5')
+    assert.equal(platform.shown.at(-1).form.buttons[0].text, '@p0|金币：4')
 })
 
 test('方法中调用 this.close()：不再打开，调用 onClose、解除视角锁定；玩家按 Esc 同样调用 onClose；异步方法执行完才重新打开', async () => {
@@ -102,13 +105,13 @@ test('方法中调用 this.close()：不再打开，调用 onClose、解除视�
 test('翻页：翻页箭头只翻页（标题带页名），不调用方法；没有登记清单时提示导入 cui.generated.js', async () => {
     const calls = []
     const { screen, platform, m } = setup({
-        id: 'cui_ui:book', methods: { close() { calls.push('close') } },
-        view({ button, pages }) {
-            const p = pages('b').startAt('p1')
-            p.page('p1').add(p.serverArrow('p1', 'p2', 'next', () => new Label('>'), 16, 12))
-            p.page('p2').add(new Label('2'))
-            return new Panel().setSize(200, 120).add(button('close').setSize(12, 12), p, p.stayButton())
+        id: 'cui_ui:book',
+        methods: { note() { calls.push('note') } },
+        pages: {
+            p1: ({ next }) => new Panel().add(next().setSize(16, 12)),
+            p2: () => new Label('2'),
         },
+        layout: ({ page, note, button }) => new Panel().setSize(200, 120).add(page, button().onClick(note).setSize(12, 12)),
     })
     screen.open(P)
     assert.match(platform.shown[0].form.title, /^cui_ui:book\|.*p1/)
@@ -124,13 +127,12 @@ test('界面以外的状态变化（例如定时器）：安排刷新——关�
     const calls = [], holder = {}
     const { screen, platform, click } = setup({
         id: 'cui_ui:clock',
-        props: { left: '' },
         state() { return { n: 5, other: 0 } },
         computed: { left() { return `剩余 ${this.n} 秒` } },
         methods: { tap() { this.n = 99; this.other = 1 } },
         onOpen() { holder.ctx = this },
         onClose() { calls.push('onClose') },
-        view({ props, button }) { return new Panel().setSize(200, 60).add(new Label(props.left).setSize(100, 10), button('tap').setSize(30, 12)) },
+        view({ left, tap, button }) { return new Panel().setSize(200, 60).add(new Label(left).setSize(100, 10), button().onClick(tap).setSize(30, 12)) },
     })
     platform.schedule = (fn) => setTimeout(fn, 0)        // 合并到下一刻
     screen.open(P)
@@ -158,11 +160,10 @@ test('this.setInterval / setTimeout：与界面生命周期绑定——回调中
     const holder = {}
     const { screen, platform } = setup({
         id: 'cui_ui:timer',
-        props: { left: '' },
         state() { return { n: 3 } },
         computed: { left() { return String(this.n) } },
         onOpen() { holder.stop = this.setInterval(() => { this.n -= 1 }, 1) },
-        view({ props }) { return new Panel().setSize(100, 30).add(new Label(props.left).setSize(50, 10)) },
+        view({ left }) { return new Panel().setSize(100, 30).add(new Label(left).setSize(50, 10)) },
     })
     let runs = 0
     platform.schedule = (fn) => setTimeout(fn, 0)
@@ -180,10 +181,10 @@ test('this.setInterval / setTimeout：与界面生命周期绑定——回调中
 test('刷新：关闭后同一刻立即显示新表单，不等旧表单的结果；旧表单迟到的取消被忽略，不调用 onClose', async () => {
     const calls = [], holder = {}
     const { screen, platform, runtime } = setup({
-        id: 'cui_ui:replace', props: { v: '' }, state() { return { n: 1 } },
+        id: 'cui_ui:replace', state() { return { n: 1 } },
         computed: { v() { return String(this.n) } },
         onOpen() { holder.ctx = this }, onClose() { calls.push('onClose') },
-        view({ props }) { return new Panel().setSize(100, 30).add(new Label(props.v).setSize(50, 10)) },
+        view({ v }) { return new Panel().setSize(100, 30).add(new Label(v).setSize(50, 10)) },
     })
     platform.schedule = (fn) => fn()
     platform.close = (player) => { platform.log.push(`close ${player.id}`) }     // 关闭后旧表单的结果稍后才到
@@ -203,11 +204,11 @@ test('刷新时不丢点击（真机 1.39.0）：被替换的旧表单上的点�
     for (const mode of ['replace']) {
         const holder = {}
         const { screen, platform, runtime, m } = setup({
-            id: `cui_ui:noloss_${mode}`, props: { v: '' }, state() { return { n: 0, t: 0 } },
+            id: `cui_ui:noloss_${mode}`, state() { return { n: 0, t: 0 } },
             computed: { v() { return `${this.n}/${this.t}` } },
             methods: { hello() { this.n += 1 } },
             onOpen() { holder.ctx = this },
-            view({ props, button }) { return new Panel().setSize(100, 40).add(new Label(props.v).setSize(50, 10), button('hello').setSize(30, 12)) },
+            view({ v, hello, button }) { return new Panel().setSize(100, 40).add(new Label(v).setSize(50, 10), button().onClick(hello).setSize(30, 12)) },
         })
         platform.schedule = (fn) => fn()
         platform.close = (player) => { platform.log.push(`close ${player.id}`) }      // 关闭的结果由测试决定
@@ -226,11 +227,11 @@ test('刷新时不丢点击（真机 1.39.0）：被替换的旧表单上的点�
 test('表单刚显示不久时推迟刷新（真机 1.40.0）：安静下来后才刷新；推迟期间玩家点击，重新打开已带最新状态，到期的刷新跳过', async () => {
     const holder = {}
     const { screen, platform, runtime, click } = setup({
-        id: 'cui_ui:quiet', props: { v: '' }, state() { return { n: 0, t: 0 } },
+        id: 'cui_ui:quiet', state() { return { n: 0, t: 0 } },
         computed: { v() { return `${this.n}/${this.t}` } },
         methods: { hello() { this.n += 1 } },
         onOpen() { holder.ctx = this },
-        view({ props, button }) { return new Panel().setSize(100, 40).add(new Label(props.v).setSize(50, 10), button('hello').setSize(30, 12)) },
+        view({ v, hello, button }) { return new Panel().setSize(100, 40).add(new Label(v).setSize(50, 10), button().onClick(hello).setSize(30, 12)) },
     })
     let now = 1000
     const timeouts = []
@@ -262,9 +263,9 @@ test('表单刚显示不久时推迟刷新（真机 1.40.0）：安静下来后�
 test('事件总线：方法中 this.emit() → 脚本 screen.on() 的处理函数在方法之后、重新打开之前执行；处理中 open() 更新数据，只重新打开一次；处理出错不影响界面', async () => {
     const seen = []
     const { screen, platform, click } = setup({
-        id: 'cui_ui:bus', props: { coins: '' }, state() { return { n: 0 } },
+        id: 'cui_ui:bus', props: { coins: { type: String } }, state() { return { n: 0 } },
         methods: { buy() { this.n += 1; this.emit('buy', '钻石', this.n) }, boom() { this.emit('boom') } },
-        view({ props, button }) { return new Panel().setSize(100, 40).add(new Label(props.coins).setSize(50, 10), button('buy').setSize(30, 12), button('boom').setSize(30, 12)) },
+        view({ coins, buy, boom, button }) { return new Panel().setSize(100, 40).add(new Label(coins).setSize(50, 10), button().onClick(buy).setSize(30, 12), button().onClick(boom).setSize(30, 12)) },
     })
     screen.on('buy', (player, item, n) => { seen.push(`${player.id} ${item} ${n}`); screen.open(player, { coins: `金币 ${100 - n}` }) })
     screen.on('boom', () => { throw new Error('出错了') })
@@ -281,10 +282,10 @@ test('事件总线：方法中 this.emit() → 脚本 screen.on() 的处理函�
 test('合并队列：定时器回调中多次修改状态并发出事件——事件交给脚本，界面只刷新一次；对已打开的界面再次 open()，合并新数据、只刷新一次', async () => {
     const holder = {}, seen = []
     const { screen, platform } = setup({
-        id: 'cui_ui:merge', props: { v: '', w: '' }, state() { return { a: 0, b: 0 } },
+        id: 'cui_ui:merge', props: { w: { type: String } }, state() { return { a: 0, b: 0 } },
         computed: { v() { return `${this.a}-${this.b}` } },
         onOpen() { holder.ctx = this },
-        view({ props }) { return new Panel().setSize(100, 40).add(new Label(props.v).setSize(50, 10), new Label(props.w).setSize(50, 10)) },
+        view({ v, w }) { return new Panel().setSize(100, 40).add(new Label(v).setSize(50, 10), new Label(w).setSize(50, 10)) },
     })
     screen.on('tick', (player, a) => seen.push(a))
     platform.close = (player) => { platform.log.push(`close ${player.id}`) }
@@ -309,4 +310,71 @@ test('诊断记录：记下显示、结果、替换、关闭等关键步骤（�
     await click('leave')
     const t = runtime.trace().join('\n')
     for (const s of ['显示 #1', '结果 #1：点击 3', '显示 #2', '结果 #2：点击 4', '关闭界面']) assert.ok(t.includes(s), `${s}\n${t}`)
+})
+
+test('深层响应式：state 中数组的 push、嵌套对象的修改都触发更新；this.名字 可读 props；this.mc 来自平台；内置 close 关闭界面', async () => {
+    const holder = {}, calls = []
+    const { screen, platform, click } = setup({
+        id: 'cui_ui:deep', props: { owner: { type: String, default: '无名' } },
+        state() { return { bag: { items: ['苹果'] } } },
+        computed: { count() { return `${this.owner}：${this.bag.items.length} 件` } },
+        methods: { pick() { calls.push(typeof this.mc.marker); this.bag.items.push('面包') } },
+        onOpen() { holder.ctx = this }, onClose() { calls.push('onClose') },
+        view({ count, pick, close, button }) { return new Panel().setSize(100, 40).add(new Label(count).setSize(80, 10), button().onClick(pick).setSize(20, 12), button().onClick(close).setSize(12, 12)) },
+    })
+    platform.mc = { marker: 'mc' }
+    platform.close = (player) => { platform.log.push(`close ${player.id}`) }
+    screen.open(P, { owner: '史蒂夫' })
+    assert.equal(platform.shown[0].form.buttons[0].text, '@p0|史蒂夫：1 件')
+    holder.ctx.bag.items.push('牛奶')                    // 界面以外修改数组的内部：触发刷新
+    await tick()
+    assert.equal(platform.shown.at(-1).form.buttons[0].text, '@p0|史蒂夫：2 件')
+    holder.ctx.bag.items[0] = '金苹果'; holder.ctx.bag.extra = { n: 1 }; holder.ctx.bag.extra.n = 2
+    await tick()
+    assert.equal(platform.log.filter((l) => l.startsWith('close')).length, 2, '同一刻的多次深层修改只刷新一次')
+    await click('pick')
+    assert.equal(calls[0], 'string', 'this.mc 来自平台')
+    assert.equal(platform.shown.at(-1).form.buttons[0].text, '@p0|史蒂夫：3 件')
+    await click('__close')
+    assert.ok(!screen.isOpen(P)); assert.ok(calls.includes('onClose'))
+})
+
+test('多页（pages）：link / next / prev 登记路由，back 各页共用一个序号；运行时跳转记下历史、返回上一页并让「返回」获得焦点；没有历史时不显示「返回」', async () => {
+    const guide = {
+        id: 'cui_ui:guide', start: 'home',
+        pages: {
+            home: ({ link }) => new Panel().add(new Label('目录'), link('sword').setSize(40, 12), link('apple').setSize(40, 12)),
+            sword: ({ back, next }) => new Panel().add(new Label('钻石剑'), back().setSize(12, 12), next().setSize(12, 12)),
+            apple: ({ back, prev }) => new Panel().add(new Label('苹果'), back().setSize(12, 12), prev().setSize(12, 12)),
+        },
+        layout: ({ page, close, button }) => new Panel().setSize(200, 120).add(page, button().onClick(close).setSize(12, 12)),
+    }
+    const { screen, platform, m } = setup(guide)
+    assert.deepEqual(m.paging.arrows.map((a) => `${a.from}→${a.to}:${a.dir}`), ['home→sword:next', 'home→apple:next', 'sword→apple:next', 'apple→sword:prev'])
+    assert.ok(m.back && m.paging.stay !== undefined, '「返回」与「原地不动」')
+    const shown = () => platform.shown.at(-1).form
+    const clickIndex = async (i) => { platform.shown.at(-1).resolve({ canceled: false, selection: i }); await tick(); await tick() }
+    screen.open(P)
+    assert.match(shown().title, /home/)
+    assert.equal(shown().buttons[m.back.index]?.text ?? '', '', '没有历史时不显示「返回」')
+    await clickIndex(m.paging.arrows[0].index)                 // 目录 → 钻石剑
+    assert.match(shown().title, /sword/)
+    assert.equal(shown().buttons[m.back.index].text, m.back.tag, '有历史时显示「返回」')
+    await clickIndex(m.paging.arrows[2].index)                 // 钻石剑 → 苹果（next）
+    assert.match(shown().title, /apple/)
+    await clickIndex(m.back.index)                             // 返回 → 钻石剑
+    assert.match(shown().title, /sword/)
+    assert.equal(shown().buttons[m.back.index].text, m.back.focusTag, '「返回」获得焦点，鼠标不动也能连续返回')
+    assert.ok(!shown().buttons.some((b) => /^go\d+\|F$/.test(b.text)), '返回后没有箭头获得聚焦版')
+    await clickIndex(m.back.index)                             // 返回 → 目录
+    assert.match(shown().title, /home/)
+    assert.equal(shown().buttons[m.back.index]?.text ?? '', '', '历史用完，「返回」不再显示')
+})
+
+test('多页：写错时在构建时报出', () => {
+    const page = (extra) => defineScreen({ id: 'cui_ui:p', pages: { a: () => new Panel(), ...extra } }).build()
+    assert.throws(() => page({ b: ({ link }) => link('c') }), /跳到的页不存在/)
+    assert.throws(() => page({ b: ({ next }) => next() }), /最后一页/)
+    assert.throws(() => defineScreen({ id: 'cui_ui:p', view: () => new Panel(), pages: { a: () => new Panel() } }), /只能写一个/)
+    assert.throws(() => defineScreen({ id: 'cui_ui:p', start: 'x', pages: { a: () => new Panel() } }), /不在 pages 中/)
 })

@@ -33,12 +33,34 @@ for (const line of text.split('\n')) {
 // ASCII 也收录：含非 ASCII 字符的文字整段用 Unifont 画（真机：「Esc 关闭」里 E s c 的字距是 4，不是 6）
 let enc = ''
 for (let cp = 0x20; cp < 0x10000; cp++) enc += half[cp].toString(36)
+// 游程编码：连续 4 个以上相同的字符写成「* 字符 36 进制个数 .」（64 KB → 约 31 KB；随行为包脚本打包，越小越好），第一次查询时解码
+let rle = ''
+for (let i = 0; i < enc.length;) {
+    let j = i
+    while (j < enc.length && enc[j] === enc[i]) j++
+    rle += j - i >= 4 ? `*${enc[i]}${(j - i).toString(36)}.` : enc[i].repeat(j - i)
+    i = j
+}
 const out = `/**
  * 自动生成（scripts/gen-unifont-widths.mjs），请勿手改。
  * 非 ASCII 字符的字距（半像素）：基岩版用 GNU Unifont 点阵（真机校准），字距 = 墨迹宽 / 2 + 1。
- * 编码：从 U+0020 起每个码点一个 36 进制字符（0 = 未收录）。Unifont：GPLv2+ 字体例外 / SIL OFL 1.1。
+ * 编码：从 U+0020 起每个码点一个 36 进制字符（0 = 未收录），再做游程编码：连续 4 个以上相同的字符写成「* 字符 36 进制个数 .」。Unifont：GPLv2+ 字体例外 / SIL OFL 1.1。
  */
-export const UNIFONT_HALF = '${enc}'
+const RLE = '${rle}'
+
+let table: string | undefined
+/** 第 index 个码点（从 U+0020 起）的字距编码（一个 36 进制字符）；第一次调用时解码并缓存 */
+export function unifontHalfAt(index: number): string | undefined {
+    if (table === undefined) {
+        const parts: string[] = []
+        for (let k = 0; k < RLE.length;) {
+            if (RLE[k] === '*') { const e = RLE.indexOf('.', k + 2); parts.push(RLE[k + 1].repeat(parseInt(RLE.slice(k + 2, e), 36))); k = e + 1 }
+            else parts.push(RLE[k++])
+        }
+        table = parts.join('')
+    }
+    return table[index]
+}
 `
 fs.writeFileSync(new URL('../src/font/unifontWidths.ts', import.meta.url), out)
 console.log('文件', out.length, '字节；示例 中', half[0x4e2d] / 2, '钻', half[0x94bb] / 2, '，', half[0xff0c] / 2, '。', half[0x3002] / 2)

@@ -1,7 +1,8 @@
 // 编译器与静态检查
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { Panel, Image, Label, FormButton, FormGate, compileNamespace, form } from '../dist/index.js'
+import { Panel, Image, Label, compileNamespace } from '../dist/index.js'
+import { FormButton, FormGate, form } from '../dist/internal.js'
 
 test('动态文字：text = "#text"、声明 #form_text、字面量提升成变量', () => {
     const { json } = compileNamespace('t', { props: new Label(form.text.minus('ITM:3;|')) })

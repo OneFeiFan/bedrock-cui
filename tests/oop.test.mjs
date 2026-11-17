@@ -110,7 +110,7 @@ test('Row 里的伸展子控件受最大尺寸约束；setGrow 写在非弹性�
 })
 
 test('Row 里的 FormButton 保留像素尺寸（编译成正方形网格要边长）', async () => {
-    const { FormButton } = await import('../dist/index.js')
+    const { FormButton } = { ...(await import('../dist/index.js')), ...(await import('../dist/internal.js')) }
     const row = new Row().setName('footer').setSize(200, 15).setJustify(Justify.END).setGap(4)
     row.add(new FormButton(0, 'cancel|', 42, 15), new FormButton(1, 'recipe|', 56, 15))
     const { issues } = compileNamespace('t', { footer: row })

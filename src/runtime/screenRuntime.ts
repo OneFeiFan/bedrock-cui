@@ -6,7 +6,7 @@
  * 玩家点击 button(名字) → 调用 methods 中的同名方法 → 以新的 props 重新打开，刚才点击的按钮获得默认焦点（真机 1.36.0）；
  * 翻页按钮按路由表翻页；玩家关闭表单 → onClose，实例销毁。设计见 docs/design/screen-api.md。
  */
-import type { PropItem, Screen, ScreenManifest } from '../core/screen.js'
+import { _propDefault, type PropItem, type Screen, type ScreenManifest } from '../core/screen.js'
 import { buttonIconOf, pageTitle, pagingButtons, pagingResponse, type FormButtonSpec, type ServerPaging } from '../core/serverPagesShared.js'
 
 /** 玩家（只用到 id；行为包中是游戏的 Player） */
@@ -32,6 +32,8 @@ export interface FormPlatform<P extends ScreenPlayer = ScreenPlayer> {
     timeout?(fn: () => void, ticks: number): () => void
     /** 当前时间（毫秒；缺省 Date.now()） */
     now?(): number
+    /** 逻辑中的 this.mc：游戏中为 @minecraft/server，浏览器预览中为模拟对象 */
+    mc?: unknown
     /** 逻辑发出了事件（在交给脚本的处理函数之前调用；浏览器预览用来写日志） */
     emitted?(player: P, event: string, args: unknown[]): void
 }
@@ -44,8 +46,17 @@ class Instance {
     ctx: Record<string, any>
     openProps: Record<string, unknown> = {}
     page?: string
-    dir: 'prev' | 'next' = 'next'
-    focus?: string
+    dir: 'prev' | 'next' | 'back' = 'next'
+    /** 多页时的历史（back() 返回用） */
+    history: string[] = []
+    /** 已经提示过总时长不一致的数据 */
+    warnedTimer?: Set<string>
+    /** 显示中的计时器最早在多少毫秒后结束（form() 中记下）；到时刷新一次 */
+    timerEnd?: number
+    /** 取消「计时结束时刷新」 */
+    stopTimerEnd?: () => void
+    /** 刚才点击的按钮的序号（重新打开时它获得默认焦点） */
+    focus?: number
     closed = false
     /** 正在执行方法或生命周期（期间的状态变化随之后的重新打开一起生效） */
     busy = false
@@ -69,8 +80,25 @@ class Instance {
     dirty = false
 
     constructor(readonly screen: Screen, readonly manifest: Manifest, readonly player: ScreenPlayer, readonly runtime: ScreenRuntime) {
-        const { state, computed = {}, methods = {} } = screen.options
-        this.state = { ...(state ? state() : {}) }
+        const { state, computed = {}, methods = {}, props = {} } = screen.options
+        // 深层响应式：普通对象与数组的任何修改（含 push）都触发更新；类的实例（游戏对象、Timer）不跟踪
+        const proxies = new WeakMap<object, object>()
+        const changed = () => { this.dirty = true; runtime.enqueue(this) }
+        const reactive = <T>(v: T): T => {
+            if (!v || typeof v !== 'object') return v
+            const proto = Object.getPrototypeOf(v)
+            if (proto !== Object.prototype && proto !== Array.prototype && proto !== null) return v
+            const hit = proxies.get(v as object)
+            if (hit) return hit as T
+            const p = new Proxy(v as object, {
+                get: (t, k, r) => reactive(Reflect.get(t, k, r)),
+                set: (t, k, val, r) => { const ok = Reflect.set(t, k, val, r); changed(); return ok },
+                deleteProperty: (t, k) => { const ok = Reflect.deleteProperty(t, k); changed(); return ok },
+            })
+            proxies.set(v as object, p)
+            return p as T
+        }
+        this.state = reactive({ ...(state ? state.call({}) : {}) })
         this.page = manifest.paging?.start
         const inst = this
         // this：读写状态、读 computed、调用方法；this.player、this.close()
@@ -93,6 +121,8 @@ class Instance {
                     inst.timers.add(stop)
                     return stop
                 }
+                if (key === 'mc') return runtime.platform.mc
+                if (key in props) return inst.propValue(key)
                 if (key in inst.state) return inst.state[key]
                 if (key in computed) return computed[key].call(inst.ctx)
                 if (key in methods) return methods[key].bind(inst.ctx)
@@ -100,40 +130,61 @@ class Instance {
             },
             set(_, key, value) {
                 if (typeof key === 'symbol') return false
+                // 写入状态（深层响应式的 Proxy 负责触发更新）；处理点击期间的变化随之后的重新打开生效
                 inst.state[key] = value
-                inst.dirty = true
-                // 状态变化：进入合并队列（浅层：重新赋值才触发）；处理点击期间的变化随之后的重新打开生效
-                runtime.enqueue(inst)
                 return true
             },
-            has(_, key) { return typeof key === 'string' && (key in inst.state || key in computed || key in methods) },
+            has(_, key) { return typeof key === 'string' && (key in props || key in inst.state || key in computed || key in methods) },
         })
     }
 
-    /** 一个 prop 的值：computed 中的同名项 → open() 传入的值 → 默认值 */
-    propValue(name: string, fallback: unknown): unknown {
-        const computed = this.screen.options.computed ?? {}
-        if (name in computed) return computed[name].call(this.ctx)
+    /** 一个 prop 的值：open() 传入的值，没有时取默认值 */
+    propValue(name: string): unknown {
         if (name in this.openProps) return this.openProps[name]
-        return fallback
+        return _propDefault(this.screen.id, name, this.screen.options.props?.[name])
+    }
+
+    /** 视图读取的一项数据的当前值（按来源） */
+    dataValue(d: ScreenManifest['data'][number]): unknown {
+        if (d.source === 'prop') return this.propValue(d.name)
+        if (d.source === 'state') return this.state[d.name]
+        return this.screen.options.computed?.[d.name]?.call(this.ctx)
     }
 
     /** 按清单生成表单 */
     form(): FormSpec {
+        this.timerEnd = undefined
         const m = this.manifest
         const own: Record<number, FormButtonSpec> = {}
-        for (const p of m.props) {
-            const v = this.propValue(p.name, p.default)
+        for (const p of m.data) {
+            const v = this.dataValue(p)
             const values = p.kind === 'list' ? (Array.isArray(v) ? v : []) : [v]
             p.slots.forEach((s, i) => {
                 const x = values[i] as PropItem | boolean | undefined | null
-                if (x === undefined || x === null || x === false) return
+                // 没有值：false、null、undefined、空字符串（按钮文字留空，「有值」的判断为假）
+                if (x === undefined || x === null || x === false || x === '') return
                 if (x === true) { own[s.index] = s.tag; return }
+                // 计时器（Timer）：按当前时刻编码（I0 / R<千分比> / P<千分比> / D1000）
+                if (typeof (x as { encode?: unknown }).encode === 'function') {
+                    const t = x as unknown as { seconds: number, encode(now: number): string, isRunning(now: number): boolean, remaining(now: number): number }
+                    const now = this.runtime.currentTime()
+                    // 组件的速度按构建时的总时长决定：总时长不同时，进度条与倒计时会走得太快或太慢
+                    if (p.timerSeconds !== undefined && t.seconds !== p.timerSeconds && !this.warnedTimer?.has(p.name)) {
+                        (this.warnedTimer ??= new Set()).add(p.name)
+                        console.warn(`[bedrock-cui] ${this.screen.id}：${p.name} 的总时长是 ${t.seconds} 秒，而界面中的组件按 ${p.timerSeconds} 秒构建（取自初始值），显示的速度会不对。总时长不同的对象，请用不同的界面或组件`)
+                    }
+                    own[s.index] = s.tag + t.encode(now)
+                    // 进行中的计时器：记下最早结束的时刻，到时刷新一次（显示「完成」）
+                    if (p.refreshAtEnd && t.isRunning(now)) this.timerEnd = Math.min(this.timerEnd ?? Infinity, t.remaining(now) * 1000)
+                    return
+                }
                 if (typeof x === 'string' || typeof x === 'number') { own[s.index] = s.tag + String(x); return }
                 own[s.index] = x.icon ? { text: s.tag + x.text, icon: x.icon } : s.tag + x.text
             })
         }
-        for (const b of m.buttons) own[b.index] = b.name === this.focus ? b.focusTag : b.tag
+        for (const b of m.buttons) own[b.index] = b.index === this.focus ? b.focusTag : b.tag
+        // 「返回」：有历史时才显示；刚才点击了它时发送聚焦版
+        if (m.back && this.history.length) own[m.back.index] = m.back.index === this.focus ? m.back.focusTag : m.back.tag
         const texts = m.paging
             ? pagingButtons(m.paging, this.page ?? m.paging.start, this.dir, own)
             : Array.from({ length: Math.max(-1, ...Object.keys(own).map(Number)) + 1 }, (_, i) => (typeof own[i] === 'object' ? (own[i] as { text: string }).text : (own[i] as string | undefined) ?? ''))
@@ -155,6 +206,8 @@ export class ScreenRuntime<P extends ScreenPlayer = ScreenPlayer> {
      */
     quietMs = 400
     private now(): number { return this.platform.now ? this.platform.now() : Date.now() }
+    /** @internal 当前时刻（毫秒；计时器编码用） */
+    currentTime(): number { return this.now() }
 
     /** 诊断记录：最近 60 条关键步骤（显示、结果、合并、推迟、替换、重试、关闭），出现异常后用 trace() 取出 */
     private traceLog: string[] = []
@@ -209,6 +262,7 @@ export class ScreenRuntime<P extends ScreenPlayer = ScreenPlayer> {
         this.log(inst, '关闭界面')
         this.instances.delete(k)
         for (const stop of [...inst.timers]) stop()
+        inst.stopTimerEnd?.()
         this.platform.close?.(player as P)
         this.platform.lockCamera?.(player as P, false)
         screen.options.onClose?.call(inst.ctx)
@@ -264,7 +318,14 @@ export class ScreenRuntime<P extends ScreenPlayer = ScreenPlayer> {
         const replace = inst.replacing
         inst.replacing = false
         this.log(inst, `显示 #${gen}${replace ? '（替换）' : ''}`)
-        const r = await this.platform.show(inst.player as P, { ...inst.form(), replace }, () => this.log(inst, `#${gen} 玩家正忙，重试`))
+        const spec = inst.form()
+        // 计时结束时刷新一次：动画的时长在构建时已定（总时长），计时结束后它不会自己停在「完成」
+        inst.stopTimerEnd?.()
+        inst.stopTimerEnd = undefined
+        if (inst.timerEnd !== undefined && this.platform.timeout) {
+            inst.stopTimerEnd = this.platform.timeout(() => { if (!inst.closed) { this.log(inst, '计时结束，刷新'); inst.dirty = true; this.enqueue(inst) } }, Math.ceil(inst.timerEnd / 50) + 1)
+        }
+        const r = await this.platform.show(inst.player as P, { ...spec, replace }, () => this.log(inst, `#${gen} 玩家正忙，重试`))
         const stale = gen !== inst.gen                        // 已被「替换」：这是旧表单迟到的结果
         this.log(inst, `结果 #${gen}${stale ? '（旧）' : ''}：${r.canceled ? `取消 ${r.cancelationReason ?? ''}` : `点击 ${r.selection}`}`)
         if (!stale) inst.displayed = false
@@ -287,15 +348,24 @@ export class ScreenRuntime<P extends ScreenPlayer = ScreenPlayer> {
         let index = selection
         if (m.paging) {
             const next = pagingResponse(m.paging, selection, inst.page ?? m.paging.start, inst.dir)
+            if (next.kind === 'turn') inst.history.push(inst.page ?? m.paging.start)      // 跳到别的页：记下来处
             if (next.kind !== 'own') { inst.page = next.page; inst.dir = next.dir; inst.focus = undefined; return true }
             index = next.index
+            // 返回：回到上一次所在的页；方向记为 back（没有箭头获得聚焦版），焦点给「返回」按钮
+            if (m.back && index === m.back.index) {
+                const prev = inst.history.pop()
+                if (prev !== undefined) { inst.page = prev; inst.dir = 'back' }
+                inst.focus = m.back.index
+                return true
+            }
         }
         const b = m.buttons.find((x) => x.index === index)
         inst.busy = true
         try {
             if (b) {
-                inst.focus = b.name
-                await inst.screen.options.methods?.[b.name]?.call(inst.ctx)
+                inst.focus = b.index
+                if (b.method === '__close') { this.close(inst.screen, inst.player); return false }
+                await inst.screen.options.methods?.[b.method]?.call(inst.ctx, ...b.args)
             }
             if (inst.closed) return false
             await this.deliver(inst)                          // 方法中发出的事件：交给脚本处理完再重新打开（期间的更新合并为一次）

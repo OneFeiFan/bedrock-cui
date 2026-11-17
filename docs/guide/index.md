@@ -22,12 +22,13 @@
 - [界面文件](screens.md)
 - [数据（props）](props.md)
 - [逻辑](logic.md)
-- [翻页](paging.md)
+- [页面](pages.md)
 - [动画](animation.md)
+- [计时显示](timers.md)
 
 ### 界面内的交互
 
-- [开关与分页](pages.md)
+- [选项卡](tabs.md)
 - [滚动](scroll.md)
 - [表达式](bindings.md)
 
@@ -67,7 +68,7 @@
 
 - [Paragraph](components/paragraph.md)
 - [Text 与 InlineIcon](components/text.md)
-- [Pages](components/pages.md)
+- [Tabs](components/tabs.md)
 - [GlyphSheet](components/glyph-sheet.md)
 
 ## 参考

@@ -8,23 +8,23 @@
 
 | 来源 | 写法 | 介绍 |
 |---|---|---|
-| 界面的数据 | `props.名字` | [数据（props）](props.md) |
+| 界面的数据 | 视图参数中的名字（props、state、computed） | [数据（props）](props.md) |
 | 开关的状态 | `toggleState(开关名)` | 下文「开关的状态」 |
 
-`props.名字` 本身就是一个表达式：用在 `Label` 上取它的文字，用在 `Image` 上取它的图标，用在 `setVisible()` 上表示「有值」。在它上面调用运算方法，得到新的表达式。
+视图参数中的数据本身就是一个表达式：用在 `Label` 上取它的文字，用在 `Image` 上取它的图标，用在 `setVisible()` 上表示「有值」。在它上面调用运算方法，得到新的表达式。
 
 ## 显示条件
 
-`控件.setVisible(表达式)` 在表达式的值为真时显示控件。下面根据 `props.rank` 中是否包含 `VIP`，显示不同的文字：
+`控件.setVisible(表达式)` 在表达式的值为真时显示控件。下面根据 `rank` 中是否包含 `VIP`，显示不同的文字：
 
 ```js preview=card 220x60
 import { Color, Image, Label, Panel, Size, defineScreen } from 'bedrock-cui'
 
 const card = defineScreen({
     id: 'cui_ui:card',
-    props: { rank: 'VIP 会员' },
-    view({ props }) {
-        const vip = props.rank.contains('VIP')
+    props: { rank: { type: String, default: 'VIP 会员' } },
+    view({ rank }) {
+        const vip = rank.contains('VIP')
         return new Panel().setSize(200, 40).add(
             new Image('textures/ui/dialog_background_opaque').setSize(Size.full()),
             new Label('§6欢迎，尊贵的会员').setSize(160, 10).setVisible(vip),
@@ -48,7 +48,7 @@ const card = defineScreen({
 | `times(x)`、`div(x)`、`mod(x)`、`plus(x)` | 算术运算；`plus` 对文字是拼接 | 只有整数（见下文） |
 | `gt(x)`、`lt(x)`、`gte(x)`、`lte(x)` | 大于、小于、大于等于、小于等于 | 已验证，可以用 `and`、`or` 组合 |
 
-`props.名字.number` 把文字转为数字（JSON UI 中对数字文字做乘法即得到数字）。
+`数据.number` 把文字转为数字（JSON UI 中对数字文字做乘法即得到数字）。
 
 ## 限制
 
@@ -56,19 +56,30 @@ const card = defineScreen({
 
 - **运算只有整数**。除法是整数除法（`1 ÷ 4` 得 0），小数文字转为数字后得 0（`'0.6'` 得 0）。因此需要小数的属性（例如图片的裁剪比例）无法由运算得到。
 - **`>=` 与 `<=` 放在更大的表达式中时，游戏解析出错**：单个比较结果正确，`(x > 3) and (x < 7)` 也正确，但 `(x >= 0) and (x < 10)` 结果为假（真机）。因此 bedrock-cui 把 `gte(x)` 编译为 `not (… < x)`、`lte(x)` 编译为 `not (… > x)`；改写后，含 `gte`、`lte` 的组合也能得到正确结果（真机）。
+- **`not` 只在表达式开头可靠**：单独的 `not`、作为 `and` 左边的 `not` 结果正确；但 `not (not X)` 的外层 `not` 没有生效（真机 1.59.0，消去后正确），作为 `or` 右边的 `not` 结果错误（真机 1.60.0，推测同样是解析问题）。bedrock-cui 编译时把 `not` 移到开头：消去双重否定，`(not A) or (not B)` 写成 `not (A and B)`（等价），写表达式时不需要考虑这一点。
 - **不引用任何数据的表达式是常量**，编译时直接算出结果，写成固定值。游戏不接受来源只有常数的绑定。
 - 绑定读取不到数据时，目标属性保持默认值，不会报错。
 
 ## 开关的状态
 
-`toggleState(开关名)` 读取一个开关是否选中，用于显示条件。开关的用法见[开关与分页](pages.md)：
+`toggleState(开关的名称)` 表示「这个开关是否选中」，常用作显示条件：开关选中时显示某些内容。下面勾选「显示详情」时显示一行说明，在「预览」中可以点击：
 
-```js
-import { Label, toggleState } from 'bedrock-cui'
+```js preview=card 220x60
+import { Anchor, Color, Image, Label, Panel, Size, Texture, Toggle, toggleState } from 'bedrock-cui'
 
-new Label('§a已选中').setVisible(toggleState('show_details'))
+const INK = Color.hex('#3c2814')
+const box = new Toggle('options', 0).setName('show_details').setRadio(false).setSize(80, 12).setAnchor(Anchor.TOP_LEFT).setOffset(10, 8)
+box.unchecked.add(new Label('□ 显示详情').setColor(INK))
+box.checked.add(new Label('■ 显示详情').setColor(INK))
+
+const card = new Panel().setSize(200, 44).add(
+    new Image('textures/ui/dialog_background_opaque').setSize(Size.full()),
+    box,
+    new Label('钻石：最坚硬的矿物之一').setColor(INK).setAnchor(Anchor.TOP_LEFT).setOffset(10, 26)
+        .setVisible(toggleState('show_details')),
+)
 ```
 
-开关按名称查找，范围是整个界面。传入 `{ siblingScope: true }` 时，只在兄弟控件中查找。
+开关按名称查找（`setName()` 设置的名称），范围是整个界面。选项卡（`Tabs`）的 `showing()` 也是用开关的状态实现的。
 
-一个表达式同时读取界面的数据与开关状态时，开关变化后它不会重新计算（真机）。应将两者分别用于不同的控件，例如外层控件按开关显示、内层控件显示数据（静态检查：`mixed-sources`）。
+一个表达式不要同时读取界面的数据与开关的状态：开关变化后它不会重新计算（真机）。需要两者共同决定时，把控件拆成两层，外层按开关显示，内层按数据显示（静态检查：`mixed-sources`）。

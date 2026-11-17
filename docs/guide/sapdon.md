@@ -31,14 +31,14 @@ export default defineConfig({
 在构建入口（`main.mjs` 或 `main.ts`）中，提交之前调用 `useSapdon()`：
 
 ```js
-import { GRegistry, registry } from '@sapdon/core'
+import { GRegistry, addPacketResolver, registry } from '@sapdon/core'
 import { UISystemRegistry } from '@sapdon/ui'
 import { useSapdon } from 'bedrock-cui/node'
 import config from './cui.config.mjs'
 
 // ……项目中其他 sapdon 内容的登记
 
-useSapdon(config, { GRegistry, UISystemRegistry })
+useSapdon(config, { GRegistry, UISystemRegistry, addPacketResolver })
 registry.submit()
 ```
 

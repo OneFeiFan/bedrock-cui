@@ -31,11 +31,12 @@
     "./web": "./dist/web/index.js",
     "./node": "./dist/node/index.js",
     "./runtime": "./dist/runtime/index.js",
-    "./runtime/server-pages": "./dist/runtime/serverPages.js",
     "./package.json": "./package.json",
     "./dom": "./dist/dom/index.js",
     "./runtime/screens": "./dist/runtime/screens.js",
-    "./runtime/core": "./dist/runtime/screenRuntime.js"
+    "./runtime/core": "./dist/runtime/screenRuntime.js",
+    "./internal": "./dist/internal.js",
+    "./internal/server-pages": "./dist/runtime/serverPages.js"
   },
   "files": [
     "CHANGELOG.md",

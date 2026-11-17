@@ -50,6 +50,7 @@ const DYNAMIC: Record<string, { target: string, prop?: string }> = {
     clipRatio: { target: '#clip_ratio', prop: 'clip_ratio' },
     // 水平位置由数据决定：use_anchored_offset 下，偏移取 #anchored_offset_value_x / y（原版 HUD 的写法）
     offsetX: { target: '#anchored_offset_value_x' },
+    offsetY: { target: '#anchored_offset_value_y' },
 }
 
 class Compiler {
@@ -90,8 +91,9 @@ class Compiler {
         for (const key of Object.keys(DYNAMIC)) {
             const v = p[key]
             if (!isExpr(v) || hasRefs(v)) continue
-            const value = evalExpr(v as Expr, { ref: () => '' })
+            const value = evalExpr(v as Expr, { ref: () => '', exact: true })     // 构建时算出：精确的除法
             if (key === 'offsetX') { p.offset = [Number(value), p.offset?.[1] ?? 0]; delete p.offsetX }
+            else if (key === 'offsetY') { p.offset = [p.offset?.[0] ?? 0, Number(value)]; delete p.offsetY }
             else p[key] = typeof value === 'number' || typeof value === 'boolean' ? value : String(value)
         }
         // type 放在最前面，生成的 JSON 好读
@@ -161,9 +163,9 @@ class Compiler {
             if (spec.prop) out[spec.prop] = spec.target
         }
 
-        if (isExpr(p.offsetX)) {
+        if (isExpr(p.offsetX) || isExpr(p.offsetY)) {
             out.use_anchored_offset = true
-            out.property_bag = { ...(out.property_bag as object ?? {}), '#anchored_offset_value_x': 0, '#anchored_offset_value_y': Number(p.offset?.[1] ?? 0) }
+            out.property_bag = { ...(out.property_bag as object ?? {}), '#anchored_offset_value_x': isExpr(p.offsetX) ? 0 : Number(p.offset?.[0] ?? 0), '#anchored_offset_value_y': isExpr(p.offsetY) ? 0 : Number(p.offset?.[1] ?? 0) }
             delete out.offset
         }
 

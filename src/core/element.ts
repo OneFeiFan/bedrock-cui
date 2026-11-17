@@ -211,16 +211,21 @@ export abstract class Element {
     setWidth(w: LengthLike): this { this.size = (this.size ?? SizeValue.auto()).withWidth(w); return this }
     setHeight(h: LengthLike): this { this.size = (this.size ?? SizeValue.auto()).withHeight(h); return this }
     setOffset(offset: Vec2): this
-    /** x 可以是表达式（像素，例如由 prop 换算）：编译为 use_anchored_offset 与 #anchored_offset_value_x 的绑定，运行时由数据决定水平位置 */
-    setOffset(x: LengthLike | Expr, y: LengthLike): this
-    setOffset(a: Vec2 | LengthLike | Expr, b?: LengthLike): this {
-        if (isExpr(a)) {
-            if (typeof (b ?? 0) !== 'number') throw new Error('水平位置绑定表达式时，垂直位置须为像素数值')
-            this.props.offsetX = a
-            this.offset = Vec2.of(0, b ?? 0)
+    /**
+     * x 或 y 可以是表达式：编译为 use_anchored_offset 与 #anchored_offset_value_x / y 的绑定，运行时由数据决定位置。
+     * 绑定的单位是控件自身的宽（高）（真机：1 即移动一个自身宽度），要按像素移动时让控件在该方向上只有 1 像素
+     */
+    setOffset(x: LengthLike | Expr, y: LengthLike | Expr): this
+    setOffset(a: Vec2 | LengthLike | Expr, b?: LengthLike | Expr): this {
+        if (isExpr(a) || isExpr(b)) {
+            if (!isExpr(a) && typeof a !== 'number' || !isExpr(b) && typeof (b ?? 0) !== 'number') throw new Error('位置绑定表达式时，另一个方向须为数字')
+            if (isExpr(a)) this.props.offsetX = a; else delete this.props.offsetX
+            if (isExpr(b)) this.props.offsetY = b; else delete this.props.offsetY
+            this.offset = Vec2.of(isExpr(a) ? 0 : a as number, isExpr(b) ? 0 : (b ?? 0) as number)
             return this
         }
         delete this.props.offsetX
+        delete this.props.offsetY
         this.offset = a instanceof Vec2 ? a : Vec2.of(a, b ?? 0)
         return this
     }

@@ -56,7 +56,7 @@ Image(form.buttonTexture) 在集合项内部显示脚本 button(文字, 图标�
   `_ui_defs` 交给 `UISystemRegistry.addOuterUIdefs` 合并，把 `cui.generated.js` 与 `.d.ts` 写进项目脚本目录——之后 sapdon 的 rollup 连同 `bedrock-cui/runtime`
   一起打包（`@minecraft/*` 是外部模块）。字形图写进 `res/`（res 在项目代码运行前同步，变了要再构建一次）。sapdon 的 ServerFormUI 也写 `ui/server_form.json`：
   同时用会报错。bedrock-cui 不依赖 sapdon：`@sapdon/core` 由使用者传进来。
-**用户脚本在两种用法下写法相同**：`import { ServerPagesForm } from 'bedrock-cui/runtime/server-pages'`、`import { paging } from './cui.generated.js'`。
+**用户脚本在两种用法下写法相同**：`import './cui.generated.js'` 之后调用界面文件的 `open()`。（早期的 `ServerPagesForm` 已移到 `bedrock-cui/internal/server-pages`，由界面文件的运行时在内部使用。）
 ✅ 在 sapdon 3.7.1 上实测（用它的 JS 项目模板，`sapdon lib` 后 `sapdon compile`）：界面文件、合并后的 `_ui_defs`、打包进脚本的运行时与路由表都对。
 实测还暴露了 bedrock-cui/node 的循环依赖（入口 ↔ addon / app，rollup 警告）——工具函数移到 `node/tools.ts`，入口只做重新导出。
 
@@ -64,7 +64,7 @@ Image(form.buttonTexture) 在集合项内部显示脚本 button(文字, 图标�
 
 先前有一部分真机经验只写在例子里，现在都由库负责：
 - **混合翻页**：构建端 `pages.serverArrow()` / `stayButton()` / `serverPaging()`（两个同序号按钮、优先级 10 / 100 / 50、按钮序号自动分配）；
-  脚本端 `ServerPagesForm`（`bedrock-cui/runtime/server-pages`：标题写页码、给刚才方向的箭头加 F、原地不动、锁视角只设一次、翻页过程中不发聊天消息）；
+  脚本端 `ServerPagesForm`（现为内部接口 `bedrock-cui/internal/server-pages`：标题写页码、给刚才方向的箭头加 F、原地不动、锁视角只设一次、翻页过程中不发聊天消息）；
   预览端 `ServerPagesPreview`。三者共用 `core/serverPagesShared.ts` 的纯函数 `pagingButtons` / `pagingResponse`——预览与游戏行为一致。
 - **附加包打包**：`Addon`（`bedrock-cui/node`）——清单、UUID 存进项目文件、`addRuntime()`、`pack()` 打成 `.mcaddon`；流程借鉴 sapdon（MIT，Meteage），
   压缩用 Node 自带的 zlib（先前测试包用系统的 zip 命令，Windows 上没有）。

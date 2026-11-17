@@ -18,6 +18,7 @@ export class Paragraph extends Label {
     /** 按 width 像素预折行（避头尾、中英文留空、行首补样式码）；样式里的缩放参与折行 */
     constructor(text: string, width: number, style?: TextStyle) {
         super('')                           // 文字由下面的 rewrap() 写入（折好的行）
+        this.props.paragraph = true          // 静态检查据此区分（不写进界面文件）
         this.source = text
         this.wrapWidth = width
         this.wrapOptions = {}

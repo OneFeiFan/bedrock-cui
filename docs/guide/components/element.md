@@ -30,7 +30,7 @@ panel.add(label)
 | `children` | 只读 | `Element[]` |  |
 | `parent` | — | `Element \| undefined` |  |
 | `size` | `setSize(size: SizeValue)`<br>`setSize(width: LengthLike, height: LengthLike)` | `Size \| undefined` | 尺寸 |
-| `offset` | `setOffset(offset: Vec2)`<br>`setOffset(x: LengthLike \| Expr, y: LengthLike)` | `Vec2 \| undefined` | 偏移 |
+| `offset` | `setOffset(offset: Vec2)`<br>`setOffset(x: LengthLike \| Expr, y: LengthLike \| Expr)` | `Vec2 \| undefined` | 偏移 |
 | `anchorFrom` | `setAnchorFrom()` | `Anchor \| undefined` | 父控件上的锚点 |
 | `anchorTo` | `setAnchorTo()` | `Anchor \| undefined` | 自身的锚点 |
 | `layer` | `setLayer()` | `number \| undefined` | 层级（相对父控件） |

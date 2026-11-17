@@ -15,7 +15,7 @@ const tab = (name, i) => {
 const card = new Panel().setSize(180, 40).add(new Image('textures/ui/dialog_background_opaque').setSize(Size.full()), new Row().setGap(4).add(tab('物品', 0), tab('方块', 1), tab('生物', 2)))
 ```
 
-点击后切换，表单不关闭。读取开关状态使用 `toggleState(开关名)`；多页内容的切换使用 [`Pages`](pages.md)。
+点击后切换，表单不关闭。读取开关状态使用 `toggleState(开关名)`；几块内容之间的切换使用 [`Tabs`](tabs.md)。
 
 ## API
 

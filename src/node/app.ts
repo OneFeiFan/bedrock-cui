@@ -45,6 +45,11 @@ export interface SapdonCore {
     }
     /** 合并各方的 _ui_defs.json；不给时 bedrock-cui 自己登记（项目里别的界面定义会被覆盖） */
     UISystemRegistry?: { addOuterUIdefs(defs: string[]): void }
+    /**
+     * sapdon 的构建包解析器（@sapdon/core 的 addPacketResolver）。给出时，界面文件写成紧凑的 JSON；
+     * 不给时由 sapdon 按缩进 2 格写出（嵌套很深的控件树中，缩进约占文件的八成）
+     */
+    addPacketResolver?(resolver: (state: { entries: readonly { name: string, root: string, path: string, data: unknown }[] }) => { files?: unknown[], consumed?: unknown[] } | void, options?: { priority?: number, id?: string }): void
 }
 
 export class CuiApp {
@@ -163,6 +168,15 @@ export class CuiApp {
         if (typeof (JSON as unknown as { rawJSON?: unknown }).rawJSON !== 'function') {
             throw new Error(`bedrock-cui：sapdon 4 需要 Node.js 22.12 或更高版本（当前 ${process.version} 没有 JSON.rawJSON，提交构建内容会失败，界面文件不会写出）`)
         }
+        // 界面文件写成紧凑的 JSON：认领 bedrock-cui 登记的界面文件，以文本写出（sapdon 缺省按缩进 2 格写 JSON）
+        const ours = new Set<string>()
+        sapdon.addPacketResolver?.(({ entries }) => {
+            const mine = entries.filter((e) => e.root === 'resource' && ours.has(`${e.path}${e.name}`))
+            return {
+                files: mine.map((e) => ({ root: 'resource', path: e.path, name: e.name, ext: 'json', format: 'text', data: JSON.stringify(e.data) })),
+                consumed: mine,
+            }
+        }, { id: 'bedrock-cui:compact-ui', priority: 10 })
         sapdon.GRegistry.beforeSubmit((entries) => {
             const c = this.compile()
             this.report(c.issues)
@@ -176,13 +190,14 @@ export class CuiApp {
                     if (sapdon.UISystemRegistry?.addOuterUIdefs) { sapdon.UISystemRegistry.addOuterUIdefs(defs); continue }
                     console.warn('[bedrock-cui] 没有传入 UISystemRegistry（sapdon 4 在 @sapdon/ui 里）：自己登记 ui/_ui_defs.json，项目里别的界面定义会被覆盖')
                 }
+                ours.add(`${path.posix.dirname(file)}/${path.posix.basename(file, '.json')}`)
                 sapdon.GRegistry.register(path.posix.basename(file, '.json'), 'resource', path.posix.dirname(file) + '/', data)
             }
             const scriptsDir = path.resolve(options.scriptsDir ?? 'scripts')
             fs.mkdirSync(scriptsDir, { recursive: true })
-            fs.writeFileSync(path.join(scriptsDir, 'cui.generated.js'), this.generatedModule(c.paging, 'bedrock-cui/runtime/server-pages', c.screens))
+            fs.writeFileSync(path.join(scriptsDir, 'cui.generated.js'), this.generatedModule(c.paging, 'bedrock-cui', c.screens))
             fs.writeFileSync(path.join(scriptsDir, 'cui.generated.d.ts'),
-                `// 由 bedrock-cui 生成，请勿手改\nimport type { ServerPaging } from 'bedrock-cui/runtime/server-pages'\nimport type { ScreenManifest } from 'bedrock-cui'\n/** 界面 id → 翻页路由表 */\nexport declare const paging: Record<string, ServerPaging>\n/** defineScreen 定义的界面：界面 id → 清单 */\nexport declare const screens: Record<string, ScreenManifest & { paging?: ServerPaging }>\n`)
+                `// 由 bedrock-cui 生成，请勿手改\nimport type { ScreenManifest, ServerPaging } from 'bedrock-cui'\n/** 界面 id → 翻页路由表 */\nexport declare const paging: Record<string, ServerPaging>\n/** defineScreen 定义的界面：界面 id → 清单 */\nexport declare const screens: Record<string, ScreenManifest & { paging?: ServerPaging }>\n`)
             // 字形图：写进 res/（以后的构建由 sapdon 同步）；sapdon 4 通过 SAPDON_BUILD_CONTEXT 告知本次构建的输出目录，
             // 同时直接写进本次输出的资源包——res/ 在运行构建入口之前就同步完了，否则新生成的字形图要再构建一次才进包
             let ctx: { projectName?: string, projectPath?: string, buildDir?: string } | undefined

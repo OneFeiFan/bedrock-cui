@@ -1,7 +1,7 @@
 /**
  * bedrock-cui 命令行：
  *   bedrock-cui create <名字>   创建一个基于 sapdon 的项目
- *   bedrock-cui dev [--port n]  在浏览器中预览全部界面
+ *   bedrock-cui dev [--port n] [--game [端口]]  在浏览器中预览全部界面；--game：与游戏联动（/connect 后保存即构建并重新加载）
  *   bedrock-cui build [--pack]  构建（交给 sapdon compile；--pack 再打成 .mcaddon）
  */
 import path from 'node:path'
@@ -12,7 +12,7 @@ import { dev } from './dev.js'
 const HELP = `bedrock-cui <命令>
 
   create <名字>      创建一个基于 sapdon 的项目（含 bedrock-cui 的配置、示例界面与脚本）
-  dev [--port 5173]  在浏览器中预览全部界面
+  dev [--port 5173] [--game [19135]]  在浏览器中预览全部界面；--game 与游戏联动
   build [--pack]     构建附加包（sapdon compile）；--pack 同时打成 .mcaddon
 `
 
@@ -32,7 +32,7 @@ export async function main(argv: string[]): Promise<void> {
             return
         }
         case 'dev':
-            return dev({ port: flag('--port') ? Number(flag('--port')) : undefined })
+            return dev({ port: flag('--port') ? Number(flag('--port')) : undefined, game: rest.includes('--game') ? Number(flag('--game')) || 19135 : undefined })
         case 'build': {
             if (sapdon(['compile']) !== 0) process.exit(1)
             if (rest.includes('--pack') && sapdon(['pack']) !== 0) process.exit(1)

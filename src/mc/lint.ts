@@ -98,7 +98,9 @@ function lintLayoutOnce(roots: RNode[], options: LintOptions = {}): LintIssue[] 
                 if (short !== undefined) {
                     issues.push({
                         rule: 'engine-wrap-short-line', level: 'warning', path: b.node.path,
-                        message: `游戏只在空格处换行：这段文字会折出过短的行（「${short.replace(/§./g, '')}」只占 ${Math.round(textWidth(short, fs))}/${Math.round(w)}）——静态文字请用 Paragraph（缺省软换行：交给游戏、按各平台的字宽逐字排满），运行期文字用 cui/runtime 的 softWrap`,
+                        message: `游戏只在空格处换行：这段文字会折出过短的行（「${short.replace(/§./g, '')}」只占 ${Math.round(textWidth(short, fs))}/${Math.round(w)}）——` + (b.node.props.paragraph
+                            ? '文字中的英文单词或数字不能拆开，调整措辞（例如把英文单词移到行首附近）或折行宽度'
+                            : '静态文字请用 Paragraph（缺省软换行：交给游戏、按各平台的字宽逐字排满），运行期文字用 bedrock-cui/runtime 的 softWrap'),
                     })
                     break
                 }
