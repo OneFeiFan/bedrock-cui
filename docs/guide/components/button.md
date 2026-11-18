@@ -29,12 +29,14 @@ const card = new Panel().setSize(120, 40).add(new Image('textures/ui/dialog_back
 | `pressedName` | `setPressedName()` | `string \| undefined` | 按下时发出的按钮事件（缺省 button.form_button_click） |
 | `template` | `setTemplate()` | `string \| undefined` | 继承的原版模板（缺省 common.button） |
 | `focusPrecedence` | `setFocusPrecedence()` | `number \| undefined` | 默认聚焦优先级（服务端重开表单、鼠标没动时，点击交给默认聚焦的控件） |
+| `binding` | — | `{ method: string; args: unknown[]; } \| undefined` |  |
 
 **方法**
 
 | 方法 | 说明 |
 |---|---|
 | `slots()` | 状态面板（按钮 / 开关覆盖） |
+| `onClick(method: { readonly __method: string }, ...args: unknown[])` | 点击时调用界面的方法：onClick(buy) 或带参数 onClick(buy, '钻石')（参数须可写成 JSON） |
 | `setOnPress(fn: () => void)` | 仅预览：点击回调 |
 | `onPress(fn: () => void)` | 同 setOnPress |
 

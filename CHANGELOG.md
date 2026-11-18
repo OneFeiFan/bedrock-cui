@@ -6,7 +6,7 @@
 
 - 底层接口移出公开入口 `bedrock-cui`：`form`、`FormButton`、`FormGate`、`buttonPayload`、`CollectionItem`、`Pages`、`serverForm` / `serverTitle`，以及翻页的标记函数（`pagingButtons` 等）；`bedrock-cui/web` 的 `ServerPagesPreview`。
   删除 `bedrock-cui/runtime/server-pages`（`ServerPagesForm`、`lockCamera`、`showForm`）。
-  界面请用界面文件编写：数据用 props，按钮用 `button().onClick()`，多页用 `pages`，客户端切换用 `Tabs`。
+  界面请用界面文件编写：数据用 props，按钮用 `new Button().onClick()`，多页用 `Router`，客户端切换用 `Tabs`。
   它们仍在 `bedrock-cui/internal`（`ServerPagesForm` 在 `bedrock-cui/internal/server-pages`）中，供框架内部与测试使用，不出现在手册中，也不保证稳定。
 
 ### 不兼容的改动
@@ -28,11 +28,12 @@
 - 命令行 `bedrock-cui create`、`dev`、`build`；项目配置 `defineConfig()`（`cui.config.mjs`），界面可写成 `{ build, routed }`。
 - `form.buttonTexture`：图片显示表单按钮的图标，可显示任意已加载的贴图。
 - `form.button(n)`：表单的第 n 个按钮，返回读取该按钮内容的容器（代替 `new CollectionItem('form_buttons', n)`）。
-- 界面文件 `defineScreen({ id, props, state, computed, methods, onOpen, onUpdate, onClose, view })`：一个界面的数据、逻辑与视图写在一个文件中；
-  props 显式声明 `{ type, default }`；视图从一个对象中解构 props、state、computed 与 methods（名字不能重复）；`button().onClick(方法, …参数)` 显式绑定，内置 `close`；
-  深层响应式；逻辑中 `this.mc` 即 `@minecraft/server`；多页 `pages` / `layout` 与 `link` / `next` / `prev` / `back`；脚本中 `界面.open(玩家, props)`；
+- 界面文件 `defineUI({ id, props, state, computed, methods, onOpen, onUpdate, onClose, page })`：一个界面的数据、逻辑与页面写在一个文件中；
+  页面函数只接收使用者定义的名字（props、state、computed 的值与 methods 的方法），返回一个 `Page`；props 显式声明 `{ type, default }`；
+  `new Button().onClick(方法, …参数)` 显式绑定，`new Close()` 关闭界面；深层响应式；逻辑中 `this.mc` 即 `@minecraft/server`；
   事件 `this.emit()` / `界面.on()`；定时器 `this.setInterval()` / `this.setTimeout()`；状态变化时合并刷新。
-- 选项卡 `Tabs`（客户端切换，原 `Pages` 的客户端用法）。
+- 多页与选项卡是同一种写法：页面中放 `Router`（服务端切换）或 `Tabs`（客户端切换），用 `Link`、`Back`、`Prev`、`Next` 跳转；
+  跳转元素自己找到所属的页面组，无处可去时自动隐藏，跳转后新页中动作相同的按钮获得焦点（鼠标不动也能连续点击）。
 - 动画 `Anim`（alpha、offset、size、color、clip、wait；then、loop、setEasing），任何控件 `setAnims()`。
 - `bedrock-cui create` 的模板改用界面文件。
 - 浏览器预览：`bedrock-cui dev` 运行界面的逻辑（点击、状态、翻页、定时器；事件与聊天消息写进日志）；预览播放动画。

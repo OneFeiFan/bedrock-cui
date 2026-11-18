@@ -19,7 +19,6 @@
 | `Scroll` | 类 | 可滚动的区域，子控件纵向排列。 |
 | `Button` | 类 | 按钮。外观由 default、hover、pressed 三个状态面板组成。 |
 | `Toggle` | 类 | 开关。同组互斥；外观由四个状态面板组成。 |
-| `Tabs` | 类 | 选项卡：在客户端切换的几块内容（tab(名称)、link(名称)、showing、blocker）；表单不关闭。 |
 | `Raw` | 类 | 原样输出的 JSON UI 元素。 |
 
 ## 组件
@@ -56,13 +55,21 @@
 
 | 名称 | 种类 | 说明 |
 |---|---|---|
-| `defineScreen` | 函数 | 定义一个界面：数据（props）、逻辑（state、computed、methods、生命周期）与视图（view）写在一个文件中。 |
+| `defineUI` | 函数 | 定义一个界面：id、props、state、computed、methods、生命周期与根页面 page（页面函数）。返回的对象有 open / close / isOpen / on / off。 |
+| `PageFunction` | 类型 | 页面函数：参数是使用者在 props、state、computed、methods 中定义的名字，返回这一页的内容（通常是 Page）。 |
+| `Page` | 类 | 一页内容；放在页面组中时缺省铺满页面组。 |
+| `Router` | 类 | 一组子页面，由服务端切换（界面以那一页重新打开，鼠标不动也能连续点击）；startAt(名称)。每个界面最多一个。 |
+| `Tabs` | 类 | 一组子页面，由客户端切换（表单不关闭）；startAt(名称)。界面重新打开后回到起始的一块。 |
+| `Link` | 类 | 跳转元素：到某个子页面（new Link(名称) 或 new Link(组名:名称)）；selected 为目标页正在显示时的外观。 |
+| `Back` | 类 | 跳转元素：返回上一次所在的页（Router）；没有历史时自动隐藏。 |
+| `Prev` | 类 | 跳转元素：按定义的顺序到上一页；没有上一页时自动隐藏。 |
+| `Next` | 类 | 跳转元素：按定义的顺序到下一页；没有下一页时自动隐藏。 |
+| `NavButton` | 类 | Link、Back、Prev、Next 的共同父类：按钮的三个状态与 selected。 |
+| `Close` | 类 | 关闭界面的按钮。 |
 | `PropSpec` | 接口 | props 中一项的声明：{ type, default, of, max }（同 Vue 的 props）。 |
 | `Item` | 类 | props 声明中的类型：文字与图标 { text, icon }。 |
 | `MethodRef` | 接口 | 视图中方法的引用（从视图参数中解构得到），用于 button().onClick(方法, …参数)。 |
-| `PageTools` | 接口 | 多页时页内的跳转：link(页名)、next()、prev()、back()，返回按钮。 |
 | `Screen` | 类 | defineScreen() 返回的界面对象：id；行为包脚本中的 open(玩家, props)、close(玩家)、isOpen(玩家)、on(事件名, 处理函数) / off()；构建时的 build()、previewForm()。 |
-| `ScreenButton` | 类 | button(名字) 返回的按钮：default、hover、pressed 三个状态，add() 加入始终显示的内容。 |
 
 ## 计时显示
 
@@ -148,8 +155,6 @@
 | `HudTitleText` | 类型 | 普通标题或提示的文字与翻译消息。 |
 | `AnimType` | 类型 | 动画的类型。 |
 | `AnimEasing` | 类型 | 动画的缓动方式。 |
-| `ButtonSlot` | 接口 | 按钮的一个状态：add() 加入的控件显示在该状态下。 |
-| `ScreenViewContext` | 类型 | 视图函数得到的参数：props、button()、pages()。 |
 | `ScreenManifest` | 接口 | 界面的清单：props 与按钮的名字及其对应的表单按钮序号。 |
 | `PropItem` | 类型 | 一个 prop 的值：文字，或 { text, icon }。 |
 | `PropSlot` | 接口 | 一个 prop 占用的表单按钮：序号与标记。 |

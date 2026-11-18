@@ -440,3 +440,12 @@ world.afterEvents.itemUse.subscribe((e) => shop.open(e.source))
 **命名**：defineUI；「界面」一词保留（「容器」与 Panel 及 Minecraft 的箱子类界面冲突，用户同意）。
 **影响**：不兼容（未发布）。模板、示例、测试包的界面文件、单元测试、手册（界面文件、数据、逻辑、页面、选项卡、计时显示、快速上手、README 等）全部改写。计时 HUD（defineTimerHud）是独立接口，不在此次范围。
 **步骤**：① 元素与 defineUI、构建（展开、解析、清单）② 运行时（跳转、焦点、隐藏）③ 测试 ④ 模板、示例、测试包 ⑤ 手册 ⑥ 浏览器验证与真机测试包。
+
+### 21.1 实现状态（2026-11）
+
+- ✅ 核心：defineUI、Page / Router / Tabs / Link / Back / Prev / Next / Close、Button.onClick；构建时展开（可嵌套）、解析（先看所在的子页面，再在公共部分由内向外找；重复时要求「组名:页名」）、具体化（Router → 运行时处理的服务端按钮，Tabs → 客户端开关）。
+- ✅ 运行时：__link / __back / __next / __prev；历史；跳转后新页中动作相同的按钮获得焦点（公共部分的按钮序号不变）；Back 无历史、公共部分的 Prev / Next 无处可去时不写标记；子页面中首页的 Prev / 末页的 Next 构建时隐藏。
+- ✅ 公开入口改为显式导出，ScreenButton / ButtonSlot 移到 bedrock-cui/internal；API 参考更新。
+- ✅ 测试 179 条（含 GPT 的运行时测试）；计时 HUD 示例迁移后 V15 基线逐字一致。模板、sapdon 示例、测试包 7 个界面迁移（1.64.0）；手册重写「界面文件」「页面」「选项卡」，其余页面的旧写法全部改掉；README、CHANGELOG。
+- ✅ 浏览器：开发预览中模板小书翻页与关闭、页面实验的连续翻页；手册网站的商店购买、图鉴跳转（Link / Next / Back / 公共部分的 Link）、背包标签切换。
+- 待真机：测试包 1.64.0 页面实验（纸）——鼠标不动连续点「下一页」「返回」。
