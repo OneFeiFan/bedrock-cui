@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { Anim, Color, Image, Label, Panel, compileNamespace, defineScreen, finalize } from '../dist/index.js'
+import { Anim, Color, Image, Label, Panel, compileNamespace, Button, Close, defineUI, finalize } from '../dist/index.js'
 
 const defs = (json) => Object.fromEntries(Object.entries(json).filter(([k]) => k.startsWith('anim')))
 
@@ -33,7 +33,7 @@ test('Anim：loop() 让最后一段指回第一段；wait 只写类型与时长�
 })
 
 test('Anim 与 prop 一起用：循环的动画链不影响快照时查找 prop（不会无限递归）', () => {
-    const s = defineScreen({ id: 'cui_ui:a', props: { t: { type: String } }, view: ({ t }) => new Panel().setSize(100, 20).add(new Label(t).setSize(50, 10).setAnims(Anim.alpha(1, 0, 1).loop())) })
+    const s = defineUI({ id: 'cui_ui:a', props: { t: { type: String } }, page: ({ t }) => new Panel().setSize(100, 20).add(new Label(t).setSize(50, 10).setAnims(Anim.alpha(1, 0, 1).loop())) })
     const [r] = finalize(s.build().root)
     assert.equal(r.children[0].type, 'collection_item')
     assert.equal(r.children[0].children[0].props.anims.length, 1, '动画留在控件本身（容器里）')
@@ -47,14 +47,12 @@ test('Anim.clip：裁剪比例的动画（sapdon 指导书的进度箭头与火�
 
 test('数值绑定：prop 转数字后绑定到裁剪比例；setOffset(表达式, y) 编译为 use_anchored_offset 与 #anchored_offset_value_x 的绑定', async () => {
     const { lit } = await import('../dist/core/expr.js')
-    const s = defineScreen({
+    const s = defineUI({
         id: 'cui_ui:num', props: { p: { type: String, default: '0' } },
-        view({ p }) {
-            return new Panel().setSize(160, 20).add(
-                new Image('textures/ui/white').setName('done').setSize(160, 8).setClipRatio('right', lit(1).minus(p.number.times(0.001))),
-                new Panel().setName('mover').setSize(160, 8).setOffset(p.number.times(0.16), 10),
-            )
-        },
+        page: ({ p }) => new Panel().setSize(160, 20).add(
+            new Image('textures/ui/white').setName('done').setSize(160, 8).setClipRatio('right', lit(1).minus(p.number.times(0.001))),
+            new Panel().setName('mover').setSize(160, 8).setOffset(p.number.times(0.16), 10),
+        ),
     })
     const json = JSON.stringify(compileNamespace('t', { root: s.build().root }).json)
     assert.ok(json.includes('"target_property_name":"#clip_ratio"'), '裁剪比例绑定')
@@ -91,9 +89,9 @@ test('Texture.SOLID：内置纯白贴图——界面用到时编译结果附带 
 
 test('静态检查：带动画的文字叠放不报 text-overlap；绑定运算中的小数常数报 decimal-arith', async () => {
     const { CuiApp } = await import('../dist/node/index.js')
-    const s = defineScreen({
+    const s = defineUI({
         id: 'cui_ui:d', props: { p: { type: String, default: '0' } },
-        view: ({ p }) => new Panel().setSize(200, 40).add(
+        page: ({ p }) => new Panel().setSize(200, 40).add(
             new Panel().setSize(1, 8).setOffset(p.number.times(0.16), 0),
             new Panel().setSize(1, 8).setOffset(p.number.times(160).div(1000), 10),
             new Label('5').setAnims(Anim.alpha(1, 0, 1)), new Label('4').setAnims(Anim.alpha(0, 1, 1)),

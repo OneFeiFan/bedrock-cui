@@ -1,4 +1,4 @@
-import { Anchor, Color, EventProgressBar, Image, Label, Panel, Raw, Size, Texture, Timer, defineScreen, defineTimerHud } from 'bedrock-cui'
+import { Anchor, Close, Color, EventProgressBar, Image, Label, Panel, Raw, Size, Texture, Timer, defineTimerHud, defineUI } from 'bedrock-cui'
 
 // 探针文字直接读取与进度条相同的接收器，避免诊断本身依赖局部属性转发。
 function trace(ref, text, y, x = 4, width = 270, source = ref._bindings(200).receiver) {
@@ -41,7 +41,7 @@ export const timers = defineTimerHud({
     },
 })
 
-export const demo = defineScreen({
+export const demo = defineUI({
     id: 'cui_ui:timer_hud_demo',
     onOpen() {
         const now = Date.now(), player = this.player
@@ -58,14 +58,14 @@ export const demo = defineScreen({
         this.setTimeout(() => { b = b.resume(); c = c.resume(); timers.update(player, { b, c }) }, 360)
     },
     onClose() { timers.close(this.player) },
-    view({ button, close }) {
+    page() {
         const root = new Panel().setSize(300, 220).add(
             new Image(Texture.SOLID).setSize(Size.full()).setKeepRatio(false).setColor(Color.hex('#111b28')),
             new Label('3 TIMERS / CUI V15').setSize(280, 14).setAnchor(Anchor.TOP_LEFT).setOffset(14, 12),
             new Label('B pauses 3-6s / title 9.5s').setSize(280, 12).setAnchor(Anchor.TOP_LEFT).setOffset(14, 31),
             new Label('WHITE = clock test / resets on event').setSize(290, 12).setAnchor(Anchor.TOP_LEFT).setOffset(5, 174),
         )
-        const end = button().onClick(close).setSize(180, 20).setAnchor(Anchor.BOTTOM_CENTER).setOffset(0, -10)
+        const end = new Close().setSize(180, 20).setAnchor(Anchor.BOTTOM_CENTER).setOffset(0, -10)
         end.default.add(new Label('Close demo'))
         end.hover.add(new Label('Close demo').setColor(Color.hex('#fbbf24')))
         root.add(end)

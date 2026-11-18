@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { Color, Countdown, Label, Panel, ProgressBar, Timer, compileNamespace, defineScreen } from '../dist/index.js'
+import { Color, Countdown, Label, Panel, ProgressBar, Timer, compileNamespace, Button, Close, defineUI } from '../dist/index.js'
 import { CuiApp } from '../dist/node/index.js'
 import { ScreenRuntime } from '../dist/runtime/screenRuntime.js'
 
@@ -21,17 +21,17 @@ test('Timer：开始、暂停、继续、完成与编码（I0 / R<千分比> / P
     assert.throws(() => Timer.idle(0), /大于 0/)
 })
 
-const lab = () => defineScreen({
+const lab = () => defineUI({
     id: 'cui_ui:timer',
     state() { return { cooldown: Timer.idle(10) } },
-    view: ({ cooldown }) => new Panel().setSize(200, 60).add(
+    page: ({ cooldown }) => new Panel().setSize(200, 60).add(
         new ProgressBar(cooldown).setName('bar').setSize(160, 8),
         new Countdown(cooldown, (n) => `${n} 秒`).setName('count').setSize(60, 10),
     ),
 })
 
 test('ProgressBar / Countdown：参数须是默认值为计时器的 prop；编译出两个方向的位置绑定，没有小数常数与比较运算，静态检查没有错误', () => {
-    assert.throws(() => defineScreen({ id: 'cui_ui:x', props: { a: { type: String } }, view: ({ a }) => new ProgressBar(a).setSize(10, 2) }).build(), /值为计时器的数据/)
+    assert.throws(() => defineUI({ id: 'cui_ui:x', props: { a: { type: String } }, page: ({ a }) => new ProgressBar(a).setSize(10, 2) }).build(), /值为计时器的数据/)
     const c = CuiApp.fromConfig({ namespace: 'n', screens: [lab()] }).compile()
     assert.deepEqual(c.issues.filter((i) => i.level === 'error' || i.rule === 'decimal-arith'), [])
     const json = JSON.stringify(c.files)
@@ -42,10 +42,10 @@ test('ProgressBar / Countdown：参数须是默认值为计时器的 prop；编�
 })
 
 test('运行时：计时器类型的 prop 按打开时的时刻编码', async () => {
-    const screen = defineScreen({
+    const screen = defineUI({
         id: 'cui_ui:timer2',
         state() { return { cooldown: Timer.idle(10).start(1000) } },
-        view: ({ cooldown }) => new Panel().setSize(200, 20).add(new ProgressBar(cooldown).setSize(160, 8)),
+        page: ({ cooldown }) => new Panel().setSize(200, 20).add(new ProgressBar(cooldown).setSize(160, 8)),
     })
     const shown = []
     const rt = new ScreenRuntime({ show: (_, f) => { shown.push(f); return new Promise(() => { }) }, now: () => 5000 })
@@ -58,9 +58,9 @@ test('真机 1.59.0 的修正：not (not X) 编译为 X；Countdown 静止的一
     const { compileExpr, lit } = await import('../dist/core/expr.js')
     const x = lit(5).eq(5)
     assert.equal(compileExpr(x.not().not()).text, compileExpr(x).text)
-    const c = CuiApp.fromConfig({ namespace: 'n', screens: [defineScreen({
+    const c = CuiApp.fromConfig({ namespace: 'n', screens: [defineUI({
         id: 'cui_ui:t3', state() { return { cooldown: Timer.idle(10) } },
-        view: ({ cooldown }) => new Panel().setSize(200, 40).add(new Countdown(cooldown).setSize(40, 10), new ProgressBar(cooldown).setHead(Color.WHITE).setSize(160, 8)),
+        page: ({ cooldown }) => new Panel().setSize(200, 40).add(new Countdown(cooldown).setSize(40, 10), new ProgressBar(cooldown).setHead(Color.WHITE).setSize(160, 8)),
     })] }).compile()
     const conds = JSON.stringify(c.files).match(/"source_property_name":"[^"]*","target_property_name":"#visible"/g).join(' ')
     assert.ok(!/not \(\(not/.test(conds), '没有双重否定')
@@ -71,7 +71,7 @@ test('运行时：Countdown 显示的计时器结束时刷新一次（显示「�
     const run = (view, extra = {}) => {
         let now = 1000
         const timers = [], shown = []
-        const screen = defineScreen({ id: `cui_ui:t${Math.random().toString(36).slice(2, 7)}`, state() { return { cooldown: Timer.idle(2).start(1000) } }, view, ...extra })
+        const screen = defineUI({ id: `cui_ui:t${Math.random().toString(36).slice(2, 7)}`, state() { return { cooldown: Timer.idle(2).start(1000) } }, page: view, ...extra })
         const rt = new ScreenRuntime({
             show: (_, f) => { shown.push(f.buttons[0].text); return new Promise(() => { }) }, close() { }, now: () => now,
             schedule: (fn) => fn(), timeout: (fn, ticks) => { const t = { fn, ticks, live: true }; timers.push(t); return () => { t.live = false } },
@@ -105,7 +105,7 @@ test('not 的规范化（真机 1.59.0 / 1.60.0）：双重否定消去；(not A
 })
 
 test('ProgressBar：头由层的叠放画出，每层是静止的裁剪容器（右边界依次错开），到达右端后停住；不再有精度', async () => {
-    const s = defineScreen({ id: 'cui_ui:h', state() { return { t: Timer.idle(10) } }, view: ({ t }) => new Panel().setSize(220, 20).add(new ProgressBar(t).setHead(Color.WHITE, 2, 2, 4).setSize(196, 8)) })
+    const s = defineUI({ id: 'cui_ui:h', state() { return { t: Timer.idle(10) } }, page: ({ t }) => new Panel().setSize(220, 20).add(new ProgressBar(t).setHead(Color.WHITE, 2, 2, 4).setSize(196, 8)) })
     const { root } = s.build()
     const bar = root.children[0]
     bar._beforeFinalize()
@@ -126,7 +126,7 @@ test('Timer.of：由已有的数据构造（绑定到游戏中的对象）——
 })
 
 test('运行时：传入的计时器总时长与构建时不同，提示一次（组件的速度按构建时的总时长决定）', async () => {
-    const screen = defineScreen({ id: 'cui_ui:t6', props: { progress: { type: Timer, default: Timer.idle(30) } }, view: ({ progress }) => new Panel().setSize(200, 20).add(new ProgressBar(progress).setSize(160, 8)) })
+    const screen = defineUI({ id: 'cui_ui:t6', props: { progress: { type: Timer, default: Timer.idle(30) } }, page: ({ progress }) => new Panel().setSize(200, 20).add(new ProgressBar(progress).setSize(160, 8)) })
     const m = CuiApp.fromConfig({ namespace: 'n', screens: [screen] }).compile().screens
     assert.equal(m['cui_ui:t6'].data[0].timerSeconds, 30)
     const warns = [], warn = console.warn

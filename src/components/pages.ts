@@ -250,16 +250,3 @@ export class Pages extends Panel {
     }
 
 }
-
-/**
- * 选项卡：在客户端切换的多块内容（用开关实现，切换时表单不关闭，不需要脚本参与）。
- * 与界面文件的「页」不同：页由服务端切换（界面以那一页重新打开），适合「下一页」这类在同一位置连续点击的操作。
- *
- *   const tabs = new Tabs('bag').startAt('items')
- *   tabs.tab('items').add(…)               // 一块内容
- *   tabs.link('items')                     // 切换到它的开关
- */
-export class Tabs extends Pages {
-    /** 创建一块内容，返回它的容器 */
-    tab(name: string): Panel { return this.page(name) }
-}

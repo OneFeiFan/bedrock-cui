@@ -479,7 +479,15 @@ export class Raw extends Element {
     setTemplate(v: string): this { this.template = v; return this }
 }
 
-const statePanel = () => new Panel().setSize(SizeValue.full())
+/** @internal 状态面板（按钮、开关的各个状态） */
+export const statePanel = () => new Panel().setSize(SizeValue.full())
+
+/** @internal onClick() 的参数写进清单（JSON）：只允许文字、有限的数字、布尔值、null、数组与普通对象（函数等会被 JSON 悄悄变成 null） */
+export function isJsonable(v: unknown): boolean {
+    return v === null || typeof v === 'string' || typeof v === 'boolean' || (typeof v === 'number' && Number.isFinite(v))
+        || (Array.isArray(v) && v.every(isJsonable))
+        || (typeof v === 'object' && Object.getPrototypeOf(v) === Object.prototype && Object.values(v as object).every(isJsonable))
+}
 
 /** 按钮：default / hover / pressed 三个状态面板，加上始终显示的子元素 */
 export class Button extends Element {
@@ -501,6 +509,18 @@ export class Button extends Element {
     get focusPrecedence(): number | undefined { return this.props.focusPrecedence }
     set focusPrecedence(v: number | undefined) { this.props.focusPrecedence = v }
     setFocusPrecedence(n: number): this { this.focusPrecedence = n; return this }
+    /** @internal onClick() 绑定的方法与参数（界面构建时，绑定了方法的按钮编译为服务端按钮） */
+    binding?: { method: string, args: unknown[] }
+    /**
+     * 点击时调用界面的方法：onClick(buy) 或带参数 onClick(buy, '钻石')（参数须可写成 JSON）。
+     * 方法从页面函数的参数中解构得到；不绑定方法的按钮只是界面内部的按钮
+     */
+    onClick(method: { readonly __method: string }, ...args: unknown[]): this {
+        if (!method || typeof method.__method !== 'string') throw new Error('onClick() 的第一个参数应是从页面函数的参数中解构得到的方法，例如 ({ buy }) => … 中的 buy')
+        if (!args.every(isJsonable)) throw new Error('onClick() 的参数须能写成 JSON（文字、数字、布尔值、null、数组、普通对象）')
+        this.binding = { method: method.__method, args }
+        return this
+    }
     /** 仅预览：点击回调 */
     setOnPress(fn: () => void): this { this.props.onPress = fn; return this }
     /** 同 setOnPress */

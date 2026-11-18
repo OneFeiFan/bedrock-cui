@@ -15,9 +15,10 @@
  * 视图在构建时运行一次：props.x 是占位（编译为读取第 n 个表单按钮的绑定），button(名字) 是可点击的按钮。
  * 序号与标记由本模块分配，写进清单（ScreenManifest），脚本端运行时按清单把名字映射回序号。
  */
-import { Panel, type Element } from './element.js'
+import { Panel, Element, Button } from './element.js'
+import { Link, NavButton, Router, Tabs, type PageFunction } from './pageElements.js'
 import { Size, type LengthLike } from './values.js'
-import { PropRef } from './expr.js'
+import { PropRef, type Expr } from './expr.js'
 import { FormButton } from '../components/form.js'
 import { Pages } from '../components/pages.js'
 import { arrowTag, pagingButtons, type FormButtonSpec, type ServerPaging } from './serverPagesShared.js'
@@ -111,13 +112,6 @@ export class ScreenButton extends Panel {
  * 视图函数得到的参数：props、state、computed 中的值（占位，编译为读取表单按钮的绑定）与 methods 中的方法（供 onClick 引用），
  * 以及工具 button、close（与 pages，翻页用）。视图从中解构需要的名字，例如 view({ greeting, buy, button })
  */
-export type ScreenViewContext = Record<string, any> & {
-    /** 创建一个按钮，用 onClick(方法, …参数) 绑定点击时调用的方法 */
-    button(): ScreenButton
-    /** 内置的方法：关闭界面（button().onClick(close)） */
-    close: MethodRef
-}
-
 /** 界面的选项 */
 export interface ScreenOptions {
     /** 界面 id，以 cui_ui: 开头 */
@@ -128,11 +122,11 @@ export interface ScreenOptions {
     state?(): Record<string, unknown>
     /** 由状态计算的值 */
     computed?: Record<string, (this: any) => unknown>
-    /** 方法：视图中用 button().onClick(方法) 绑定 */
+    /** 方法：页面中用 new Button().onClick(方法) 绑定 */
     methods?: Record<string, (this: any, ...args: any[]) => unknown>
     /**
      * 第一次打开前。逻辑中可用：this.名字（props、state、computed、methods）、this.player、this.mc（@minecraft/server）、this.close()、
-     * this.emit(事件名, …)（脚本用 screen.on() 接收）、this.setInterval / this.setTimeout（界面关闭时自动取消）。
+     * this.emit(事件名, …)（脚本用 界面.on() 接收）、this.setInterval / this.setTimeout（界面关闭时自动取消）。
      * 界面文件在构建时会被 Node 导入，不能在开头导入游戏的脚本模块（@minecraft/*），用 this.mc
      */
     onOpen?(this: any): void
@@ -140,30 +134,13 @@ export interface ScreenOptions {
     onUpdate?(this: any): void
     /** 玩家关闭表单，或调用 this.close() 后 */
     onClose?(this: any): void
-    /** 视图：返回控件树（构建时运行一次）。有多页时不写 view，改写 pages */
-    view?(ctx: ScreenViewContext): Element
-    /**
-     * 多页（服务端切换：切换时界面以那一页重新打开，鼠标不动也能连续点击）：{ 页名: (ctx) => 这一页的控件 }。
-     * 页内的 ctx 另有 link(页名)、next()、prev()、back()，返回跳转用的按钮
-     */
-    pages?: Record<string, (ctx: ScreenViewContext & PageTools) => Element>
-    /** 打开界面时显示的页（缺省为第一页） */
-    start?: string
-    /** 计时器结束时刷新一次（只对 Countdown 显示的计时器；缺省 true）：false 时不刷新，倒计时会滚过 0 一段时间 */
+    /** 计时器结束时刷新一次（只对没有底色的 Countdown 显示的计时器；缺省 true）：false 时不刷新，倒计时会滚过 0 一段时间 */
     timerEndRefresh?: boolean
-    /** 各页共用的外框：ctx.page 是当前页放置的位置（缺省为铺满的容器） */
-    layout?(ctx: ScreenViewContext & { page: Element }): Element
-}
-
-/** 页内的跳转：返回按钮，像 button() 一样设置外观（default、hover、pressed、add） */
-export interface PageTools {
-    /** 跳到某一页 */
-    link(page: string): ScreenButton
-    /** 按定义的顺序到下一页 / 上一页 */
-    next(): ScreenButton
-    prev(): ScreenButton
-    /** 返回上一次所在的页（没有历史时不显示） */
-    back(): ScreenButton
+    /**
+     * 根页面：页面函数 (data) => Page，构建时运行一次。data 只含你在 props、state、computed、methods 中定义的名字：
+     * 数据是占位（显示在控件上），方法用于 new Button().onClick(方法)。多页用 Router、选项卡用 Tabs，放进页面即可
+     */
+    page: PageFunction
 }
 
 /** 一项数据占用的按钮（列表每项一个） */
@@ -174,14 +151,14 @@ export interface ScreenManifest {
     id: string
     /** 视图读取的数据：来源（prop / state / computed）、种类、占用的按钮、默认值（预览用） */
     data: { name: string, source: 'prop' | 'state' | 'computed', kind: DataKind, slots: PropSlot[], default: unknown, refreshAtEnd?: boolean, timerSeconds?: number }[]
-    /** 按钮：tag 为普通版的标记，focusTag 为聚焦版的标记；method 与 args 为 onClick 绑定的方法与参数（__close 为关闭） */
-    buttons: { index: number, tag: string, focusTag: string, method: string, args: unknown[] }[]
-    /** 多页时「返回」按钮（各页共用一个序号；有历史时才显示） */
-    back?: { index: number, tag: string, focusTag: string }
+    /**
+     * 按钮：tag 为普通版的标记，focusTag 为聚焦版的标记；method 与 args 为绑定的方法与参数。
+     * 内置：__close（关闭）、__link（跳到 args[0]）、__back、__next、__prev（Router 的跳转）。page 为按钮所在的 Router 子页面（公共部分没有）
+     */
+    buttons: { index: number, tag: string, focusTag: string, method: string, args: unknown[], page?: string }[]
+    /** Router 的子页面（按定义的顺序） */
+    router?: { pages: string[] }
 }
-
-/** 视图中可用的工具名：不能用作 props、state、computed、methods 的名字 */
-const TOOLS = ['button', 'close', 'link', 'back', 'next', 'prev', 'page']
 
 /** 由值推断数据的种类（state 的初始值、computed 的示例值） */
 function kindOfValue(v: unknown): DataKind | undefined {
@@ -236,9 +213,7 @@ const hook = (): ScreenRuntimeHook => {
 export class Screen {
     constructor(readonly options: ScreenOptions) {
         if (!options.id?.startsWith('cui_ui:')) throw new Error(`界面 id 必须以 cui_ui: 开头（收到 ${JSON.stringify(options.id)}）`)
-        if (typeof options.view !== 'function' && !options.pages) throw new Error(`${options.id}：缺少 view()（只有一页时）或 pages（多页时）`)
-        if (options.view && options.pages) throw new Error(`${options.id}：view 与 pages 只能写一个（多页时各页的内容写在 pages 中，共用的外框写在 layout 中）`)
-        if (options.pages && options.start && !(options.start in options.pages)) throw new Error(`${options.id}：start 指定的页「${options.start}」不在 pages 中`)
+        if (typeof options.page !== 'function') throw new Error(`${options.id}：缺少 page（根页面函数，例如 page: (data) => new Page()）`)
     }
 
     /** 界面 id */
@@ -287,7 +262,6 @@ export class Screen {
         const stateInit: Record<string, unknown> = this.options.state ? this.options.state.call({}) ?? {} : {}
         for (const [group, names] of [['props', Object.keys(props)], ['state', Object.keys(stateInit)], ['computed', Object.keys(computed)], ['methods', Object.keys(methods)]] as const) {
             for (const n of names) {
-                if (TOOLS.includes(n)) throw new Error(`${id}：${group}.${n} 与视图的工具名重名（${TOOLS.join('、')} 不能用作名字）`)
                 if (owner.has(n)) throw new Error(`${id}：名字「${n}」同时出现在 ${owner.get(n)} 与 ${group} 中，名字不能重复`)
                 owner.set(n, group)
             }
@@ -331,70 +305,145 @@ export class Screen {
             return out
         }
 
-        const buttons: ScreenButton[] = []
-        const button = (): ScreenButton => {
-            const index = alloc()
-            const b = new ScreenButton(index, `@b${index}|`, `@b${index}|F`)
-            buttons.push(b)
-            return b
-        }
-        const created: Pages[] = []
-        const tools: Record<string, unknown> = { button, close: { __method: '__close' } }
-
-        const ctx = new Proxy({}, {
+        // 页面函数的参数：只有使用者定义的名字（数据占位与方法引用），框架不放任何东西进去
+        const data = new Proxy({}, {
             get(_, key) {
                 if (typeof key === 'symbol' || key === 'then' || key === 'toJSON') return undefined
-                if (key in tools) return tools[key]
                 if (owner.get(key) === 'methods') return { __method: key } satisfies MethodRef
                 if (owner.has(key)) return channel(key)
-                throw new Error(`${id}：视图中使用了未定义的名字「${key}」（在 props、state、computed 或 methods 中定义它）`)
+                throw new Error(`${id}：页面中使用了未定义的名字「${key}」（在 props、state、computed 或 methods 中定义它）`)
             },
-        }) as ScreenViewContext
+        })
 
-        // 带工具的视图参数：页内的跳转、外框的 page
-        const withTools = (extra: Record<string, unknown>) => new Proxy({}, { get: (_, key) => (typeof key === 'string' && key in extra ? extra[key] : (ctx as Record<string | symbol, unknown>)[key]) }) as ScreenViewContext
+        // 1. 根页面
+        const root = this.options.page(data)
+        if (!(root instanceof Element)) throw new Error(`${id}：page 应返回一个 Page`)
 
-        let root: Element
-        if (this.options.pages) {
-            // 多页：内部用一组服务端翻页（标题带页名），页内的 link / next / prev 登记路由；back 各页共用一个序号
-            const order = Object.keys(this.options.pages)
-            const router = new Pages('page')._useAllocator(alloc).useServerPages().startAt(this.options.start ?? order[0]).setSize(Size.full())
-            created.push(router)
-            for (const name of order) {
-                const at = order.indexOf(name)
-                const link = (to: string): ScreenButton => {
-                    if (!order.includes(to)) throw new Error(`${id}：link('${to}') 跳到的页不存在（页：${order.join('、')}）`)
-                    const index = router._link(name, to, order.indexOf(to) > at ? 'next' : 'prev')
-                    return new ScreenButton(index, arrowTag(index), arrowTag(index, true))
+        // 2. 展开页面组：逐层调用子页面函数（组可以嵌套：Tabs 可以在 Router 的子页面里）
+        type Group = { el: Router | Tabs, pages: Pages, order: string[], kind: 'router' | 'tabs' }
+        const groups: Group[] = []
+        const pageOf = new Map<Element, { group: Group, name: string }>()
+        let router: Group | undefined
+        let tabsCount = 0
+        const kids = (el: Element): Element[] => [...el.children, ...Object.values((el as { slots?(): Record<string, Element> }).slots?.() ?? {})]
+        const queue: Element[] = [root]
+        while (queue.length) {
+            const el = queue.shift()!
+            if ((el instanceof Router || el instanceof Tabs) && !groups.some((g) => g.el === el)) {
+                const kind = el instanceof Router ? 'router' : 'tabs'
+                if (kind === 'router' && router) throw new Error(`${id}：每个界面最多一个 Router`)
+                const order = Object.keys(el.routes)
+                const pages = new Pages(kind === 'router' ? 'page' : (el.name ?? `tabs${tabsCount++}`))._useAllocator(alloc)
+                if (kind === 'router') pages.useServerPages()
+                pages.startAt(el.start ?? order[0]).setSize(Size.full())
+                const group: Group = { el, pages, order, kind }
+                groups.push(group)
+                if (kind === 'router') router = group
+                for (const name of order) {
+                    const content = el.routes[name](data)
+                    if (!(content instanceof Element)) throw new Error(`${id}：子页面「${name}」的页面函数应返回一个 Page`)
+                    pages.page(name).add(content)
+                    pageOf.set(content, { group, name })
                 }
-                const tools: PageTools = {
-                    link,
-                    next: () => { if (at + 1 >= order.length) throw new Error(`${id}：「${name}」是最后一页，没有 next()`); return link(order[at + 1]) },
-                    prev: () => { if (at === 0) throw new Error(`${id}：「${name}」是第一页，没有 prev()`); return link(order[at - 1]) },
-                    back: () => {
-                        if (!manifest.back) { const index = alloc(); manifest.back = { index, tag: `@back${index}|`, focusTag: `@back${index}|F` } }
-                        return new ScreenButton(manifest.back.index, manifest.back.tag, manifest.back.focusTag)
-                    },
-                }
-                router.page(name).add(this.options.pages[name](withTools(tools as unknown as Record<string, unknown>) as ScreenViewContext & PageTools))
+                el.add(pages)
             }
-            root = this.options.layout ? this.options.layout(withTools({ page: router }) as ScreenViewContext & { page: Element }) : new Panel().setSize(Size.full()).add(router)
-            root.add(router.stayButton())
-        } else {
-            root = this.options.view!(ctx)
+            queue.push(...kids(el))
         }
-        // 计时器需要结束时刷新（Countdown 标记的数据通道）
-        if (this.options.timerEndRefresh !== false) {
-            for (const d of manifest.data) {
-                const refs = channels.get(d.name)
-                if ((Array.isArray(refs) ? refs : [refs]).some((r) => (r?._refreshAtEndCount ?? 0) > 0)) d.refreshAtEnd = true
+
+        // 3. 解析与具体化：跳转元素找到所属的页面组；Router 中的跳转、Close、绑定了方法的 Button 编译为服务端按钮，Tabs 中的跳转编译为开关
+        const ancestors = (el: Element): Element[] => { const out: Element[] = []; for (let p = el.parent; p; p = p.parent) out.push(p); return out }
+        const contains = (a: Element, b: Element): boolean => { for (let p: Element | undefined = b; p; p = p.parent) if (p === a) return true; return false }
+        /** 元素所在的子页面（由内向外），可选只看某一组 */
+        const pagesAround = (el: Element): { group: Group, name: string }[] => ancestors(el).map((p) => pageOf.get(p)).filter((x): x is { group: Group, name: string } => !!x)
+        const describe = (el: NavButton) => (el instanceof Link ? `new Link('${el.groupName ? el.groupName + ':' : ''}${el.target}')` : `new ${el.constructor.name}()`)
+        const findGroup = (el: NavButton): Group => {
+            const candidates = groups.filter((g) => (!el.groupName || g.el.name === el.groupName) && (!(el instanceof Link) || g.order.includes(el.target)))
+            if (!candidates.length) throw new Error(`${id}：${describe(el)} 找不到所属的页面组${el instanceof Link ? `（没有含「${el.target}」的 Router / Tabs）` : ''}`)
+            // 元素所在的子页面属于某个候选组：取最近的那个
+            const own = pagesAround(el).find((p) => candidates.includes(p.group))
+            if (own) return own.group
+            // 公共部分：由内向外，第一层含有候选组的祖先决定
+            for (const a of ancestors(el)) {
+                const here = candidates.filter((g) => contains(a, g.el))
+                if (here.length === 1) return here[0]
+                if (here.length > 1) throw new Error(`${id}：${describe(el)} 可以属于多个页面组，请写成 new Link('组名:页名') 或 new ${el.constructor.name}('组名')（组名用页面组的 setName）`)
+            }
+            throw new Error(`${id}：${describe(el)} 找不到所属的页面组`)
+        }
+        const replace = (src: Element, dst: Element) => {
+            const parent = src.parent!
+            const i = parent.children.indexOf(src)
+            ;(parent.children as Element[])[i] = dst
+            dst.parent = parent
+            src.parent = undefined
+        }
+        const PLACE = ['anchor', 'offset', 'offsetX', 'offsetY', 'layer', 'visible', 'minSize', 'maxSize', 'grow', 'name'] as const
+        const place = (src: Element, dst: Element) => {
+            for (const k of PLACE) if ((src.props as Record<string, unknown>)[k] !== undefined) (dst.props as Record<string, unknown>)[k] = (src.props as Record<string, unknown>)[k]
+            if (src.size !== undefined) dst.size = src.size
+        }
+        const take = (panel: Element): Element[] => { const items = [...panel.children]; for (const c of items) panel.remove(c); return items }
+        const serverButton = (src: Button, method: string, args: unknown[], page: string | undefined, selected?: Expr) => {
+            const index = alloc(), tag = `@b${index}|`, focusTag = `@b${index}|F`
+            const sb = new ScreenButton(index, tag, focusTag)
+            place(src, sb)
+            const d = take(src.default), h = take(src.hover), pr = take(src.pressed)
+            if (d.length) sb.default.add(...d)
+            if (h.length) sb.hover.add(...h)
+            if (pr.length) sb.pressed.add(...pr)
+            const always = [...src.children]
+            for (const c of always) src.remove(c)
+            if (always.length) sb.add(...always)
+            if (selected && src instanceof NavButton && src.selected.children.length) sb.add(new Panel().setSize(Size.full()).setVisible(selected).add(...take(src.selected)))
+            replace(src, sb)
+            manifest.buttons.push({ index, tag, focusTag, method, args, ...(page ? { page } : {}) })
+        }
+        const tabToggle = (src: NavButton, group: Group, target: string, step: boolean) => {
+            const t = group.pages.link(target).setSize(Size.full())
+            if (step) t.props.cuiTabsStep = true                        // 静态检查：客户端连续点击不可靠
+            const d = take(src.default), h = take(src.hover), sel = take(src.selected)
+            const selectedLook = sel.length ? sel : d.map((e) => e.clone())
+            t.unchecked.add(...d)
+            t.uncheckedHover.add(...(h.length ? h : d.map((e) => e.clone())))
+            t.checked.add(...selectedLook)
+            t.checkedHover.add(...selectedLook.map((e) => e.clone()))
+            const wrap = new Panel()
+            place(src, wrap)
+            const always = [...src.children]
+            for (const c of always) src.remove(c)
+            wrap.add(t, ...always)
+            replace(src, wrap)
+        }
+        const actions: Button[] = []
+        const collect = (el: Element) => { if (el instanceof Button && (el instanceof NavButton || el.binding)) actions.push(el); for (const c of kids(el)) collect(c) }
+        collect(root)
+        for (const el of actions) {
+            const routerPage = router && pagesAround(el).find((p) => p.group === router)?.name
+            if (!(el instanceof NavButton)) { serverButton(el, el.binding!.method, el.binding!.args, routerPage); continue }
+            const group = findGroup(el)
+            const ownPage = pagesAround(el).find((p) => p.group === group)?.name
+            const at = ownPage ? group.order.indexOf(ownPage) : -1
+            if (group.kind === 'router') {
+                // 子页面里的 Prev / Next：首页 / 末页编译时隐藏；公共部分的由运行时在不可用时隐藏
+                if ((el.nav === 'prev' && at === 0) || (el.nav === 'next' && at === group.order.length - 1)) { el.setVisible(false); continue }
+                const target = el instanceof Link ? el.target : undefined
+                serverButton(el, `__${el.nav}`, target ? [target] : [], ownPage, target ? group.pages.showing(target) : undefined)
+            } else {
+                if (el.nav === 'back') throw new Error(`${id}：选项卡（Tabs）中没有 Back：客户端不记录历史；需要返回时用 Router`)
+                if (el instanceof Link) { tabToggle(el, group, el.target, false); continue }
+                if (at < 0) throw new Error(`${id}：选项卡的公共部分不能放 new ${el.constructor.name}()：客户端不知道当前是哪一块，放进各块之中`)
+                const target = group.order[at + (el.nav === 'next' ? 1 : -1)]
+                if (!target) { el.setVisible(false); continue }
+                tabToggle(el, group, target, true)
             }
         }
-        for (const b of buttons) {
-            if (!b.binding) throw new Error(`${id}：有一个 button() 没有绑定方法：用 button().onClick(方法) 绑定`)
-            manifest.buttons.push({ index: b.normal.index, tag: b.normal.tag, focusTag: b.focused.tag, method: b.binding.method, args: b.binding.args })
+
+        // 4. Router：「原地不动」按钮（当前页没有被点中的按钮时接住点击），清单记子页面的顺序
+        if (router) {
+            root.add(router.pages.stayButton())
+            manifest.router = { pages: router.order }
         }
-        this.lastPages = created
+        this.lastPages = router ? [router.pages] : []
         return { root, manifest }
     }
 
@@ -410,7 +459,15 @@ export class Screen {
                 buttons[s.index] = s.tag + textOf(v); icons[s.index] = iconOf(v)
             })
         }
-        for (const b of manifest.buttons) { buttons[b.index] = b.tag; icons[b.index] = '' }
+        // 初始状态的跳转按钮：没有历史（Back 隐藏）；公共部分的 Prev / Next 看起始页
+        const order = manifest.router?.pages ?? []
+        const start = this.lastPages[0]?.serverPaging(this.id).start
+        const at = order.indexOf(start ?? '')
+        for (const b of manifest.buttons) {
+            if (b.method === '__back') continue
+            if (b.page === undefined && ((b.method === '__prev' && at <= 0) || (b.method === '__next' && (at < 0 || at >= order.length - 1)))) continue
+            buttons[b.index] = b.tag; icons[b.index] = ''
+        }
         // 翻页箭头：起始页的箭头与「原地不动」按钮
         for (const p of this.lastPages) {
             const paging = p.serverPaging(this.id)
@@ -424,6 +481,6 @@ export class Screen {
 }
 
 /** 定义一个界面 */
-export function defineScreen(options: ScreenOptions): Screen {
+export function defineUI(options: ScreenOptions): Screen {
     return new Screen(options)
 }

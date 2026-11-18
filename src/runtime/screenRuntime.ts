@@ -202,9 +202,18 @@ class Instance {
                 own[s.index] = x.icon ? { text: s.tag + x.text, icon: x.icon } : s.tag + x.text
             })
         }
-        for (const b of m.buttons) own[b.index] = b.index === this.focus ? b.focusTag : b.tag
-        // 「返回」：有历史时才显示；刚才点击了它时发送聚焦版
-        if (m.back && this.history.length) own[m.back.index] = m.back.index === this.focus ? m.back.focusTag : m.back.tag
+        // 跳转按钮在无处可去时不写标记（隐藏）：Back 需要历史；公共部分的 Prev / Next 看当前页（子页面中的在构建时已处理）
+        const order = m.router?.pages ?? []
+        const current = this.page ?? m.paging?.start
+        const usable = (b: Manifest['buttons'][number]) => {
+            if (b.method === '__back') return this.history.length > 0
+            if (b.page === undefined && (b.method === '__prev' || b.method === '__next')) {
+                const i = order.indexOf(current ?? '')
+                return b.method === '__prev' ? i > 0 : i >= 0 && i < order.length - 1
+            }
+            return true
+        }
+        for (const b of m.buttons) if (usable(b)) own[b.index] = b.index === this.focus ? b.focusTag : b.tag
         const texts = m.paging
             ? pagingButtons(m.paging, this.page ?? m.paging.start, this.dir, own)
             : Array.from({ length: Math.max(-1, ...Object.keys(own).map(Number)) + 1 }, (_, i) => (typeof own[i] === 'object' ? (own[i] as { text: string }).text : (own[i] as string | undefined) ?? ''))
@@ -426,18 +435,12 @@ export class ScreenRuntime<P extends ScreenPlayer = ScreenPlayer> {
             if (next.kind === 'turn') inst.history.push(inst.page ?? m.paging.start)      // 跳到别的页：记下来处
             if (next.kind !== 'own') { inst.page = next.page; inst.dir = next.dir; inst.focus = undefined; return true }
             index = next.index
-            // 返回：回到上一次所在的页；方向记为 back（没有箭头获得聚焦版），焦点给「返回」按钮
-            if (m.back && index === m.back.index) {
-                const prev = inst.history.pop()
-                if (prev !== undefined) { inst.page = prev; inst.dir = 'back' }
-                inst.focus = m.back.index
-                return true
-            }
         }
         const b = m.buttons.find((x) => x.index === index)
         if (b) {
             inst.focus = b.index
             if (b.method === '__close') { this.close(inst.screen, inst.player); return false }
+            if (b.method === '__link' || b.method === '__back' || b.method === '__next' || b.method === '__prev') { this.navigate(inst, b); return true }
             await inst.screen.options.methods?.[b.method]?.call(inst.ctx, ...b.args)
         }
         if (inst.closed) return false
@@ -445,6 +448,29 @@ export class ScreenRuntime<P extends ScreenPlayer = ScreenPlayer> {
         if (inst.closed) return false
         inst.screen.options.onUpdate?.call(inst.ctx)
         return !inst.closed
+    }
+
+    /**
+     * Router 的跳转：__link 跳到 args[0]，__back 回到上一次所在的页，__next / __prev 按定义的顺序。
+     * 焦点：公共部分的按钮在每一页都是同一个（序号不变）；子页面中的按钮，给新页中动作相同的那个——鼠标不动也能连续点击
+     */
+    private navigate(inst: Instance, b: Manifest['buttons'][number]): void {
+        const m = inst.manifest
+        const order = m.router?.pages ?? []
+        const current = inst.page ?? m.paging?.start ?? order[0]
+        let target: string | undefined
+        if (b.method === '__link') target = String(b.args[0])
+        else if (b.method === '__back') target = inst.history.pop()
+        else target = order[order.indexOf(current) + (b.method === '__next' ? 1 : -1)]
+        if (target !== undefined && target !== current && order.includes(target)) {
+            if (b.method !== '__back') inst.history.push(current)
+            inst.page = target
+        }
+        inst.dir = 'back'                                  // 没有翻页箭头获得聚焦版（焦点由下面决定）
+        const now = inst.page ?? current
+        inst.focus = b.page === undefined ? b.index
+            : m.buttons.find((x) => x.page === now && x.method === b.method && JSON.stringify(x.args) === JSON.stringify(b.args))?.index
+        this.log(inst, `跳到「${now}」`)
     }
 
     /** 立即替换正在显示的表单（处理完旧表单上的点击后用） */

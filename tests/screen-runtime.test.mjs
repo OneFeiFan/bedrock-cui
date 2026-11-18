@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { Item, Label, Panel, defineScreen, _setScreenRuntime } from '../dist/index.js'
+import { Back, Button, Close, Item, Label, Link, Next, Page, Panel, Prev, Router, Tabs, defineUI, _setScreenRuntime } from '../dist/index.js'
 import { CuiApp } from '../dist/node/index.js'
 import { ScreenRuntime } from '../dist/runtime/screenRuntime.js'
 
@@ -17,7 +17,7 @@ function fakePlatform() {
 const tick = () => new Promise((r) => setTimeout(r, 0))
 
 function setup(options) {
-    const screen = defineScreen(options)
+    const screen = defineUI(options)
     const manifests = CuiApp.fromConfig({ namespace: 'n', screens: [screen] }).compile().screens
     const platform = fakePlatform()
     const runtime = new ScreenRuntime(platform)
@@ -42,11 +42,9 @@ const shopOptions = (calls = []) => ({
     onOpen() { calls.push('onOpen') },
     onUpdate() { calls.push('onUpdate') },
     onClose() { calls.push(`onClose ${this.coins}`) },
-    view({ coinText, item, vip, buy, leave, slow, button }) {
-        return new Panel().setSize(200, 100).add(
-            new Label(coinText).setSize(180, 10), new Label(item).setSize(100, 10), new Label('会员').setSize(40, 10).setVisible(vip),
-            button().onClick(buy).setSize(40, 16), button().onClick(leave).setSize(40, 16), button().onClick(slow).setSize(40, 16), button().onClick(buy, 5).setSize(40, 16))
-    },
+    page: ({ coinText, item, vip, buy, leave, slow }) => new Page().setSize(200, 100).add(
+        new Label(coinText).setSize(180, 10), new Label(item).setSize(100, 10), new Label('会员').setSize(40, 10).setVisible(vip),
+        new Button().onClick(buy).setSize(40, 16), new Button().onClick(leave).setSize(40, 16), new Button().onClick(slow).setSize(40, 16), new Button().onClick(buy, 5).setSize(40, 16)),
 })
 
 test('open：按清单生成表单——标题为界面 id；props 取 open() 传入的值或默认值，computed 由状态计算；布尔值为 true 时写标记', async () => {
@@ -107,19 +105,17 @@ test('翻页：翻页箭头只翻页（标题带页名），不调用方法；�
     const { screen, platform, m } = setup({
         id: 'cui_ui:book',
         methods: { note() { calls.push('note') } },
-        pages: {
-            p1: ({ next }) => new Panel().add(next().setSize(16, 12)),
-            p2: () => new Label('2'),
-        },
-        layout: ({ page, note, button }) => new Panel().setSize(200, 120).add(page, button().onClick(note).setSize(12, 12)),
+        page: ({ note }) => new Page().setSize(200, 120).add(
+            new Router({ p1: () => new Page().add(new Next().setSize(16, 12)), p2: () => new Page().add(new Label('2')) }),
+            new Button().onClick(note).setSize(12, 12)),
     })
     screen.open(P)
     assert.match(platform.shown[0].form.title, /^cui_ui:book\|.*p1/)
-    platform.shown[0].resolve({ canceled: false, selection: m.paging.arrows[0].index }); await tick(); await tick()
+    platform.shown[0].resolve({ canceled: false, selection: m.buttons.find((b) => b.method === '__next').index }); await tick(); await tick()
     assert.match(platform.shown.at(-1).form.title, /p2/)
     assert.deepEqual(calls, [])
 
-    const lonely = defineScreen({ id: 'cui_ui:lonely', view: () => new Panel() })
+    const lonely = defineUI({ id: 'cui_ui:lonely', page: () => new Panel() })
     assert.throws(() => lonely.open(P), /cui\.generated\.js/)
 })
 
@@ -132,7 +128,7 @@ test('界面以外的状态变化（例如定时器）：安排刷新——关�
         methods: { tap() { this.n = 99; this.other = 1 } },
         onOpen() { holder.ctx = this },
         onClose() { calls.push('onClose') },
-        view({ left, tap, button }) { return new Panel().setSize(200, 60).add(new Label(left).setSize(100, 10), button().onClick(tap).setSize(30, 12)) },
+        page: ({ left, tap }) => new Panel().setSize(200, 60).add(new Label(left).setSize(100, 10), new Button().onClick(tap).setSize(30, 12)),
     })
     platform.schedule = (fn) => setTimeout(fn, 0)        // 合并到下一刻
     screen.open(P)
@@ -167,7 +163,7 @@ test('this.setInterval / setTimeout：与界面生命周期绑定——回调中
             holder.stop = this.setInterval(() => { this.n -= 1 }, 1)
             this.setTimeout(() => { this.n = 0 }, 4)
         },
-        view({ left }) { return new Panel().setSize(100, 30).add(new Label(left).setSize(50, 10)) },
+        page: ({ left }) => new Panel().setSize(100, 30).add(new Label(left).setSize(50, 10)),
     })
     let interval, timeout, canceled = false
     runtime.quietMs = 0
@@ -194,7 +190,7 @@ test('刷新：关闭后同一刻立即显示新表单，不等旧表单的结�
         id: 'cui_ui:replace', state() { return { n: 1 } },
         computed: { v() { return String(this.n) } },
         onOpen() { holder.ctx = this }, onClose() { calls.push('onClose') },
-        view({ v }) { return new Panel().setSize(100, 30).add(new Label(v).setSize(50, 10)) },
+        page: ({ v }) => new Panel().setSize(100, 30).add(new Label(v).setSize(50, 10)),
     })
     platform.schedule = (fn) => fn()
     platform.close = (player) => { platform.log.push(`close ${player.id}`) }     // 关闭后旧表单的结果稍后才到
@@ -218,7 +214,7 @@ test('刷新时不丢点击（真机 1.39.0）：被替换的旧表单上的点�
             computed: { v() { return `${this.n}/${this.t}` } },
             methods: { hello() { this.n += 1 } },
             onOpen() { holder.ctx = this },
-            view({ v, hello, button }) { return new Panel().setSize(100, 40).add(new Label(v).setSize(50, 10), button().onClick(hello).setSize(30, 12)) },
+            page: ({ v, hello }) => new Panel().setSize(100, 40).add(new Label(v).setSize(50, 10), new Button().onClick(hello).setSize(30, 12)),
         })
         platform.schedule = (fn) => fn()
         platform.close = (player) => { platform.log.push(`close ${player.id}`) }      // 关闭的结果由测试决定
@@ -241,7 +237,7 @@ test('表单刚显示不久时推迟刷新（真机 1.40.0）：安静下来后�
         computed: { v() { return `${this.n}/${this.t}` } },
         methods: { hello() { this.n += 1 } },
         onOpen() { holder.ctx = this },
-        view({ v, hello, button }) { return new Panel().setSize(100, 40).add(new Label(v).setSize(50, 10), button().onClick(hello).setSize(30, 12)) },
+        page: ({ v, hello }) => new Panel().setSize(100, 40).add(new Label(v).setSize(50, 10), new Button().onClick(hello).setSize(30, 12)),
     })
     let now = 1000
     const timeouts = []
@@ -275,7 +271,7 @@ test('事件总线：方法中 this.emit() → 脚本 screen.on() 的处理函�
     const { screen, platform, click } = setup({
         id: 'cui_ui:bus', props: { coins: { type: String } }, state() { return { n: 0 } },
         methods: { buy() { this.n += 1; this.emit('buy', '钻石', this.n) }, boom() { this.emit('boom') } },
-        view({ coins, buy, boom, button }) { return new Panel().setSize(100, 40).add(new Label(coins).setSize(50, 10), button().onClick(buy).setSize(30, 12), button().onClick(boom).setSize(30, 12)) },
+        page: ({ coins, buy, boom }) => new Panel().setSize(100, 40).add(new Label(coins).setSize(50, 10), new Button().onClick(buy).setSize(30, 12), new Button().onClick(boom).setSize(30, 12)),
     })
     screen.on('buy', (player, item, n) => { seen.push(`${player.id} ${item} ${n}`); screen.open(player, { coins: `金币 ${100 - n}` }) })
     screen.on('boom', () => { throw new Error('出错了') })
@@ -295,7 +291,7 @@ test('合并队列：定时器回调中多次修改状态并发出事件——�
         id: 'cui_ui:merge', props: { w: { type: String } }, state() { return { a: 0, b: 0 } },
         computed: { v() { return `${this.a}-${this.b}` } },
         onOpen() { holder.ctx = this },
-        view({ v, w }) { return new Panel().setSize(100, 40).add(new Label(v).setSize(50, 10), new Label(w).setSize(50, 10)) },
+        page: ({ v, w }) => new Panel().setSize(100, 40).add(new Label(v).setSize(50, 10), new Label(w).setSize(50, 10)),
     })
     screen.on('tick', (player, a) => seen.push(a))
     platform.close = (player) => { platform.log.push(`close ${player.id}`) }
@@ -330,7 +326,7 @@ test('深层响应式：state 中数组的 push、嵌套对象的修改都触发
         computed: { count() { return `${this.owner}：${this.bag.items.length} 件` } },
         methods: { pick() { calls.push(typeof this.mc.marker); this.bag.items.push('面包') } },
         onOpen() { holder.ctx = this }, onClose() { calls.push('onClose') },
-        view({ count, pick, close, button }) { return new Panel().setSize(100, 40).add(new Label(count).setSize(80, 10), button().onClick(pick).setSize(20, 12), button().onClick(close).setSize(12, 12)) },
+        page: ({ count, pick }) => new Panel().setSize(100, 40).add(new Label(count).setSize(80, 10), new Button().onClick(pick).setSize(20, 12), new Close().setSize(12, 12)),
     })
     platform.mc = { marker: 'mc' }
     platform.close = (player) => { platform.log.push(`close ${player.id}`) }
@@ -349,44 +345,55 @@ test('深层响应式：state 中数组的 push、嵌套对象的修改都触发
     assert.ok(!screen.isOpen(P)); assert.ok(calls.includes('onClose'))
 })
 
-test('多页（pages）：link / next / prev 登记路由，back 各页共用一个序号；运行时跳转记下历史、返回上一页并让「返回」获得焦点；没有历史时不显示「返回」', async () => {
+test('多页（Router）：Link / Back / Prev / Next 编译为运行时处理的按钮；跳转记下历史，Back 返回；跳转后新页中动作相同的按钮获得焦点；无处可去时隐藏', async () => {
+    const Entry = (title) => () => new Page().add(new Label(title), new Back().setSize(12, 12), new Next().setSize(12, 12))
     const guide = {
-        id: 'cui_ui:guide', start: 'home',
-        pages: {
-            home: ({ link }) => new Panel().add(new Label('目录'), link('sword').setSize(40, 12), link('apple').setSize(40, 12)),
-            sword: ({ back, next }) => new Panel().add(new Label('钻石剑'), back().setSize(12, 12), next().setSize(12, 12)),
-            apple: ({ back, prev }) => new Panel().add(new Label('苹果'), back().setSize(12, 12), prev().setSize(12, 12)),
-        },
-        layout: ({ page, close, button }) => new Panel().setSize(200, 120).add(page, button().onClick(close).setSize(12, 12)),
+        id: 'cui_ui:guide',
+        page: () => new Page().setSize(200, 120).add(
+            new Link('home').setSize(20, 12),                          // 公共部分
+            new Prev().setSize(12, 12), new Close().setSize(12, 12),
+            new Router({
+                home: () => new Page().add(new Label('目录'), new Link('sword').setSize(40, 12), new Link('apple').setSize(40, 12)),
+                sword: Entry('钻石剑'),
+                apple: Entry('苹果'),
+            }).startAt('home'),
+        ),
     }
     const { screen, platform, m } = setup(guide)
-    assert.deepEqual(m.paging.arrows.map((a) => `${a.from}→${a.to}:${a.dir}`), ['home→sword:next', 'home→apple:next', 'sword→apple:next', 'apple→sword:prev'])
-    assert.ok(m.back && m.paging.stay !== undefined, '「返回」与「原地不动」')
+    const btn = (method, page, arg) => m.buttons.find((b) => b.method === method && b.page === page && (arg === undefined || b.args[0] === arg))
+    assert.deepEqual(m.router.pages, ['home', 'sword', 'apple'])
+    assert.ok(!btn('__next', 'apple'), '末页的 Next 编译时隐藏')
+    assert.ok(m.paging.stay !== undefined, '「原地不动」按钮')
     const shown = () => platform.shown.at(-1).form
+    const text = (b) => shown().buttons[b.index]?.text ?? ''
     const clickIndex = async (i) => { platform.shown.at(-1).resolve({ canceled: false, selection: i }); await tick(); await tick() }
     screen.open(P)
     assert.match(shown().title, /home/)
-    assert.equal(shown().buttons[m.back.index]?.text ?? '', '', '没有历史时不显示「返回」')
-    await clickIndex(m.paging.arrows[0].index)                 // 目录 → 钻石剑
+    assert.equal(text(btn('__back', 'sword')), '', '没有历史时 Back 不显示')
+    assert.equal(text(btn('__prev', undefined)), '', '首页：公共部分的 Prev 不显示')
+    await clickIndex(btn('__link', 'home', 'sword').index)          // 目录 → 钻石剑
     assert.match(shown().title, /sword/)
-    assert.equal(shown().buttons[m.back.index].text, m.back.tag, '有历史时显示「返回」')
-    await clickIndex(m.paging.arrows[2].index)                 // 钻石剑 → 苹果（next）
+    assert.equal(text(btn('__back', 'sword')), btn('__back', 'sword').tag, '有历史时显示 Back')
+    assert.equal(text(btn('__prev', undefined)), btn('__prev', undefined).tag)
+    await clickIndex(btn('__next', 'sword').index)                  // 钻石剑 → 苹果
     assert.match(shown().title, /apple/)
-    await clickIndex(m.back.index)                             // 返回 → 钻石剑
+    await clickIndex(btn('__back', 'apple').index)                  // Back → 钻石剑
     assert.match(shown().title, /sword/)
-    assert.equal(shown().buttons[m.back.index].text, m.back.focusTag, '「返回」获得焦点，鼠标不动也能连续返回')
-    assert.ok(!shown().buttons.some((b) => /^go\d+\|F$/.test(b.text)), '返回后没有箭头获得聚焦版')
-    await clickIndex(m.back.index)                             // 返回 → 目录
+    assert.equal(text(btn('__back', 'sword')), btn('__back', 'sword').focusTag, '新页中动作相同的按钮（Back）获得焦点：鼠标不动也能连续返回')
+    await clickIndex(btn('__back', 'sword').index)                  // Back → 目录
     assert.match(shown().title, /home/)
-    assert.equal(shown().buttons[m.back.index]?.text ?? '', '', '历史用完，「返回」不再显示')
+    assert.equal(text(btn('__back', 'sword')), '', '历史用完')
+    await clickIndex(btn('__link', undefined, 'home').index)        // 公共部分的 Link：焦点不变
+    assert.equal(text(btn('__link', undefined, 'home')), btn('__link', undefined, 'home').focusTag)
 })
 
 test('多页：写错时在构建时报出', () => {
-    const page = (extra) => defineScreen({ id: 'cui_ui:p', pages: { a: () => new Panel(), ...extra } }).build()
-    assert.throws(() => page({ b: ({ link }) => link('c') }), /跳到的页不存在/)
-    assert.throws(() => page({ b: ({ next }) => next() }), /最后一页/)
-    assert.throws(() => defineScreen({ id: 'cui_ui:p', view: () => new Panel(), pages: { a: () => new Panel() } }), /只能写一个/)
-    assert.throws(() => defineScreen({ id: 'cui_ui:p', start: 'x', pages: { a: () => new Panel() } }), /不在 pages 中/)
+    const ui = (page) => defineUI({ id: 'cui_ui:p', page }).build()
+    assert.throws(() => ui(() => new Page().add(new Router({ a: () => new Page().add(new Link('c').setSize(10, 10)) }))), /找不到所属的页面组/)
+    assert.throws(() => ui(() => new Page().add(new Router({ a: () => new Page() }), new Router({ b: () => new Page() }))), /最多一个 Router/)
+    assert.throws(() => ui(() => new Page().add(new Tabs({ a: () => new Page().add(new Back().setSize(10, 10)) }))), /没有 Back/)
+    assert.throws(() => new Router({ a: () => new Page() }).startAt('x'), /没有这个子页面/)
+    assert.throws(() => defineUI({ id: 'cui_ui:p' }), /缺少 page/)
 })
 
 test('刷新期间旧、新表单的异步点击依次执行，状态不丢失，一批点击只重新显示一次', async () => {
@@ -402,7 +409,7 @@ test('刷新期间旧、新表单的异步点击依次执行，状态不丢失�
             this.n = n + 1
             calls.push(`end ${this.n}`)
         } },
-        view({ v, add, button }) { return new Panel().setSize(100, 40).add(new Label(v).setSize(60, 10), button().onClick(add).setSize(20, 12)) },
+        page: ({ v, add }) => new Panel().setSize(100, 40).add(new Label(v).setSize(60, 10), new Button().onClick(add).setSize(20, 12)),
     })
     platform.close = () => { }                          // 旧表单的结果稍后传回
     runtime.quietMs = 0
@@ -485,7 +492,7 @@ test('相同值、同一个嵌套对象与删除不存在的属性不刷新；�
         id: 'cui_ui:unchanged', state() { return { n: 0, bag: { n: 0 }, list: [1] } },
         computed: { v() { return `${this.n}/${this.bag.n}/${this.list.length}` } },
         onOpen() { holder.ctx = this },
-        view({ v }) { return new Panel().setSize(100, 30).add(new Label(v).setSize(80, 10)) },
+        page: ({ v }) => new Panel().setSize(100, 30).add(new Label(v).setSize(80, 10)),
     })
     c.screen.open(P)
     holder.ctx.n = 0
