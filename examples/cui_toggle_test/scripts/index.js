@@ -84,6 +84,7 @@ system.afterEvents.scriptEventReceive.subscribe((e) => {
     if (e.id === 'cui:open') book.open(player)
     if (e.id === 'cui:responsive') openResponsive(player)
     if (e.id === 'cui:props') propsDemo.open(player)              // 不传 props：item 取默认值
+    if (e.id === 'cui:pages') pagesLab.open(player)
     // 诊断（1.43.0）：出现异常后关掉表单，/scriptevent cui:dump 打印运行时最近的记录（时间为毫秒的后 5 位）
     if (e.id === 'cui:dump') {
         const lines = screenRuntime.trace().slice(-40)
@@ -102,7 +103,8 @@ propsDemo.on('hello', (player, n) => {
 // 钟右键：动画实验（1.44.0）
 world.afterEvents.itemUse.subscribe((e) => { if (e.itemStack.typeId === 'minecraft:clock') animLab.open(e.source) })
 // 纸右键：页面实验（1.59.0）
-world.afterEvents.itemUse.subscribe((e) => { if (e.itemStack.typeId === 'minecraft:paper') pagesLab.open(e.source) })
+// 1.68.0：页面实验改用羽毛（纸已用于响应式演示，两者同时打开会互相排队）
+world.afterEvents.itemUse.subscribe((e) => { if (e.itemStack.typeId === 'minecraft:feather') pagesLab.open(e.source) })
 // 紫水晶碎片右键：计时实验（1.58.0）
 world.afterEvents.itemUse.subscribe((e) => { if (e.itemStack.typeId === 'minecraft:amethyst_shard') timerLab.open(e.source) })
 // 红石粉右键：比较运算实验（1.55.0）

@@ -1,5 +1,5 @@
 // 页面实验（1.59.0 → 1.64.0）：Router 与 Link / Back / Prev / Next——鼠标不动时连续点「下一页」「返回」是否都落在同一个按钮上。
-// 1.64.0 改用统一的页面写法：跳转由运行时处理，跳转后新页中动作相同的按钮获得焦点；公共部分的「目录」焦点不变
+// 1.68.0 起用羽毛打开（或 /scriptevent cui:pages）。1.64.0 改用统一的页面写法：跳转由运行时处理，跳转后新页中动作相同的按钮获得焦点；公共部分的「目录」焦点不变
 import { Anchor, Back, Close, Color, Image, Label, Link, Next, Page, Prev, Router, Size, defineUI } from 'bedrock-cui'
 
 const INK = Color.hex('#3c2814')
