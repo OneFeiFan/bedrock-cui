@@ -164,3 +164,20 @@ test('运行时：传入的计时器总时长与构建时不同，提示一次�
     } finally { console.warn = warn }
     assert.equal(warns.filter((w) => w.includes('60 秒') && w.includes('30 秒')).length, 1)
 })
+
+test('文字的逻辑组合（真机 1.68.0 N、O 错误，1.69.0 AA 正确）：同一数据的「包含」用 or 连接合并为一次比较；数字的复合 not 原样保留；有风险的组合可被静态检查发现', async () => {
+    const { compileExpr, ref, textLogicRisk } = await import('../dist/core/expr.js')
+    const s = ref('#s', { kind: 'global' }), t = ref('#t', { kind: 'global' }), n = ref('#n', { kind: 'global' })
+    const text = (e) => compileExpr(e).text.replace(/\$v\d+/g, '$')
+    assert.equal(text(s.contains('a').or(s.contains('z'))), '(not (((#s - $) - $) = #s))', '含 a 或含 z：一次比较（AA）')
+    assert.equal(text(s.contains('a').or(s.contains('b')).or(s.contains('c'))), '(not ((((#s - $) - $) - $) = #s))')
+    assert.equal(text(s.contains('a').or(s.contains('z')).not()), '(((#s - $) - $) = #s)', '都不含：等式')
+    assert.equal(text(n.gt(3).and(n.gt(7)).not()), '(not ((#n > 3) and (#n > 7)))', '数字的复合 not 原样（X 正确）')
+    assert.ok(!/ or /.test(text(s.contains('a').or(s.contains('z')))))
+    assert.equal(textLogicRisk(s.contains('a').or(s.contains('z'))), undefined)
+    assert.equal(textLogicRisk(s.contains('a').and(s.contains('z').not())), undefined, 'Q 的形式经过验证')
+    assert.match(textLogicRisk(s.contains('a').or(t.contains('b'))), /or 右边/, '不同数据的「包含」用 or 连接（1.60.0）')
+    assert.match(textLogicRisk(s.contains('a').and(t.contains('b')).not()), /被 not 包住/, '1.68.0 N、O 的形式')
+    assert.equal(textLogicRisk(t.contains('P:x;').or(t.minus('P:').eq(t))), undefined, '测试书的标题翻页：(包含) or 文字等式')
+    assert.equal(textLogicRisk(n.gt(3).or(n.gt(7))), undefined, '数字的 or 正确（V、W）')
+})

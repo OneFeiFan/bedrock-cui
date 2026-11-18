@@ -116,10 +116,22 @@ export interface CompiledExpr {
  * 编译表达式。字符串字面量一律提升成变量（`$v0`）：JSON UI 表达式里的字符串字面量不能含单引号，
  * 提升后任意内容都安全（sapdon 的门控也是这样写的）。
  */
+const keyOf = (n: ExprNode): string => JSON.stringify(n)
+
+/** 「包含」的结构 not ((基 − 文字₁ − 文字₂ …) = 基)：返回基与要找的文字（都是固定的文字时） */
+function containsParts(n: ExprNode): { base: ExprNode, parts: ExprNode[] } | undefined {
+    if (n.k !== 'not' || n.a.k !== 'bin' || n.a.op !== '=') return undefined
+    const base = n.a.b, bk = keyOf(base), parts: ExprNode[] = []
+    let l = n.a.a
+    while (l.k === 'bin' && l.op === '-' && keyOf(l) !== bk) { parts.unshift(l.b); l = l.a }
+    return parts.length && keyOf(l) === bk && parts.every((p) => p.k === 'lit' && typeof p.v === 'string') ? { base, parts } : undefined
+}
+
 /**
- * 让 not 只出现在表达式的开头（真机：单独的 not、作为 and 左边的 not 都正确；
- * 1.59.0 not (not X) 的外层 not 没有生效，1.60.0 作为 or 右边的 not 结果错误）：
- *   not (not X) → X；(not A) or (not B) → not (A and B)；(not A) and (not B) → not (A or B)（德摩根律，等价）
+ * 编译前的规范化（真机 1.59.0、1.60.0、1.68.0、1.69.0）：
+ *   - not (not X) → X（双重否定的外层 not 没有生效）；
+ *   - 同一数据的几个「包含」用 or 连接 → 一次比较：not ((基 − 'a' − 'z') = 基)（AA 正确；
+ *     原样的 (not A) or (not B) 与改写成的 not (A and B) 对文字的比较都错误，数字的比较两种都正确）
  */
 function normalizeNot(n: ExprNode): ExprNode {
     if (n.k === 'not') {
@@ -128,12 +140,41 @@ function normalizeNot(n: ExprNode): ExprNode {
     }
     if (n.k === 'bin') {
         const a = normalizeNot(n.a), b = normalizeNot(n.b)
-        if ((n.op === 'or' || n.op === 'and') && a.k === 'not' && b.k === 'not') {
-            return { k: 'not', a: { k: 'bin', op: n.op === 'or' ? 'and' : 'or', a: a.a, b: b.a } }
+        if (n.op === 'or') {
+            const ca = containsParts(a), cb = containsParts(b)
+            if (ca && cb && keyOf(ca.base) === keyOf(cb.base)) {
+                const minus = [...ca.parts, ...cb.parts].reduce<ExprNode>((acc, p) => ({ k: 'bin', op: '-', a: acc, b: p }), ca.base)
+                return { k: 'not', a: { k: 'bin', op: '=', a: minus, b: ca.base } }
+            }
         }
         return { ...n, a, b }
     }
     return n
+}
+
+/**
+ * 静态检查用：规范化之后仍有的、真机上结果错误的文字逻辑组合：
+ *   - or 右边是被 not 包住的文字比较（例如 … or 包含 X）——1.60.0；
+ *   - not 包住含文字比较的 and / or——1.68.0（N、O）。
+ * 正确的：(包含 X) or 文字等式（测试书的标题翻页，1.5.x 起）、(not 包含) and 不包含（Q）、同一数据的「包含任一」（合并为一次比较，AA）、数字比较的各种组合（V–Z）
+ */
+export function textLogicRisk(e: ExprLike): string | undefined {
+    const root = normalizeNot(node(e))
+    const isTextEq = (n: ExprNode) => n.k === 'bin' && n.op === '=' && n.a.k === 'bin' && n.a.op === '-' && keyOf(n.a.a) === keyOf(n.b)
+    const hasText = (n: ExprNode): boolean => isTextEq(n) || (n.k === 'not' && hasText(n.a)) || (n.k === 'bin' && (n.op === 'and' || n.op === 'or') && (hasText(n.a) || hasText(n.b)))
+    let risk: string | undefined
+    const visit = (n: ExprNode) => {
+        if (risk) return
+        if (n.k === 'not') {
+            if (n.a.k === 'bin' && (n.a.op === 'and' || n.a.op === 'or') && hasText(n.a)) { risk = '被 not 包住、含文字比较的组合'; return }
+            visit(n.a); return
+        }
+        if (n.k !== 'bin') return
+        if (n.op === 'or' && n.b.k === 'not' && hasText(n.b)) { risk = 'or 右边被 not 包住的文字比较（例如「… or 包含」）'; return }
+        visit(n.a); visit(n.b)
+    }
+    visit(root)
+    return risk
 }
 
 export function compileExpr(e: ExprLike, varPrefix = 'v'): CompiledExpr {

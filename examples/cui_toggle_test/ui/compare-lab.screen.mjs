@@ -41,9 +41,13 @@ export default defineUI({
             ['Y  (5>7) 或 非 (5>7)', n.gt(7).or(n.gt(7).not())],
             ['Z  (5>3) 且 非 (5>7)', n.gt(3).and(n.gt(7).not())],
             ['AA 含 a 或 z（一次比较）', s.minus('a').minus('z').eq(s).not()],
+            // 1.70.0：N、O 由编译器合并为一次比较（同 AA），应当显示。另验证「包含」在 and / or 右边
+            ['AB (5>3) 且 含 5', n.gt(3).and(nText.contains('5'))],         // 一个控件只能用一个数据：都用 n（文字 '5'）
+            ['AC 含 a 且 含 b', s.contains('a').and(s.contains('b'))],
+            ['AE (5>7) 或 含 5（推测错误）', n.gt(7).or(nText.contains('5'))],
         ]
-        // 两列（1.67.0 起行数超过一屏的高度）：每列 12 行
-        const perColumn = 12
+        // 两列（1.67.0 起行数超过一屏的高度）：每列 13 行
+        const perColumn = 13
         const box = new Panel().setSize(430, 22 + perColumn * 14)
         box.add(new Image('textures/ui/dialog_background_opaque').setSize(Size.full()))
         box.add(new Label('条件成立时显示绿色方块').setColor(INK).setAnchor(Anchor.TOP_LEFT).setOffset(10, 6))
