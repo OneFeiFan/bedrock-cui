@@ -400,3 +400,9 @@ world.afterEvents.itemUse.subscribe((e) => shop.open(e.source))
 - 新增 Timer.of({ seconds, elapsed, running, now? })；清单记 timerSeconds，运行时传入的总时长不同时提示一次。
 - 手册「计时显示」加「与游戏对象同步」：时间线、三个条件、实体加工进度的例子（props 的 Timer + 脚本 Timer.of）、时钟问题（游戏刻）、纯 UI 计时的界限。
 - 待做（未确认）：按游戏刻计时与偏差刷新；长时长倒计时（数字轮，体积不随时长增长）。
+
+### 20.6 拉取远程（2026-11-18）
+
+- 远程 master（e8bfb73）= 本地 6e22a51 的全部内容（用户以 33e9de3 应用），外加 GPT 的提交 1dbf73b：实验性的事件驱动计时 HUD（defineTimerHud、TimerHud、EventProgressBar，借用原版标题 / actionbar 传输，V7–V22 真机迭代）、LiveBar、LiveFrame 编码与发送器、EventTimerSender；运行时修正（刷新期间点击与事件串行、关闭或替换时停止 UserBusy 重试、相同的值不刷新、出错时清理）；颜色参数校验；checkScripts 支持精简行为包。拉取后 179 条测试、手册检查、端到端、测试包与网站构建全部通过。
+- 发现：应用补丁时「删除文件」与「权限变更」没有生效，留下 12 个本应删除的文件（7 个孤立的旧手册页——被构建进网站、内容与现在的手册矛盾；旧示例、旧模板、src/node/addon.ts），命令行入口失去可执行权限。清理提交删除它们、恢复权限、改正两段过时的注释、API 参考补上 TimerHudTransport；补丁改用 git format-patch（用 git am 应用，删除与权限都会生效）。
+- 本地旧状态保留为分支 backup-before-pull-6e22a51。

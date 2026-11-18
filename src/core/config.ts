@@ -3,10 +3,10 @@
  * 只依赖 bedrock-cui 本身，浏览器里也能加载。
  *
  *   import { defineConfig } from 'bedrock-cui'
- *   import { buildBook } from './ui/book.mjs'
+ *   import book from './ui/book.screen.mjs'
  *   export default defineConfig({
  *       namespace: 'book',
- *       screens: { 'cui_ui:book': () => buildBook() },
+ *       screens: [book],
  *       textures: ['res'],
  *   })
  */

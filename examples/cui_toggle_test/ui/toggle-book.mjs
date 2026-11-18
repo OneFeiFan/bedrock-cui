@@ -35,7 +35,7 @@ export const FORM = {
     title: 'cui_ui:toggle_test',
     // 标题 = cui_ui:toggle_test|P:<页名>;（pages.titleFor）；正文不用
     body: '',
-    // 预览用的样例；真机脚本在运行期按玩家背包实时计算（examples/build-toggle-test.mjs）
+    // 预览用的样例；真机中由行为包脚本按玩家背包实时计算
     buttons: ['s0|§7耐久 1561\n§a背包里有 1 个', 's1|§a背包里有 3 个', 's2|§a背包里有 3 个', 's3|§8背包里没有', 'close|',
         'txt|' + RUNTIME_SAMPLE, '', 'txw|' + softWrap(RUNTIME_SAMPLE, 110)],
 }

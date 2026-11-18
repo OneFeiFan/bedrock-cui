@@ -119,6 +119,7 @@ const PAGES = [
             ['CuiScreen', '配置中的一个界面：返回根控件的函数，或 { build, routed }。'],
             ['ScreenOptions', 'defineScreen() 的选项。'],
             ['TimerHudOptions', 'defineTimerHud() 的选项。'],
+            ['TimerHudTransport', '计时 HUD 的传输方式：title（原版中央标题，缺省）或 actionbar（与原版标题、字幕同屏）。'],
             ['TimerHudManifest', '计时 HUD 的槽位、协议与默认标题策略清单。'],
             ['TimerHudRef', '计时 HUD 视图中的单个计时器引用。'],
             ['HudTitleOptions', '共享标题的时长、副标题与策略。'],
