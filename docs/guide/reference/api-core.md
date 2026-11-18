@@ -68,6 +68,9 @@
 
 | 名称 | 种类 | 说明 |
 |---|---|---|
+| `defineTimerHud` | 常量 | 定义独立的计时 HUD，支持最多三个计时器与标题通道管理。 |
+| `TimerHud` | 类 | 计时 HUD：open / update / close / isOpen / showTitle。 |
+| `EventProgressBar` | 类 | 计时 HUD 的进度条，由客户端在剩余时长内播放剩余宽度。 |
 | `Timer` | 类 | 计时器：只记开始时刻与总时长；idle / of / start / pause / resume / reset；remaining、progress。驱动 ProgressBar 与 Countdown。 |
 | `ProgressBar` | 类 | 进度条：随计时器匀速前进，界面重新打开时从当时的进度接着走，在右端准确停下；setHead() 末端的竖条。 |
 | `Countdown` | 类 | 倒计时数字：剩余的整秒数，进行中时匀速滚动；setBackground() 有底色时在 0 处准确停下。 |
@@ -136,6 +139,12 @@
 | `CuiPreviewForm` | 接口 | 预览中某个界面的表单数据：title、text、buttons。 |
 | `CuiScreen` | 类型 | 配置中的一个界面：返回根控件的函数，或 { build, routed }。 |
 | `ScreenOptions` | 接口 | defineScreen() 的选项。 |
+| `TimerHudOptions` | 接口 | defineTimerHud() 的选项。 |
+| `TimerHudManifest` | 接口 | 计时 HUD 的槽位、协议与默认标题策略清单。 |
+| `TimerHudRef` | 类 | 计时 HUD 视图中的单个计时器引用。 |
+| `HudTitleOptions` | 接口 | 共享标题的时长、副标题与策略。 |
+| `HudTitlePolicy` | 类型 | 共享标题策略：priority 或 actionbar。 |
+| `HudTitleText` | 类型 | 普通标题或提示的文字与翻译消息。 |
 | `AnimType` | 类型 | 动画的类型。 |
 | `AnimEasing` | 类型 | 动画的缓动方式。 |
 | `ButtonSlot` | 接口 | 按钮的一个状态：add() 加入的控件显示在该状态下。 |

@@ -13,6 +13,7 @@
  */
 import { InputPermissionCategory, system, type Player } from '@minecraft/server'
 import { ActionFormData } from '@minecraft/server-ui'
+import { retryForm } from './formRetry.js'
 import { buttonIconOf, pageTitle, pagingButtons, pagingResponse, type FormButtonSpec, type ServerPaging } from '../core/serverPagesShared.js'
 
 export type { FormButtonSpec, ServerArrowRoute, ServerPaging } from '../core/serverPagesShared.js'
@@ -34,13 +35,9 @@ export function lockCamera(player: Player, lock: boolean): void {
  * 每刻重试一次，最多 30 次（约 1.5 秒）；仍然失败时按取消返回。
  */
 export function showForm<R extends { canceled: boolean, cancelationReason?: string }>(
-    player: Player, form: { show(player: Player): Promise<R> }, retries = 30, onBusy?: () => void,
+    player: Player, form: { show(player: Player): Promise<R> }, retries = 30, onBusy?: () => void, isActive?: () => boolean,
 ): Promise<R> {
-    return form.show(player).then((r) => {
-        if (!r.canceled || r.cancelationReason !== 'UserBusy' || retries <= 0) return r
-        onBusy?.()                                            // 例如：刷新时再关一次没关掉的旧表单
-        return new Promise<R>((resolve) => system.runTimeout(() => resolve(showForm(player, form, retries - 1, onBusy)), 1))
-    })
+    return retryForm(() => form.show(player), () => new Promise<void>((resolve) => { system.runTimeout(resolve, 1) }), retries, onBusy, isActive)
 }
 
 export class ServerPagesForm {

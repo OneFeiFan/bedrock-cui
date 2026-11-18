@@ -205,7 +205,21 @@ export function evalExpr(e: ExprLike, env: EvalEnv): Value {
                     case '-':
                         if (typeof a === 'number' && typeof b === 'number') return a - b
                         return String(b) === '' ? String(a) : String(a).split(String(b)).join('')
-                    case '*': return Number(a) * Number(b)
+                    case '*': {
+                        // JSON UI 的 %.Ns 字符串格式；计时快照仅使用 ASCII 定长字段。
+                        const format = typeof a === 'string' && /^%\.(\d+)s$/.exec(a)
+                        if (format && typeof b === 'string') {
+                            let bytes = 0, result = ''
+                            for (const char of b) {
+                                const code = char.codePointAt(0)!
+                                bytes += code <= 0x7f ? 1 : code <= 0x7ff ? 2 : code <= 0xffff ? 3 : 4
+                                if (bytes > Number(format[1])) break
+                                result += char
+                            }
+                            return result
+                        }
+                        return Number(a) * Number(b)
+                    }
                     case '/': return env.exact ? Number(a) / Number(b) : Math.trunc(Number(a) / Number(b))      // 绑定的运算只有整数（真机 1.51.0：1 ÷ 4 = 0）
                     case '%': return Number(a) % Number(b)
                     case '=': return typeof a === 'number' && typeof b === 'number' ? a === b : String(a) === String(b)

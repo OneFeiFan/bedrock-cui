@@ -9,7 +9,7 @@ const root = path.resolve(import.meta.dirname, '..')
 
 test('面向对象 API 完整：每个控件类的可写属性都有同名的 setXxx()，每个 setXxx() 都对应一个属性（用 TypeScript 编译器逐项核对）', () => {
     const files = ['element.ts', 'glyphs.ts'].map((f) => path.join(root, 'src/core', f))
-        .concat(['text.ts', 'form.ts', 'pages.ts', 'richtext.ts'].map((f) => path.join(root, 'src/components', f)))
+        .concat(['text.ts', 'form.ts', 'pages.ts', 'richtext.ts', 'eventTimers.ts'].map((f) => path.join(root, 'src/components', f)))
     const program = ts.createProgram(files, { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext, strict: true })
     const checker = program.getTypeChecker()
     const decl = {}
@@ -20,7 +20,7 @@ test('面向对象 API 完整：每个控件类的可写属性都有同名的 se
     // 一次设置多项的便捷方法，不对应单个属性
     const COMBINED = new Set(['setAnchor', 'setPlacement', 'setUV', 'setStyle', 'setWidth', 'setHeight', 'setVariable', 'setRaw', 'setButtonBase', 'setBindingAlways'])
     const classes = ['Panel', 'Stack', 'Grid', 'Image', 'Label', 'Button', 'Toggle', 'CollectionItem', 'Raw', 'Row', 'Column', 'Scroll',
-        'Paragraph', 'Text', 'FormButton', 'FormGate', 'Pages']
+        'Paragraph', 'Text', 'FormButton', 'FormGate', 'Pages', 'EventProgressBar']
     const missing = []
     for (const cls of classes) {
         assert.ok(decl[cls], cls)

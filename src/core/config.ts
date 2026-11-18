@@ -13,6 +13,7 @@
 import type { Element } from './element.js'
 import type { GlyphSheet } from './glyphs.js'
 import type { Screen } from './screen.js'
+import type { TimerHud } from './timerHud.js'
 
 /** 一个界面：返回根控件的函数，或 { build, routed }（routed：路由方式，见手册「服务端表单」） */
 export type CuiScreen = (() => Element) | { build: () => Element, routed?: boolean }
@@ -38,6 +39,8 @@ export interface CuiConfig {
     namespace: string
     /** 界面：defineScreen 定义的界面对象的数组；或「界面 id → 返回根控件的函数」（需要路由方式时写成 { build, routed: true }） */
     screens: Screen[] | Record<string, CuiScreen | Screen>
+    /** 独立计时 HUD；每个玩家同一时刻打开一个，每个 HUD 最多三个计时器 */
+    timerHuds?: TimerHud[]
     /** 存放贴图的资源包目录（相对项目根目录），用于预览与静态检查；缺省 ['res'] */
     textures?: string[]
     /** 字形图（GlyphSheet），图标贴图从 textures 目录中查找 */

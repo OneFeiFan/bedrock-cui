@@ -156,26 +156,36 @@ test('界面以外的状态变化（例如定时器）：安排刷新——关�
     assert.equal(platform.shown.length, 4)
 })
 
-test('this.setInterval / setTimeout：与界面生命周期绑定——回调中修改状态触发刷新，界面关闭时自动取消', async () => {
+test('this.setInterval / setTimeout：与界面生命周期绑定——回调中修改状态触发刷新，界面关闭时自动取消', async (t) => {
     const holder = {}
-    const { screen, platform } = setup({
+    const { screen, platform, runtime } = setup({
         id: 'cui_ui:timer',
         state() { return { n: 3 } },
         computed: { left() { return String(this.n) } },
-        onOpen() { holder.stop = this.setInterval(() => { this.n -= 1 }, 1) },
+        onOpen() {
+            holder.ctx = this
+            holder.stop = this.setInterval(() => { this.n -= 1 }, 1)
+            this.setTimeout(() => { this.n = 0 }, 4)
+        },
         view({ left }) { return new Panel().setSize(100, 30).add(new Label(left).setSize(50, 10)) },
     })
-    let runs = 0
-    platform.schedule = (fn) => setTimeout(fn, 0)
-    platform.interval = (fn, ticks) => { const id = setInterval(() => { runs++; fn() }, ticks * 5); return () => clearInterval(id) }
+    let interval, timeout, canceled = false
+    runtime.quietMs = 0
+    platform.interval = (fn, ticks) => { assert.equal(ticks, 1); interval = fn; return () => { canceled = true } }
+    platform.timeout = (fn, ticks) => { assert.equal(ticks, 4); timeout = fn; return () => { } }
+    t.after(() => screen.close(P))
     screen.open(P)
-    await new Promise((r) => setTimeout(r, 30))
-    assert.ok(platform.shown.length >= 3, `定时器修改状态后刷新（显示了 ${platform.shown.length} 次）`)
-    assert.notEqual(platform.shown.at(-1).form.buttons[0].text, '@p0|3')
+    interval(); await tick()
+    interval(); await tick()
+    assert.equal(platform.shown.length, 3)
+    assert.equal(platform.shown.at(-1).form.buttons[0].text, '@p0|1')
+    timeout(); await tick()
+    assert.equal(platform.shown.at(-1).form.buttons[0].text, '@p0|0')
     platform.shown.at(-1).resolve({ canceled: true, cancelationReason: 'UserClosed' }); await tick()
-    const after = runs
-    await new Promise((r) => setTimeout(r, 30))
-    assert.equal(runs, after, '界面关闭后定时器不再执行')
+    assert.ok(canceled, '关闭时取消平台定时器')
+    interval(); await tick()
+    assert.equal(holder.ctx.n, 0, '关闭后迟到的定时器回调不再执行')
+    assert.equal(platform.shown.length, 4)
 })
 
 test('刷新：关闭后同一刻立即显示新表单，不等旧表单的结果；旧表单迟到的取消被忽略，不调用 onClose', async () => {
@@ -377,4 +387,179 @@ test('多页：写错时在构建时报出', () => {
     assert.throws(() => page({ b: ({ next }) => next() }), /最后一页/)
     assert.throws(() => defineScreen({ id: 'cui_ui:p', view: () => new Panel(), pages: { a: () => new Panel() } }), /只能写一个/)
     assert.throws(() => defineScreen({ id: 'cui_ui:p', start: 'x', pages: { a: () => new Panel() } }), /不在 pages 中/)
+})
+
+test('刷新期间旧、新表单的异步点击依次执行，状态不丢失，一批点击只重新显示一次', async () => {
+    const holder = {}, releases = [], calls = []
+    const { screen, platform, runtime, m } = setup({
+        id: 'cui_ui:serial', state() { return { n: 0, t: 0 } },
+        computed: { v() { return `${this.n}/${this.t}` } },
+        onOpen() { holder.ctx = this },
+        methods: { async add() {
+            const n = this.n
+            calls.push(`start ${n}`)
+            await new Promise((resolve) => releases.push(resolve))
+            this.n = n + 1
+            calls.push(`end ${this.n}`)
+        } },
+        view({ v, add, button }) { return new Panel().setSize(100, 40).add(new Label(v).setSize(60, 10), button().onClick(add).setSize(20, 12)) },
+    })
+    platform.close = () => { }                          // 旧表单的结果稍后传回
+    runtime.quietMs = 0
+    screen.open(P)
+    holder.ctx.t = 1
+    await tick()
+    const [old, current] = platform.shown
+    old.resolve({ canceled: false, selection: m.buttons[0].index })
+    await tick()
+    current.resolve({ canceled: false, selection: m.buttons[0].index })
+    await tick()
+    assert.deepEqual(calls, ['start 0'], '第二次点击等待第一次完成')
+    releases.shift()()
+    await tick()
+    assert.deepEqual(calls, ['start 0', 'end 1', 'start 1'])
+    assert.equal(platform.shown.length, 2, '队列尚未处理完，不插入刷新')
+    releases.shift()()
+    await tick()
+    assert.equal(holder.ctx.n, 2)
+    assert.equal(platform.shown.length, 3)
+    assert.equal(platform.shown.at(-1).form.buttons[0].text, '@p0|2/1')
+    screen.close(P)
+})
+
+test('生命周期中关闭界面后不再显示：onOpen、onUpdate；等待异步方法时关闭也不重开', async () => {
+    for (const hook of ['onOpen', 'onUpdate']) {
+        const calls = []
+        const c = setup({ ...shopOptions(calls), [hook]() { this.close() } })
+        c.screen.open(P)
+        if (hook === 'onUpdate') await c.click('buy')
+        assert.equal(c.platform.shown.length, hook === 'onOpen' ? 0 : 1, hook)
+        assert.ok(!c.screen.isOpen(P))
+        assert.equal(c.platform.log.at(-1), 'camera false')
+    }
+    let release
+    const c = setup({ ...shopOptions(), methods: { ...shopOptions().methods, slow() { return new Promise((r) => { release = r }) } } })
+    c.screen.open(P)
+    await c.click('slow')
+    c.screen.close(P)
+    release()
+    await tick()
+    assert.equal(c.platform.shown.length, 1)
+    assert.ok(!c.screen.isOpen(P))
+})
+
+test('方法、生命周期或显示表单出错时清理实例、定时器与视角；清理本身出错仍继续', async (t) => {
+    const warnings = []
+    t.mock.method(console, 'warn', (s) => warnings.push(s))
+    for (const where of ['method', 'onOpen', 'onUpdate', 'show', 'form']) {
+        let armed = false, stopped = false
+        const options = shopOptions()
+        options.onOpen = function () { this.setInterval(() => { }, 20) }
+        const boom = () => { throw new Error(`review ${where}`) }
+        if (where === 'method') options.methods.buy = boom
+        if (where === 'onOpen' || where === 'onUpdate') options[where] = boom
+        if (where === 'form') options.computed.coinText = function () { if (armed) boom(); return String(this.coins) }
+        const c = setup(options)
+        c.platform.interval = () => () => { stopped = true }
+        if (where === 'show') c.platform.show = async () => boom()
+        armed = true
+        c.screen.open(P)
+        if (where === 'method' || where === 'onUpdate') await c.click('buy')
+        await tick()
+        assert.ok(!c.screen.isOpen(P), where)
+        assert.equal(c.platform.log.at(-1), 'camera false', where)
+        if (where !== 'onOpen') assert.ok(stopped, `${where}：取消定时器`)
+    }
+    const calls = [], c = setup(shopOptions(calls))
+    c.screen.open(P)
+    c.platform.close = () => { throw new Error('close failed') }
+    c.screen.close(P)
+    assert.equal(c.platform.log.at(-1), 'camera false')
+    assert.ok(calls.some((s) => s.startsWith('onClose')))
+    assert.equal(warnings.length, 6)
+})
+
+test('相同值、同一个嵌套对象与删除不存在的属性不刷新；真正的深层变化仍合并刷新', async () => {
+    const holder = {}
+    const c = setup({
+        id: 'cui_ui:unchanged', state() { return { n: 0, bag: { n: 0 }, list: [1] } },
+        computed: { v() { return `${this.n}/${this.bag.n}/${this.list.length}` } },
+        onOpen() { holder.ctx = this },
+        view({ v }) { return new Panel().setSize(100, 30).add(new Label(v).setSize(80, 10)) },
+    })
+    c.screen.open(P)
+    holder.ctx.n = 0
+    holder.ctx.bag.n = 0
+    holder.ctx.bag = holder.ctx.bag
+    holder.ctx.list = holder.ctx.list
+    delete holder.ctx.bag.missing
+    await tick()
+    assert.equal(c.platform.shown.length, 1)
+    holder.ctx.bag.n = 1
+    holder.ctx.list.push(2)
+    await tick()
+    assert.equal(c.platform.shown.length, 2)
+    assert.equal(c.platform.shown.at(-1).form.buttons[0].text, '@p0|0/1/2')
+    c.screen.close(P)
+})
+
+test('异步事件处理与点击串行执行；事件处理期间收到当前表单的关闭会立即取消后续显示', async () => {
+    for (const canceled of [false, true]) {
+        const holder = {}, calls = []
+        let release
+        const c = setup({
+            ...shopOptions(), onOpen() { holder.ctx = this },
+            methods: { ...shopOptions().methods, buy() { calls.push('buy') } },
+        })
+        c.screen.on('wait', async () => { calls.push('event'); await new Promise((r) => { release = r }); calls.push('done') })
+        c.screen.open(P)
+        holder.ctx.emit('wait')
+        await tick()
+        c.platform.shown[0].resolve({ canceled, selection: canceled ? undefined : c.m.buttons[0].index })
+        await tick()
+        assert.deepEqual(calls, ['event'])
+        if (canceled) assert.ok(!c.screen.isOpen(P), '异步事件尚未完成，也立即关闭实例')
+        release()
+        await tick()
+        assert.deepEqual(calls, canceled ? ['event', 'done'] : ['event', 'done', 'buy'])
+        assert.equal(c.platform.shown.length, canceled ? 1 : 2)
+        c.screen.close(P)
+    }
+})
+
+test('显示请求在替换与关闭后失效；关闭时取消推迟刷新，旧异步方法不能关闭新实例', async () => {
+    const holder = {}, requests = [], deferred = []
+    let release
+    const c = setup({
+        ...shopOptions(), onOpen() { holder.ctx = this },
+        methods: { ...shopOptions().methods, async slow() { await new Promise((r) => { release = r }); this.close() } },
+    })
+    c.platform.show = (player, form, onBusy, isActive) => new Promise((resolve) => {
+        requests.push(isActive)
+        c.platform.shown.push({ player, form, resolve })
+    })
+    c.platform.now = () => 1000
+    c.platform.timeout = (fn) => { const task = { fn, canceled: false }; deferred.push(task); return () => { task.canceled = true } }
+    c.screen.open(P)
+    assert.ok(requests[0]())
+    holder.ctx.coins++
+    await tick()
+    assert.equal(deferred.length, 1)
+    c.screen.close(P)
+    assert.ok(deferred[0].canceled)
+    assert.ok(!requests[0]())
+    c.screen.open(P)
+    c.runtime.quietMs = 0
+    holder.ctx.coins++
+    await tick()
+    assert.ok(!requests[1](), '替换后旧显示请求失效')
+    assert.ok(requests[2]())
+    await c.click('slow')
+    c.screen.close(P)
+    c.screen.open(P)
+    release()
+    await tick()
+    assert.ok(c.screen.isOpen(P), '旧实例迟到的 this.close() 不影响新实例')
+    assert.ok(requests.at(-1)())
+    c.screen.close(P)
 })

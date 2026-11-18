@@ -87,6 +87,7 @@ class Compiler {
 
     private controlInner(n: RNode, inCollection: string | undefined): Json {
         const p = n.props
+        if (p.eventAnimations) Object.assign(this.hoisted, p.eventAnimations)
         // 不引用任何数据的表达式是常量：编译时求值、写成固定值（游戏不接受来源只有常数的绑定——真机 1.49.0：Must define a source property name）
         for (const key of Object.keys(DYNAMIC)) {
             const v = p[key]

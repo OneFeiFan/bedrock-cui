@@ -29,7 +29,12 @@ export async function checkScripts(dir: string, options: { entry?: string, runti
         const dist = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
         if (fs.existsSync(runtimeDir)) for (const [rel] of runtimeFiles()) {
             const dts = path.join(dist, rel.replace(/\.js$/, '.d.ts'))
-            if (fs.existsSync(dts)) fs.copyFileSync(dts, path.join(runtimeDir, rel.replace(/\.js$/, '.d.ts')))
+            // 精简行为包可以只复制运行时的一部分；只为实际存在的 JS 安放类型。
+            if (fs.existsSync(dts) && fs.existsSync(path.join(runtimeDir, rel))) {
+                const target = path.join(runtimeDir, rel.replace(/\.js$/, '.d.ts'))
+                fs.mkdirSync(path.dirname(target), { recursive: true })
+                fs.copyFileSync(dts, target)
+            }
         }
         // 入口：指定的文件，或 scripts/ 下的全部 .js（sapdon 打包后是 scripts/index.js；运行时目录本身不检查）
         const files: string[] = []

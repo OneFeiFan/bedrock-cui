@@ -7,27 +7,24 @@ bedrock-cui 的界面显示在服务端表单（`@minecraft/server-ui` 的 `Acti
 - 表单标题以前缀（默认 `cui_ui:`）开头时，隐藏原版的按钮列表；
 - 表单标题包含某个界面 id 时，显示该界面。
 
-界面在配置的 `screens` 中登记，键为界面 id：
+界面在配置的 `screens` 中登记：
 
 ```js
 // cui.config.mjs
 import { defineConfig } from 'bedrock-cui'
-import { buildBook } from './ui/book.mjs'
-import { buildShop } from './ui/shop.mjs'
+import book from './ui/book.screen.mjs'
+import shop from './ui/shop.screen.mjs'
 
 export default defineConfig({
     namespace: 'book',
-    screens: {
-        'cui_ui:book': () => buildBook(),
-        'cui_ui:shop': () => buildShop(),
-    },
+    screens: [book, shop],
 })
 ```
 
-同一个命名空间中可以挂载多个界面，脚本按标题打开其中之一：
+同一个命名空间中可以挂载多个界面，脚本调用界面的 `open()` 打开其中之一。标题与按钮数据由运行时填写：
 
 ```js
-new ActionFormData().title('cui_ui:shop').body('').show(player)
+shop.open(player)
 ```
 
 标题在界面 id 之后可以附加其他内容，例如[服务端翻页](paging.md)在标题中写入页码：`cui_ui:book|P:sword;`。
@@ -50,27 +47,22 @@ screens: { 'cui_ui:shop': { build: () => buildShop(), routed: true } }
 
 ## 表单按钮
 
-`FormButton(序号, 标记, 宽, 高)` 是界面中的一个可点击区域，对应 `ActionFormData` 的第几个按钮。按钮的文字包含该标记时，按钮显示：
+界面文件使用 `button().onClick(方法)` 创建可点击区域。`close` 是内置的关闭方法：
 
 ```js
-import { Anchor, FormButton, Label } from 'bedrock-cui'
+import { Anchor, Label, Panel, defineScreen } from 'bedrock-cui'
 
-const close = new FormButton(0, 'close|', 14, 14).setAnchor(Anchor.TOP_RIGHT).setOffset(-4, 4)
-close.default.add(new Label('§4x'))
-close.hover.add(new Label('§cx'))
-```
-
-```js
-// 行为包脚本：第 0 个按钮的文字包含 'close|'
-new ActionFormData().title('cui_ui:book').body('').button('close|').show(player).then((r) => {
-    if (r.selection === 0) player.sendMessage('已关闭')
+const book = defineScreen({
+    id: 'cui_ui:book',
+    view({ button, close }) {
+        const exit = button().onClick(close).setSize(14, 14).setAnchor(Anchor.TOP_RIGHT).setOffset(-4, 4)
+        exit.default.add(new Label('§4x'))
+        exit.hover.add(new Label('§cx'))
+        return new Panel().setSize(200, 100).add(exit)
+    },
 })
 ```
 
-点击表单按钮时，表单关闭，脚本通过 `selection` 得知点击的是第几个按钮。按钮的外观由 `default`、`hover`、`pressed` 三个状态面板组成。
+点击表单按钮时，表单关闭，游戏通过 `selection` 将按钮序号传给运行时。bedrock-cui 调用绑定的方法，方法完成后以最新的数据重新打开界面；调用 `close` 时结束界面。按钮的外观由 `default`、`hover`、`pressed` 三个状态面板组成。
 
-按钮的文字不显示在界面上，可以携带数据：`'info|钻石 ×3'` 中，`info|` 用于判断是否显示，其余部分可通过 [`form.buttonText`](bindings.md) 读取。
-
-::: tip
-标记的判断方式是「包含」。标记不应是另一个按钮文字的一部分，例如 `prev|` 会误中 `no_prev|`。
-:::
+表单按钮也用于传递界面数据，序号与标记由框架分配，见[工作原理](how-it-works.md#按钮在-bedrock-cui-中的用途)。使用方式见[数据（props）](props.md)与[逻辑](logic.md)。
