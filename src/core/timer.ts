@@ -20,7 +20,10 @@ export class Timer {
         /** 暂停时已经过去的毫秒数（暂停时有值） */
         readonly pausedElapsed?: number,
     ) {
-        if (!(seconds > 0)) throw new Error(`计时器的总时长必须大于 0（收到 ${seconds}）`)
+        if (!Number.isFinite(seconds) || seconds <= 0 || !Number.isFinite(seconds * 1000)) {
+            throw new Error(`计时器的总时长必须大于 0 且能换算为有限的毫秒数（收到 ${seconds}）`)
+        }
+        if (startedAt !== undefined && !Number.isFinite(startedAt)) throw new Error(`计时器的开始时刻必须是有限的数字（收到 ${startedAt}）`)
     }
 
     /** 一个尚未开始的计时器 */
@@ -32,6 +35,8 @@ export class Timer {
      * running 为 false 时：elapsed 为 0 是未开始，大于 0 是暂停；elapsed 达到总时长即完成
      */
     static of(o: { seconds: number, elapsed: number, running: boolean, now?: number }): Timer {
+        if (!Number.isFinite(o.elapsed)) throw new Error(`计时器已过去的秒数必须是有限的数字（收到 ${o.elapsed}）`)
+        if (o.now !== undefined && !Number.isFinite(o.now)) throw new Error(`计时器的当前时刻必须是有限的数字（收到 ${o.now}）`)
         const elapsedMs = Math.max(0, Math.min(o.seconds, o.elapsed)) * 1000
         if (o.running) return new Timer(o.seconds, (o.now ?? Date.now()) - elapsedMs)
         return elapsedMs > 0 ? new Timer(o.seconds, undefined, elapsedMs) : new Timer(o.seconds)
@@ -48,6 +53,7 @@ export class Timer {
 
     /** 已经过去的毫秒数（不超过总时长） */
     elapsed(now = Date.now()): number {
+        if (!Number.isFinite(now)) throw new Error(`计时器的当前时刻必须是有限的数字（收到 ${now}）`)
         const ms = this.startedAt !== undefined ? now - this.startedAt : this.pausedElapsed ?? 0
         return Math.max(0, Math.min(this.seconds * 1000, ms))
     }

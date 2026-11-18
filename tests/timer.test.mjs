@@ -29,6 +29,51 @@ const lab = () => defineUI({
     ),
 })
 
+test('Timer：拒绝非有限时长、已过时间与时刻，保留小数秒', () => {
+    for (const invalid of [NaN, Infinity, -Infinity]) {
+        assert.throws(() => Timer.idle(invalid), /总时长/)
+        assert.throws(() => Timer.of({ seconds: 4, elapsed: invalid, running: true }), /已过去的秒数/)
+        assert.throws(() => Timer.of({ seconds: 4, elapsed: 2.5, running: false, now: invalid }), /当前时刻/)
+        assert.throws(() => Timer.idle(4).start(invalid), /开始时刻/)
+        assert.throws(() => Timer.idle(4).start(0).encode(invalid), /当前时刻/)
+    }
+    assert.throws(() => Timer.idle(Number.MAX_VALUE), /总时长/)
+    assert.equal(Timer.of({ seconds: 2.5, elapsed: 0.625, running: true, now: 1000 }).encode(1000), 'R250')
+})
+
+test('ProgressBar 数值模式：常量和页面数据支持小数，脚本传整数千分比', async () => {
+    const screen = defineUI({
+        id: 'cui_ui:numeric',
+        props: { value: { type: Number, default: 2.5 }, max: { type: Number, default: 4 } },
+        page: ({ value, max }) => new Panel().setSize(180, 36).add(
+            new ProgressBar(2.5, 4).setSize(160, 8),
+            new ProgressBar(value, max).setSize(160, 8).setOffset(0, 12),
+            new ProgressBar(2.5, max).setSize(160, 8).setOffset(0, 24),
+        ),
+    })
+    const { files, issues, screens } = CuiApp.fromConfig({ namespace: 'n', screens: [screen] }).compile()
+    assert.deepEqual(issues.filter((i) => i.level === 'error' || i.rule === 'decimal-arith'), [])
+    const json = JSON.stringify(files['ui/n.json'])
+    assert.ok(json.includes('"offset":[-60,0]'), '固定值显示 100 / 160 像素')
+    assert.ok(!json.includes('"anim_type":"size"'))
+    const manifests = JSON.parse(JSON.stringify(screens))
+    const numeric = manifests[screen.id].progress
+    const preview = screen.previewForm(manifests[screen.id])
+    assert.deepEqual(numeric.map(({ index, tag }) => preview.buttons[index].slice(tag.length)), ['625', '625'])
+
+    const shown = []
+    const rt = new ScreenRuntime({ show: (_, form) => { shown.push(form); return new Promise(() => {}) } })
+    const player = { id: 'p' }
+    rt.register(manifests)
+    rt.open(screen, player)
+    assert.deepEqual(numeric.map(({ index, tag }) => shown[0].buttons[index].text.slice(tag.length)), ['625', '625'])
+    rt.open(screen, player, { value: -2.5, max: 0.5 })
+    await Promise.resolve()
+    assert.deepEqual(numeric.map(({ index, tag }) => shown[1].buttons[index].text.slice(tag.length)), ['0', '1000'])
+    assert.throws(() => new ProgressBar(Infinity, 4), /value/)
+    assert.throws(() => new ProgressBar(2.5, 0), /max/)
+})
+
 test('ProgressBar：参数须是默认值为计时器的数据；编译出位置绑定与尺寸动画，没有小数常数与比较运算，静态检查没有错误', () => {
     assert.throws(() => defineUI({ id: 'cui_ui:x', props: { a: { type: String } }, page: ({ a }) => new ProgressBar(a).setSize(10, 2) }).build(), /值为计时器的数据/)
     const c = CuiApp.fromConfig({ namespace: 'n', screens: [lab()] }).compile()

@@ -23,6 +23,7 @@ import { FormButton } from '../components/form.js'
 import { Pages } from '../components/pages.js'
 import { arrowTag, pagingButtons, type FormButtonSpec, type ServerPaging } from './serverPagesShared.js'
 import { Timer } from './timer.js'
+import { progressPermille } from './progress.js'
 
 /** 一个 prop 的值：文字（数字按文字传递），或文字与图标 */
 export type PropItem = string | number | { text: string, icon?: string }
@@ -144,11 +145,15 @@ export interface ScreenOptions {
 /** 一项数据占用的按钮（列表每项一个） */
 export interface PropSlot { index: number, tag: string }
 
+type ProgressOperand = number | { slot: number }
+
 /** 构建生成的清单：名字与按钮序号的对应 */
 export interface ScreenManifest {
     id: string
     /** 视图读取的数据：来源（prop / state / computed）、种类、占用的按钮、默认值（预览用） */
     data: { name: string, source: 'prop' | 'state' | 'computed', kind: DataKind, slots: PropSlot[], default: unknown, timerSeconds?: number }[]
+    /** 数值进度条使用的额外按钮：由脚本从原来的数字数据计算。 */
+    progress?: (PropSlot & { value: ProgressOperand, max: ProgressOperand, default: number })[]
     /**
      * 按钮：tag 为普通版的标记，focusTag 为聚焦版的标记；method 与 args 为绑定的方法与参数。
      * 内置：__close（关闭）、__link（跳到 args[0]）、__back、__next、__prev（Router 的跳转）。page 为按钮所在的 Router 子页面（公共部分没有）
@@ -273,6 +278,20 @@ export class Screen {
         let next = 0
         const alloc = () => next++
         const manifest: ScreenManifest = { id, data: [], buttons: [] }
+        const bindProgress = (value: number | PropRef, max: number | PropRef): PropRef => {
+            const operand = (input: number | PropRef): ProgressOperand => {
+                if (typeof input === 'number') return input
+                if (!(input instanceof PropRef) || input._bindProgress !== bindProgress) {
+                    throw new Error(`${id}：ProgressBar 的数值参数应是数字或当前页面的数据`)
+                }
+                return { slot: input.index }
+            }
+            const v = operand(value), m = operand(max)
+            const def = progressPermille(value instanceof PropRef ? value.defaultValue : value, max instanceof PropRef ? max.defaultValue : max)
+            const index = alloc(), tag = `@p${index}|`
+            ;(manifest.progress ??= []).push({ index, tag, value: v, max: m, default: def })
+            return new PropRef('progress', index, tag)
+        }
         // 数据通道：视图第一次用到某个名字时分配按钮
         const channels = new Map<string, PropRef | PropRef[]>()
         const channel = (name: string): PropRef | PropRef[] => {
@@ -294,6 +313,7 @@ export class Screen {
                 slots.push({ index, tag })
                 const ref = new PropRef(kind === 'list' ? `${name}[${i}]` : name, index, tag)
                 ref.defaultValue = kind === 'list' ? (def as unknown[])[i] : def
+                ref._bindProgress = bindProgress
                 refs.push(ref)
             }
             // 计时器：组件的速度按构建时的总时长决定，运行时据此检查传入的计时器
@@ -456,6 +476,10 @@ export class Screen {
                 if (v === true) { buttons[s.index] = s.tag; icons[s.index] = ''; return }
                 buttons[s.index] = s.tag + textOf(v); icons[s.index] = iconOf(v)
             })
+        }
+        for (const p of manifest.progress ?? []) {
+            buttons[p.index] = p.tag + p.default
+            icons[p.index] = ''
         }
         // 初始状态的跳转按钮：没有历史（Back 隐藏）；公共部分的 Prev / Next 看起始页
         const order = manifest.router?.pages ?? []

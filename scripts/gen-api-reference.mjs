@@ -73,8 +73,8 @@ const PAGES = [
             ['Screen', 'defineScreen() 返回的界面对象：id；行为包脚本中的 open(玩家, props)、close(玩家)、isOpen(玩家)、on(事件名, 处理函数) / off()；构建时的 build()、previewForm()。'],
         ]],
         ['计时显示', [
-            ['Timer', '计时器：只记开始时刻与总时长；idle / of / start / pause / resume / reset；remaining、progress。驱动 ProgressBar 与 Countdown。'],
-            ['ProgressBar', '进度条：随计时器匀速前进，界面重新打开时从当时的进度接着走，在右端准确停下；setHead() 末端的竖条。'],
+            ['Timer', '记录开始时刻与总时长，驱动 ProgressBar 的动画。'],
+            ['ProgressBar', '接收计时器或 value、max 数值。setHead() 设置末端竖条。'],
         ]],
         ['动画', [
             ['Anim', '动画（客户端播放）：alpha、offset、size、color、clip（裁剪比例）、wait；then() 串成动画链，loop() 循环，setEasing() 设置缓动。用 setAnims() 加到任何控件上。'],

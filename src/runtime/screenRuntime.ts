@@ -8,6 +8,7 @@
  */
 import { _propDefault, type PropItem, type Screen, type ScreenManifest } from '../core/screen.js'
 import { buttonIconOf, pageTitle, pagingButtons, pagingResponse, type FormButtonSpec, type ServerPaging } from '../core/serverPagesShared.js'
+import { progressPermille } from '../core/progress.js'
 
 /** 玩家（只用到 id；行为包中是游戏的 Player） */
 export interface ScreenPlayer { readonly id: string }
@@ -174,11 +175,13 @@ class Instance {
     form(): FormSpec {
         const m = this.manifest
         const own: Record<number, FormButtonSpec> = {}
+        const valuesBySlot = m.progress?.length ? new Map<number, unknown>() : undefined
         for (const p of m.data) {
             const v = this.dataValue(p)
             const values = p.kind === 'list' ? (Array.isArray(v) ? v : []) : [v]
             p.slots.forEach((s, i) => {
                 const x = values[i] as PropItem | boolean | undefined | null
+                valuesBySlot?.set(s.index, x)
                 // 没有值：false、null、undefined、空字符串（按钮文字留空，「有值」的判断为假）
                 if (x === undefined || x === null || x === false || x === '') return
                 if (x === true) { own[s.index] = s.tag; return }
@@ -198,6 +201,11 @@ class Instance {
                 if (typeof x === 'string' || typeof x === 'number') { own[s.index] = s.tag + String(x); return }
                 own[s.index] = x.icon ? { text: s.tag + x.text, icon: x.icon } : s.tag + x.text
             })
+        }
+        for (const p of m.progress ?? []) {
+            const value = typeof p.value === 'number' ? p.value : valuesBySlot?.get(p.value.slot)
+            const max = typeof p.max === 'number' ? p.max : valuesBySlot?.get(p.max.slot)
+            own[p.index] = p.tag + progressPermille(value, max)
         }
         // 跳转按钮在无处可去时不写标记（隐藏）：Back 需要历史；公共部分的 Prev / Next 看当前页（子页面中的在构建时已处理）
         const order = m.router?.pages ?? []
@@ -225,6 +233,7 @@ class Instance {
 /** 运行时：登记清单，打开、关闭界面 */
 export class ScreenRuntime<P extends ScreenPlayer = ScreenPlayer> {
     private manifests = new Map<string, Manifest>()
+    /** 每个玩家只有一个界面实例占用表单，包括正在尝试显示的请求。 */
     private instances = new Map<string, Instance>()
     /**
      * 表单显示后的这段时间内（毫秒）推迟刷新。刷新是「关闭再打开」，两者之间若恰好发生点击，点击会丢失（客户端没有可点的表单）；
@@ -251,50 +260,57 @@ export class ScreenRuntime<P extends ScreenPlayer = ScreenPlayer> {
         for (const [id, m] of Object.entries(manifests)) this.manifests.set(id, m)
     }
 
-    private key(screen: Screen, player: ScreenPlayer) { return `${screen.id}\u0000${player.id}` }
-
     /** 某个玩家是否打开着这个界面 */
-    isOpen(screen: Screen, player: P): boolean { return this.instances.has(this.key(screen, player)) }
+    isOpen(screen: Screen, player: P): boolean { return this.instances.get(player.id)?.screen.id === screen.id }
 
     /** 为玩家打开界面；props 为传给界面的数据（未传的取 computed 或默认值）。已打开时更新 props 并重新显示 */
     open(screen: Screen, player: P, props: Record<string, unknown> = {}): void {
         const manifest = this.manifests.get(screen.id)
         if (!manifest) throw new Error(`界面 ${screen.id} 没有登记清单：在行为包脚本的入口导入构建生成的 ./cui.generated.js`)
-        const k = this.key(screen, player)
-        let inst = this.instances.get(k)
-        if (!inst) {
-            inst = new Instance(screen, manifest, player, this as unknown as ScreenRuntime)
-            this.instances.set(k, inst)
-            inst.openProps = props
-            inst.busy = true
-            try { screen.options.onOpen?.call(inst.ctx) } catch (e) { this.fail(inst, e); return } finally { inst.busy = false }
-            if (inst.closed) return
-            try { this.platform.lockCamera?.(player, true) } catch (e) { this.fail(inst, e); return }
-            void this.show(inst)
-            this.enqueue(inst)                                // onOpen 中发出的事件
-        } else {
+        const current = this.instances.get(player.id)
+        if (current?.screen.id === screen.id) {
             // 已打开：合并新的 props，进入合并队列（与同一时刻的其他变化一起，只重新打开一次）
-            inst.openProps = { ...inst.openProps, ...props }
-            inst.dirty = true
-            this.enqueue(inst)
+            current.openProps = { ...current.openProps, ...props }
+            current.dirty = true
+            this.enqueue(current)
+            return
         }
+        // 已有表单请求时保留原界面；按钮返回结果之后，可以直接打开另一个界面。
+        if (current?.displayed) return
+        const inst = new Instance(screen, manifest, player, this as unknown as ScreenRuntime)
+        inst.openProps = props
+        this.instances.set(player.id, inst)
+        if (current) this.dispose(current)                    // 取消旧界面的自动重开，视角锁交给新界面
+        if (inst.closed) return
+        inst.busy = true
+        try { screen.options.onOpen?.call(inst.ctx) } catch (e) { this.fail(inst, e); return } finally { inst.busy = false }
+        if (inst.closed) return
+        try { this.platform.lockCamera?.(player, true) } catch (e) { this.fail(inst, e); return }
+        void this.show(inst)
+        this.enqueue(inst)                                   // onOpen 中发出的事件
     }
 
     /** 关闭界面（onClose 之后实例销毁） */
     close(screen: Screen, player: ScreenPlayer): void {
-        const k = this.key(screen, player)
-        const inst = this.instances.get(k)
-        if (!inst || inst.closed) return
+        const inst = this.instances.get(player.id)
+        if (inst?.screen.id === screen.id) this.dispose(inst)
+    }
+
+    private dispose(inst: Instance): void {
+        if (inst.closed) return
+        const { player, screen, displayed } = inst
+        const ownsForm = this.instances.get(player.id) === inst
+        if (ownsForm) this.instances.delete(player.id)
         inst.closed = true
         inst.displayed = false
         inst.gen++
         inst.actions.length = 0
         inst.emits.length = 0
         this.log(inst, '关闭界面')
-        this.instances.delete(k)
         // 清理中的某一步出错，仍继续取消定时器、解除视角锁定与执行 onClose。
         const cleanup = [...inst.timers, inst.stopDeferred,
-            () => this.platform.close?.(player as P), () => this.platform.lockCamera?.(player as P, false),
+            () => { if (ownsForm && displayed && !this.instances.has(player.id)) this.platform.close?.(player as P) },
+            () => { if (ownsForm && !this.instances.has(player.id)) this.platform.lockCamera?.(player as P, false) },
             () => screen.options.onClose?.call(inst.ctx)]
         for (const fn of cleanup) {
             try { fn?.() } catch (e) { this.warn(inst, e) }
@@ -321,7 +337,7 @@ export class ScreenRuntime<P extends ScreenPlayer = ScreenPlayer> {
     /** @internal 运行出错后销毁实例，避免残留定时器与视角锁定 */
     fail(inst: Instance, error: unknown): void {
         this.warn(inst, error)
-        if (!inst.closed) this.close(inst.screen, inst.player)
+        this.dispose(inst)
     }
 
     /** 每个实例只执行一个异步处理，旧表单迟到的点击也进入同一队列。 */
@@ -395,13 +411,14 @@ export class ScreenRuntime<P extends ScreenPlayer = ScreenPlayer> {
         if (inst.closed) return
         const gen = ++inst.gen
         try {
-            inst.displayed = true
             inst.shownAt = this.now()
             inst.dirty = false
             const replace = inst.replacing
             inst.replacing = false
             this.log(inst, `显示 #${gen}${replace ? '（替换）' : ''}`)
             const spec = inst.form()
+            if (inst.closed) return
+            inst.displayed = true
             const r = await this.platform.show(inst.player as P, { ...spec, replace },
                 () => this.log(inst, `#${gen} 玩家正忙，重试`), () => !inst.closed && gen === inst.gen)
             const stale = gen !== inst.gen                        // 已被「替换」：这是旧表单迟到的结果
@@ -413,7 +430,7 @@ export class ScreenRuntime<P extends ScreenPlayer = ScreenPlayer> {
                 // 旧表单的取消是刷新自己关的，忽略；旧表单上的点击照常处理，再刷新正在显示的表单（真机 1.39.0：忽略点击会丢掉约一半）
                 if (!clicked) return
             }
-            if (!clicked) { this.close(inst.screen, inst.player); return }
+            if (!clicked) { this.dispose(inst); return }
             this.run(inst, async () => {
                 if (await this.handle(inst, r.selection!)) inst.needsShow = true
             })

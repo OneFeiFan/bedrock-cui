@@ -75,8 +75,8 @@
 
 | 名称 | 种类 | 说明 |
 |---|---|---|
-| `Timer` | 类 | 计时器：只记开始时刻与总时长；idle / of / start / pause / resume / reset；remaining、progress。驱动 ProgressBar 与 Countdown。 |
-| `ProgressBar` | 类 | 进度条：随计时器匀速前进，界面重新打开时从当时的进度接着走，在右端准确停下；setHead() 末端的竖条。 |
+| `Timer` | 类 | 记录开始时刻与总时长，驱动 ProgressBar 的动画。 |
+| `ProgressBar` | 类 | 接收计时器或 value、max 数值。setHead() 设置末端竖条。 |
 
 ## 动画
 

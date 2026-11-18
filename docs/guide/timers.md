@@ -37,6 +37,8 @@ const lab = defineUI({
 
 `Timer` 只记录开始的时刻与总时长。它不可变：下列方法返回新的计时器，赋值给状态即触发界面更新。
 
+总时长和已过时间以秒为单位，支持小数。总时长须为能换算成有限毫秒数的正数。已过时间和传入的时刻须为有限数字。
+
 | 方法 | 作用 |
 |---|---|
 | `Timer.idle(秒数)` | 一个尚未开始的计时器 |
@@ -52,6 +54,22 @@ const lab = defineUI({
 ## ProgressBar
 
 `new ProgressBar(计时器)` 创建一个进度条，参数是页面函数参数中值为计时器的数据，需要像素尺寸。`进度条.setFill(颜色)` 设置已完成部分的颜色，`进度条.setTrack(颜色)` 设置底色（`undefined` 表示不画底色）。`进度条.setHead(颜色, 宽度, 条数, 间隔)` 在前进的末端加亮色的竖条（缺省 1 条、宽 2 像素）。它们随末端移动，到达右端后停在那里；暂停时停在当前进度处。
+
+### 数值进度
+
+`new ProgressBar(value, max)` 显示给定数值占上限的比例，每次显示表单时按当前数据绘制。参数可用有限数字或页面参数中的数值数据。两者都支持小数，`max` 须大于 0，填充范围为 0 至 100%。
+
+```js
+import { defineUI, ProgressBar } from 'bedrock-cui'
+
+const capacity = defineUI({
+    id: 'cui_ui:capacity',
+    props: { used: { type: Number, default: 2.5 }, total: { type: Number, default: 4 } },
+    page: ({ used, total }) => new ProgressBar(used, total).setSize(160, 8),
+})
+```
+
+默认显示 62.5%。脚本调用 `capacity.open(player, { used: 3.25, total: 5 })` 时会按新值显示。表单绑定接收脚本算好的整数千分比，数值模式的进度条随表单数据更新。
 
 ## 与游戏对象同步
 

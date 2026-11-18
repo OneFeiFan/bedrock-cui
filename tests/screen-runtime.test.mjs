@@ -100,6 +100,46 @@ test('方法中调用 this.close()：不再打开，调用 onClose、解除视�
     assert.equal(c.platform.shown.at(-1).form.buttons[0].text, '@p0|金币：100', '等异步方法结束后才重新打开')
 })
 
+test('同一玩家的界面归属：显示时拒绝争用，点击后可以切换；UserBusy 只清理请求', async () => {
+    const platform = fakePlatform()
+    const runtime = new ScreenRuntime(platform)
+    const other = { id: 'player-2' }
+    const exited = []
+    const a = defineUI({
+        id: 'cui_ui:a',
+        methods: { next() { runtime.open(b, this.player) } },
+        onClose() { exited.push(this.player.id) },
+        page: ({ next }) => new Panel().add(new Button().onClick(next).setSize(12, 12)),
+    })
+    const b = defineUI({ id: 'cui_ui:b', page: () => new Panel() })
+    const manifests = CuiApp.fromConfig({ namespace: 'n', screens: [a, b] }).compile().screens
+    runtime.register(manifests)
+    runtime.open(a, P)
+    runtime.open(b, P)
+    runtime.close(b, P)
+    assert.equal(platform.shown.length, 1)
+    assert.ok(runtime.isOpen(a, P))
+    assert.ok(!runtime.isOpen(b, P))
+    assert.deepEqual(platform.log, ['camera true'])
+
+    platform.shown[0].resolve({ canceled: false, selection: manifests[a.id].buttons[0].index })
+    await tick()
+    assert.deepEqual(platform.shown.map(({ form }) => form.title), [a.id, b.id])
+    assert.deepEqual(exited, [P.id])
+    assert.ok(!runtime.isOpen(a, P))
+    assert.ok(runtime.isOpen(b, P))
+    assert.deepEqual(platform.log, ['camera true', 'camera true'], '交接期间保持视角锁定')
+
+    platform.show = async () => ({ canceled: true, cancelationReason: 'UserBusy' })
+    runtime.open(a, other)
+    await tick()
+    assert.ok(!runtime.isOpen(a, other))
+    assert.ok(runtime.isOpen(b, P))
+    assert.ok(!platform.log.some((line) => line.startsWith('close ')), '失败的请求无需关闭玩家的其他表单')
+    runtime.close(b, P)
+    assert.ok(platform.log.includes(`close ${P.id}`), '显式关闭当前表单')
+})
+
 test('翻页：翻页箭头只翻页（标题带页名），不调用方法；没有登记清单时提示导入 cui.generated.js', async () => {
     const calls = []
     const { screen, platform, m } = setup({

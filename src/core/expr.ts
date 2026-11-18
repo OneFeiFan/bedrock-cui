@@ -248,6 +248,8 @@ export const asBool = (v: Value) => truthy(v)
 export class PropRef extends Expr {
     /** 定义 prop 时的默认值（组件据此得知例如计时器的总时长） */
     defaultValue?: unknown
+    /** @internal 由当前界面分配一个在脚本中换算为千分比的数据通道。 */
+    _bindProgress?: (value: number | PropRef, max: number | PropRef) => PropRef
     constructor(readonly propName: string, readonly index: number, readonly tag: string) {
         super(ref('#form_button_text', { kind: 'collection', collection: 'form_buttons', index }).minus(tag).node)
     }
