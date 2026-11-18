@@ -1,0 +1,53 @@
+{
+  "format_version": 2,
+  "header": {
+    "name": "cui_timer_hud_RP",
+    "description": "CUI V15 recovery: original validated UI and scripts",
+    "version": [
+      1,
+      0,
+      17
+    ],
+    "uuid": "b879df0c-18b2-4eaa-981c-11fd601ad56a",
+    "min_engine_version": [
+      1,
+      21,
+      100
+    ]
+  },
+  "modules": [
+    {
+      "description": "资源模块",
+      "type": "resources",
+      "uuid": "799ebae4-0b3f-44d1-9a43-23eba9328ad3",
+      "version": [
+        1,
+        0,
+        17
+      ]
+    }
+  ],
+  "dependencies": [
+    {
+      "uuid": "794a17e2-f9c5-4811-863e-1749700de66e",
+      "version": [
+        1,
+        0,
+        17
+      ]
+    }
+  ],
+  "metadata": {
+    "authors": [
+      "@sapdon"
+    ],
+    "license": "MIT",
+    "generated_with": {
+      "sapdon": [
+        "1.0.0"
+      ]
+    },
+    "product_type": "addon",
+    "url": "https://github.com/junjun260/sapdon"
+  }
+}

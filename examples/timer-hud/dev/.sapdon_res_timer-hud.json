@@ -1,0 +1,7 @@
+{
+  "v": 1,
+  "note": "sapdon 资源清单：上一次从项目 res/ 复制到 dev/<项目>_RP/ 的文件（相对 res/ 的路径）。下次据此删除 res/ 里已不存在的旧文件。请勿手工编辑。",
+  "files": [
+    "textures/bedrock_cui/solid.png"
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "v": 1,
+  "note": "sapdon 部署清单：上一次同步到「游戏开发包目录」的文件（相对 dev/ 的路径）。下次同步据此删除不再生成的旧文件。请勿手工编辑。",
+  "files": [
+    "timer-hud_BP/manifest.json",
+    "timer-hud_BP/pack_icon.png",
+    "timer-hud_BP/scripts/index.js",
+    "timer-hud_RP/manifest.json",
+    "timer-hud_RP/pack_icon.png",
+    "timer-hud_RP/textures/bedrock_cui/solid.png",
+    "timer-hud_RP/textures/flipbook_textures.json",
+    "timer-hud_RP/textures/item_texture.json",
+    "timer-hud_RP/textures/terrain_texture.json",
+    "timer-hud_RP/ui/_ui_defs.json",
+    "timer-hud_RP/ui/chest_screen.json",
+    "timer-hud_RP/ui/cui_timer_demo.json",
+    "timer-hud_RP/ui/cui_timer_demo_timers.json",
+    "timer-hud_RP/ui/data_driven_container_screen.json",
+    "timer-hud_RP/ui/hud_screen.json",
+    "timer-hud_RP/ui/server_form.json"
+  ]
+}

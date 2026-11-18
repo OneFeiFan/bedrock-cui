@@ -1,0 +1,72 @@
+{
+  "format_version": 2,
+  "header": {
+    "name": "cui_timer_hud_BP",
+    "description": "CUI V15 recovery: original validated UI and scripts",
+    "version": [
+      1,
+      0,
+      17
+    ],
+    "uuid": "794a17e2-f9c5-4811-863e-1749700de66e",
+    "min_engine_version": [
+      1,
+      21,
+      100
+    ]
+  },
+  "modules": [
+    {
+      "description": "行为模块",
+      "type": "data",
+      "uuid": "c9a18087-7161-40b1-9dc2-55d7826f8c33",
+      "version": [
+        1,
+        0,
+        17
+      ]
+    },
+    {
+      "description": "脚本模块",
+      "type": "script",
+      "uuid": "2e20b78c-6f3c-47f4-be43-739fd8d57901",
+      "version": [
+        1,
+        0,
+        17
+      ],
+      "entry": "scripts/index.js"
+    }
+  ],
+  "dependencies": [
+    {
+      "module_name": "@minecraft/server",
+      "version": "2.0.0"
+    },
+    {
+      "module_name": "@minecraft/server-ui",
+      "version": "2.0.0"
+    },
+    {
+      "uuid": "b879df0c-18b2-4eaa-981c-11fd601ad56a",
+      "version": [
+        1,
+        0,
+        17
+      ]
+    }
+  ],
+  "metadata": {
+    "authors": [
+      "@sapdon"
+    ],
+    "license": "MIT",
+    "generated_with": {
+      "sapdon": [
+        "1.0.0"
+      ]
+    },
+    "product_type": "addon",
+    "url": "https://github.com/junjun260/sapdon"
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "v": 1,
+  "note": "sapdon 生成物清单：本次构建写出的产物文件（相对 dev/ 的路径）。下次构建据此删除不再生成的旧文件。请勿手工编辑。",
+  "files": [
+    "timer-hud_RP\\textures\\flipbook_textures.json",
+    "timer-hud_RP\\textures\\item_texture.json",
+    "timer-hud_RP\\textures\\terrain_texture.json",
+    "timer-hud_RP\\ui\\_ui_defs.json",
+    "timer-hud_RP\\ui\\chest_screen.json",
+    "timer-hud_RP\\ui\\cui_timer_demo.json",
+    "timer-hud_RP\\ui\\cui_timer_demo_timers.json",
+    "timer-hud_RP\\ui\\data_driven_container_screen.json",
+    "timer-hud_RP\\ui\\hud_screen.json",
+    "timer-hud_RP\\ui\\server_form.json"
+  ]
+}

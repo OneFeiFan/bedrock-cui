@@ -1,0 +1,7 @@
+{
+  "texture_name": "atlas.terrain",
+  "resource_pack_name": "timer-hud",
+  "padding": 8,
+  "num_mip_levels": 4,
+  "texture_data": {}
+}
