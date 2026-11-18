@@ -406,3 +406,37 @@ world.afterEvents.itemUse.subscribe((e) => shop.open(e.source))
 - 远程 master（e8bfb73）= 本地 6e22a51 的全部内容（用户以 33e9de3 应用），外加 GPT 的提交 1dbf73b：实验性的事件驱动计时 HUD（defineTimerHud、TimerHud、EventProgressBar，借用原版标题 / actionbar 传输，V7–V22 真机迭代）、LiveBar、LiveFrame 编码与发送器、EventTimerSender；运行时修正（刷新期间点击与事件串行、关闭或替换时停止 UserBusy 重试、相同的值不刷新、出错时清理）；颜色参数校验；checkScripts 支持精简行为包。拉取后 179 条测试、手册检查、端到端、测试包与网站构建全部通过。
 - 发现：应用补丁时「删除文件」与「权限变更」没有生效，留下 12 个本应删除的文件（7 个孤立的旧手册页——被构建进网站、内容与现在的手册矛盾；旧示例、旧模板、src/node/addon.ts），命令行入口失去可执行权限。清理提交删除它们、恢复权限、改正两段过时的注释、API 参考补上 TimerHudTransport；补丁改用 git format-patch（用 git am 应用，删除与权限都会生效）。
 - 本地旧状态保留为分支 backup-before-pull-6e22a51。
+
+## 21. 统一的页面写法（2026-11，用户确认「应该可以了」）
+
+目标：单页、多页、选项卡、组件写出来是同一种样子——「函数返回一个 Page，往里面 add() 元素」。视图不再接收会变化的参数。
+
+**定义**：`defineUI({ id, props, state, computed, methods, onOpen, onUpdate, onClose, timerEndRefresh, page })`。
+- `page`：根页面函数 `(data) => Page`。`data` 只含使用者在 props / state / computed / methods 中定义的名字（数据占位与方法引用），框架不放任何东西进去，没有保留名。
+- 删除 `defineScreen`、`view`、`pages`、`start`、`layout`，以及视图参数中的 `button`、`close`、`pages`、`tabs`。
+- 返回的对象（类名仍为 Screen）照旧有 open / close / isOpen / on / off。
+
+**元素**（都从 'bedrock-cui' 导入，用 new 创建、add() 放入）：
+| 元素 | 作用 |
+|---|---|
+| `Page` | 一页内容（Panel 的子类，语义上的「页」）；在页面组中缺省铺满页面组 |
+| `Router({ 名称: 页面函数 })` | 一组子页面，服务端切换；`.startAt(名称)` |
+| `Tabs({ 名称: 页面函数 })` | 一组子页面，客户端切换；`.startAt(名称)` |
+| `Link(名称)` | 跳到子页面 |
+| `Back()`、`Prev()`、`Next()` | 返回 / 上一页 / 下一页；无处可去时自动隐藏 |
+| `Close()` | 关闭界面 |
+| `Button().onClick(方法, …参数)` | 调用方法；不绑定方法时是纯粹的界面按钮 |
+- 跳转元素与 Button 一样有 `default`、`hover`、`pressed` 状态，另有 `selected`（目标页正在显示时显示，用于高亮当前标签 / 页）。
+- 页面组的子页面函数同样是 `(data) => Page`，构建时由框架调用（逐层展开，组可以嵌套：Tabs 可以放在 Router 的页里）。
+
+**跳转元素找所属的页面组**：先沿父级向上找含有该名称（Link）或任意（Back / Prev / Next）的组；在公共部分时，在整棵树中找含有该名称的组；名称重复时构建报错，提示写成 `new Link('组名:页名')`（组名即页面组元素的 setName）。
+
+**实现要点**：
+- Router 的页面可见性沿用服务端翻页（标题带页名）；跳转改为运行时处理的按钮（__link / __back / __next / __prev，清单记按钮所属的页）。跳转后焦点给「新页中动作相同的按钮」（同一个公共部分的按钮序号不变），保证鼠标不动连续点击；自动加「原地不动」按钮。Prev / Next 在首页 / 末页的页内元素编译时隐藏；公共部分的 Prev / Next / Back 由运行时在不可用时不写标记（隐藏）。
+- Tabs 编译为客户端开关组（原 Pages 的客户端用法）；Link 在 Tabs 中编译为开关（unchecked → default、hover、checked → selected）。Tabs 中的 Next / Prev 允许但静态检查警告（客户端连续点击不可靠，真机）；Tabs 的状态在界面重新打开后回到 startAt（服务端读不到开关状态）。
+- 第一版每个界面最多一个 Router；Tabs 数量不限。
+- Button：绑定了 onClick 的编译为服务端按钮（普通版 + 聚焦版，同 ScreenButton），序号在构建时分配；未绑定的仍是界面内部的按钮。
+
+**命名**：defineUI；「界面」一词保留（「容器」与 Panel 及 Minecraft 的箱子类界面冲突，用户同意）。
+**影响**：不兼容（未发布）。模板、示例、测试包的界面文件、单元测试、手册（界面文件、数据、逻辑、页面、选项卡、计时显示、快速上手、README 等）全部改写。计时 HUD（defineTimerHud）是独立接口，不在此次范围。
+**步骤**：① 元素与 defineUI、构建（展开、解析、清单）② 运行时（跳转、焦点、隐藏）③ 测试 ④ 模板、示例、测试包 ⑤ 手册 ⑥ 浏览器验证与真机测试包。
