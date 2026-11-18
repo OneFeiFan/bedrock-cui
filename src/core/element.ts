@@ -19,6 +19,16 @@ import type { Anchor, Dyn, Intrinsic, RGB, RNode, Size } from './node.js'
 import { Align, Anchor as AnchorValue, Color, Insets, Justify, Length, Size as SizeValue, Texture, TextStyle, Vec2, type LengthLike, type TextAlign } from './values.js'
 import type { Anchor as AnchorName } from './node.js'
 
+/** JavaScript 调用方也应在构建时得到颜色类型错误，而不是把字符串写进游戏的 color。 */
+function colorValue(value: Color | RGB | undefined): RGB | undefined {
+    if (value === undefined) return undefined
+    const rgb = value instanceof Color ? value.toJSON() : value
+    if (!Array.isArray(rgb) || rgb.length !== 3 || !rgb.every(Number.isFinite)) {
+        throw new Error('颜色必须是 Color（例如 Color.hex("#111b28")）或三个有限数字组成的 RGB 数组')
+    }
+    return rgb
+}
+
 export interface LayoutOptions {
     /** 控件名（同级唯一；缺省 = 类型 + 序号）。开关的名字还要全局唯一（别的控件按名字读它的状态） */
     name?: string
@@ -384,7 +394,7 @@ export class Image extends Element {
     setUV(u: number, v: number, w: number, h: number): this { return this.setUv(u, v).setUvSize(w, h) }
     /** 染色 */
     get color(): Color | undefined { return this.props.color ? Color.fromJSON(this.props.color) : undefined }
-    set color(v: Color | RGB | undefined) { this.props.color = v === undefined ? undefined : v instanceof Color ? v.toJSON() : v }
+    set color(v: Color | RGB | undefined) { this.props.color = colorValue(v) }
     setColor(c: Color): this { this.color = c; return this }
     /** 按比例裁剪的方向（进度条） */
     get clipDirection(): 'left' | 'right' | 'up' | 'down' | 'center' | undefined { return this.props.clipDirection }
@@ -425,7 +435,7 @@ export class Label extends Element {
     }
     /** 颜色 */
     get color(): Color | undefined { return this.props.color ? Color.fromJSON(this.props.color) : undefined }
-    set color(v: Color | RGB | undefined) { this.props.color = v === undefined ? undefined : v instanceof Color ? v.toJSON() : v }
+    set color(v: Color | RGB | undefined) { this.props.color = colorValue(v) }
     setColor(c: Color): this { this.color = c; return this }
     /** 阴影 */
     get shadow(): boolean | undefined { return this.props.shadow }

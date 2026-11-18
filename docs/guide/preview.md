@@ -75,4 +75,4 @@ mountPreview(document.getElementById('app'), {
 })
 ```
 
-表单数据通过 `title`、`formText`、`formButtons` 三个信号（`signal()`）提供；使用服务端翻页的界面，用 `ServerPagesPreview` 处理翻页。各选项见 [API 参考](reference/api-web.md)。
+表单数据通过 `title`、`formText`、`formButtons` 三个信号（`signal()`）提供。界面文件的点击、状态与翻页由 `runScreenInBrowser()` 处理，各选项见 [API 参考](reference/api-web.md)。

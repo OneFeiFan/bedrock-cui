@@ -20,8 +20,8 @@ export interface FormResult { canceled: boolean, selection?: number, cancelation
 
 /** 平台：显示与关闭表单、锁视角、定时器 */
 export interface FormPlatform<P extends ScreenPlayer = ScreenPlayer> {
-    /** 显示表单；onBusy：遇到「玩家正忙」、稍后重试之前调用（诊断记录用） */
-    show(player: P, form: FormSpec, onBusy?: () => void): Promise<FormResult>
+    /** 显示表单；onBusy 记录重试；isActive 为假时平台停止重试已关闭或已被替换的请求 */
+    show(player: P, form: FormSpec, onBusy?: () => void, isActive?: () => boolean): Promise<FormResult>
     close?(player: P): void
     lockCamera?(player: P, on: boolean): void
     /** 安排在当前代码执行完后运行（合并队列的刷新；缺省微任务） */
@@ -66,6 +66,12 @@ class Instance {
     queued = false
     /** 刷新已推迟到安静下来 */
     deferred = false
+    stopDeferred?: () => void
+    /** 点击与事件处理串行执行；等待表单结果不占用队列 */
+    actions: (() => void | Promise<void>)[] = []
+    processing = false
+    /** 一批点击处理完后，只以最终状态重新显示一次 */
+    needsShow = false
     /** this.emit() 发出、尚未交给脚本处理的事件 */
     emits: [string, unknown[]][] = []
     /** this.setInterval / setTimeout 创建的定时器（关闭时全部取消） */
@@ -83,19 +89,28 @@ class Instance {
         const { state, computed = {}, methods = {}, props = {} } = screen.options
         // 深层响应式：普通对象与数组的任何修改（含 push）都触发更新；类的实例（游戏对象、Timer）不跟踪
         const proxies = new WeakMap<object, object>()
+        const originals = new WeakMap<object, object>()
         const changed = () => { this.dirty = true; runtime.enqueue(this) }
         const reactive = <T>(v: T): T => {
             if (!v || typeof v !== 'object') return v
+            if (originals.has(v as object)) return v
             const proto = Object.getPrototypeOf(v)
             if (proto !== Object.prototype && proto !== Array.prototype && proto !== null) return v
             const hit = proxies.get(v as object)
             if (hit) return hit as T
             const p = new Proxy(v as object, {
                 get: (t, k, r) => reactive(Reflect.get(t, k, r)),
-                set: (t, k, val, r) => { const ok = Reflect.set(t, k, val, r); changed(); return ok },
-                deleteProperty: (t, k) => { const ok = Reflect.deleteProperty(t, k); changed(); return ok },
+                set: (t, k, val, r) => {
+                    const value = val && typeof val === 'object' ? originals.get(val) ?? val : val
+                    const had = Object.prototype.hasOwnProperty.call(t, k), before = Reflect.get(t, k, r)
+                    const ok = Reflect.set(t, k, value, r)
+                    if (ok && (!had || !Object.is(before, value))) changed()
+                    return ok
+                },
+                deleteProperty: (t, k) => { const had = Object.prototype.hasOwnProperty.call(t, k), ok = Reflect.deleteProperty(t, k); if (ok && had) changed(); return ok },
             })
             proxies.set(v as object, p)
+            originals.set(p, v as object)
             return p as T
         }
         this.state = reactive({ ...(state ? state.call({}) : {}) })
@@ -106,16 +121,21 @@ class Instance {
             get(_, key) {
                 if (typeof key === 'symbol') return undefined
                 if (key === 'player') return inst.player
-                if (key === 'close') return () => runtime.close(inst.screen, inst.player)
+                if (key === 'close') return () => { if (!inst.closed) runtime.close(inst.screen, inst.player) }
                 if (key === 'refresh') return () => { inst.dirty = true; runtime.enqueue(inst) }
                 // 事件总线：交给脚本中 screen.on(事件名, 处理函数) 登记的处理函数（合并队列中处理）
                 if (key === 'emit') return (event: string, ...args: unknown[]) => { inst.emits.push([event, args]); runtime.enqueue(inst) }
                 // 与界面生命周期绑定的定时器：界面关闭时自动取消；返回取消函数
                 if (key === 'setInterval' || key === 'setTimeout') return (fn: () => void, ticks: number) => {
+                    if (inst.closed) return () => { }
                     const make = key === 'setInterval' ? runtime.platform.interval : runtime.platform.timeout
                     if (!make) throw new Error(`当前环境不支持 this.${key}()`)
                     let cancel = () => { }
-                    const wrapped = () => { if (inst.closed) return; if (key === 'setTimeout') inst.timers.delete(stop); fn.call(inst.ctx) }
+                    const wrapped = () => {
+                        if (inst.closed) return
+                        if (key === 'setTimeout') inst.timers.delete(stop)
+                        try { fn.call(inst.ctx) } catch (e) { runtime.fail(inst, e) }
+                    }
                     cancel = make(wrapped, ticks)
                     const stop = () => { cancel(); inst.timers.delete(stop) }
                     inst.timers.add(stop)
@@ -241,8 +261,9 @@ export class ScreenRuntime<P extends ScreenPlayer = ScreenPlayer> {
             this.instances.set(k, inst)
             inst.openProps = props
             inst.busy = true
-            try { screen.options.onOpen?.call(inst.ctx) } finally { inst.busy = false }
-            this.platform.lockCamera?.(player, true)
+            try { screen.options.onOpen?.call(inst.ctx) } catch (e) { this.fail(inst, e); return } finally { inst.busy = false }
+            if (inst.closed) return
+            try { this.platform.lockCamera?.(player, true) } catch (e) { this.fail(inst, e); return }
             void this.show(inst)
             this.enqueue(inst)                                // onOpen 中发出的事件
         } else {
@@ -259,13 +280,19 @@ export class ScreenRuntime<P extends ScreenPlayer = ScreenPlayer> {
         const inst = this.instances.get(k)
         if (!inst || inst.closed) return
         inst.closed = true
+        inst.displayed = false
+        inst.gen++
+        inst.actions.length = 0
+        inst.emits.length = 0
         this.log(inst, '关闭界面')
         this.instances.delete(k)
-        for (const stop of [...inst.timers]) stop()
-        inst.stopTimerEnd?.()
-        this.platform.close?.(player as P)
-        this.platform.lockCamera?.(player as P, false)
-        screen.options.onClose?.call(inst.ctx)
+        // 清理中的某一步出错，仍继续取消定时器、解除视角锁定与执行 onClose。
+        const cleanup = [...inst.timers, inst.stopTimerEnd, inst.stopDeferred,
+            () => this.platform.close?.(player as P), () => this.platform.lockCamera?.(player as P, false),
+            () => screen.options.onClose?.call(inst.ctx)]
+        for (const fn of cleanup) {
+            try { fn?.() } catch (e) { this.warn(inst, e) }
+        }
     }
 
     /**
@@ -276,34 +303,74 @@ export class ScreenRuntime<P extends ScreenPlayer = ScreenPlayer> {
     enqueue(inst: Instance): void {
         if (inst.closed || inst.busy || inst.queued) return
         inst.queued = true
-        const run = () => { inst.queued = false; void this.flush(inst) }
+        const run = () => { inst.queued = false; this.run(inst, () => this.flush(inst)) }
         if (this.platform.schedule) this.platform.schedule(run); else Promise.resolve().then(run)
+    }
+
+    private warn(inst: Instance, error: unknown): void {
+        this.log(inst, `运行出错：${error}`)
+        console.warn(`[bedrock-cui] ${inst.screen.id} 运行出错：${error}`)
+    }
+
+    /** @internal 运行出错后销毁实例，避免残留定时器与视角锁定 */
+    fail(inst: Instance, error: unknown): void {
+        this.warn(inst, error)
+        if (!inst.closed) this.close(inst.screen, inst.player)
+    }
+
+    /** 每个实例只执行一个异步处理，旧表单迟到的点击也进入同一队列。 */
+    private run(inst: Instance, action: () => void | Promise<void>): void {
+        if (inst.closed) return
+        inst.actions.push(action)
+        if (inst.processing) return
+        inst.processing = true
+        void (async () => {
+            inst.busy = true
+            try {
+                while (!inst.closed && inst.actions.length) {
+                    const pending = inst.actions.shift()!()
+                    if (pending) await pending
+                }
+                if (inst.closed) return
+                if (inst.needsShow) {
+                    inst.needsShow = false
+                    if (inst.displayed) this.replaceNow(inst)
+                    else void this.show(inst)
+                }
+            } catch (e) { this.fail(inst, e) } finally {
+                inst.busy = false
+                inst.processing = false
+                if (!inst.closed && (inst.emits.length || (inst.dirty && inst.displayed && !inst.deferred))) this.enqueue(inst)
+            }
+        })()
     }
 
     /** 把 this.emit() 发出的事件交给脚本登记的处理函数（依次执行，可为异步；出错不影响界面） */
     private async deliver(inst: Instance): Promise<void> {
-        while (inst.emits.length) {
+        while (!inst.closed && inst.emits.length) {
             const [event, args] = inst.emits.shift()!
             this.platform.emitted?.(inst.player as P, event, args)
             for (const handler of inst.screen._listeners(event)) {
+                if (inst.closed) return
                 try { await handler(inst.player, ...args) } catch (e) { console.warn(`[bedrock-cui] ${inst.screen.id} 的事件 ${event} 处理出错：${e}`) }
             }
         }
     }
 
-    private async flush(inst: Instance): Promise<void> {
+    private flush(inst: Instance): void | Promise<void> {
         if (inst.closed) return
-        if (inst.emits.length) {
-            inst.busy = true
-            try { await this.deliver(inst) } finally { inst.busy = false }
-        }
-        if (inst.closed || !inst.displayed || !inst.dirty || inst.deferred) return
+        if (inst.emits.length) return this.deliver(inst).then(() => this.refresh(inst))
+        this.refresh(inst)
+    }
+
+    private refresh(inst: Instance): void {
+        if (inst.closed || inst.needsShow || !inst.displayed || !inst.dirty || inst.deferred) return
         // 表单刚显示不久：推迟到安静下来（期间若玩家点击，重新打开时就带上了最新的状态，到时 dirty 为 false 就跳过）
         const wait = this.quietMs - (this.now() - inst.shownAt)
         if (wait > 0 && this.platform.timeout) {
             inst.deferred = true
             this.log(inst, `推迟刷新 ${Math.round(wait)} 毫秒`)
-            this.platform.timeout(() => { inst.deferred = false; this.enqueue(inst) }, Math.max(1, Math.ceil(wait / 50)))
+            inst.stopDeferred = this.platform.timeout(() => { inst.stopDeferred = undefined; inst.deferred = false; this.enqueue(inst) }, Math.max(1, Math.ceil(wait / 50)))
             return
         }
         // 刷新：关闭当前表单，同一刻立即显示新表单（旧表单迟到的取消忽略、迟到的点击照常处理）
@@ -311,39 +378,47 @@ export class ScreenRuntime<P extends ScreenPlayer = ScreenPlayer> {
     }
 
     private async show(inst: Instance): Promise<void> {
-        const gen = ++inst.gen
-        inst.displayed = true
-        inst.shownAt = this.now()
-        inst.dirty = false
-        const replace = inst.replacing
-        inst.replacing = false
-        this.log(inst, `显示 #${gen}${replace ? '（替换）' : ''}`)
-        const spec = inst.form()
-        // 计时结束时刷新一次：动画的时长在构建时已定（总时长），计时结束后它不会自己停在「完成」
-        inst.stopTimerEnd?.()
-        inst.stopTimerEnd = undefined
-        if (inst.timerEnd !== undefined && this.platform.timeout) {
-            inst.stopTimerEnd = this.platform.timeout(() => { if (!inst.closed) { this.log(inst, '计时结束，刷新'); inst.dirty = true; this.enqueue(inst) } }, Math.ceil(inst.timerEnd / 50) + 1)
-        }
-        const r = await this.platform.show(inst.player as P, { ...spec, replace }, () => this.log(inst, `#${gen} 玩家正忙，重试`))
-        const stale = gen !== inst.gen                        // 已被「替换」：这是旧表单迟到的结果
-        this.log(inst, `结果 #${gen}${stale ? '（旧）' : ''}：${r.canceled ? `取消 ${r.cancelationReason ?? ''}` : `点击 ${r.selection}`}`)
-        if (!stale) inst.displayed = false
         if (inst.closed) return
-        const clicked = !r.canceled && r.selection !== undefined
-        if (stale) {
-            // 旧表单的取消是刷新自己关的，忽略；旧表单上的点击照常处理，再刷新正在显示的表单（真机 1.39.0：忽略点击会丢掉约一半）
-            if (!clicked) return
-            const after = await this.handle(inst, r.selection!)
-            if (after && !inst.closed) this.replaceNow(inst)
-            return
+        const gen = ++inst.gen
+        try {
+            inst.displayed = true
+            inst.shownAt = this.now()
+            inst.dirty = false
+            const replace = inst.replacing
+            inst.replacing = false
+            this.log(inst, `显示 #${gen}${replace ? '（替换）' : ''}`)
+            const spec = inst.form()
+            // 计时结束时刷新一次：动画的时长在构建时已定（总时长），计时结束后它不会自己停在「完成」
+            inst.stopTimerEnd?.()
+            inst.stopTimerEnd = undefined
+            if (inst.timerEnd !== undefined && this.platform.timeout) {
+                inst.stopTimerEnd = this.platform.timeout(() => { if (!inst.closed) { this.log(inst, '计时结束，刷新'); inst.dirty = true; this.enqueue(inst) } }, Math.ceil(inst.timerEnd / 50) + 1)
+            }
+            const r = await this.platform.show(inst.player as P, { ...spec, replace },
+                () => this.log(inst, `#${gen} 玩家正忙，重试`), () => !inst.closed && gen === inst.gen)
+            const stale = gen !== inst.gen                        // 已被「替换」：这是旧表单迟到的结果
+            this.log(inst, `结果 #${gen}${stale ? '（旧）' : ''}：${r.canceled ? `取消 ${r.cancelationReason ?? ''}` : `点击 ${r.selection}`}`)
+            if (!stale) inst.displayed = false
+            if (inst.closed) return
+            const clicked = !r.canceled && r.selection !== undefined
+            if (stale) {
+                // 旧表单的取消是刷新自己关的，忽略；旧表单上的点击照常处理，再刷新正在显示的表单（真机 1.39.0：忽略点击会丢掉约一半）
+                if (!clicked) return
+            }
+            if (!clicked) { this.close(inst.screen, inst.player); return }
+            this.run(inst, async () => {
+                if (await this.handle(inst, r.selection!)) inst.needsShow = true
+            })
+        } catch (e) {
+            // 已被替换或关闭的表单失败，不应关闭之后打开的界面。
+            if (!inst.closed && gen === inst.gen) this.fail(inst, e)
+            else this.warn(inst, e)
         }
-        if (!clicked) { this.close(inst.screen, inst.player); return }
-        if (await this.handle(inst, r.selection!)) return this.show(inst)
     }
 
     /** 处理一次点击：翻页按钮翻页；button(名字) 调用同名方法、获得焦点、onUpdate。返回是否需要重新打开 */
     private async handle(inst: Instance, selection: number): Promise<boolean> {
+        if (inst.closed) return false
         const m = inst.manifest
         let index = selection
         if (m.paging) {
@@ -360,19 +435,16 @@ export class ScreenRuntime<P extends ScreenPlayer = ScreenPlayer> {
             }
         }
         const b = m.buttons.find((x) => x.index === index)
-        inst.busy = true
-        try {
-            if (b) {
-                inst.focus = b.index
-                if (b.method === '__close') { this.close(inst.screen, inst.player); return false }
-                await inst.screen.options.methods?.[b.method]?.call(inst.ctx, ...b.args)
-            }
-            if (inst.closed) return false
-            await this.deliver(inst)                          // 方法中发出的事件：交给脚本处理完再重新打开（期间的更新合并为一次）
-            if (inst.closed) return false
-            inst.screen.options.onUpdate?.call(inst.ctx)
-        } finally { inst.busy = false }
-        return true
+        if (b) {
+            inst.focus = b.index
+            if (b.method === '__close') { this.close(inst.screen, inst.player); return false }
+            await inst.screen.options.methods?.[b.method]?.call(inst.ctx, ...b.args)
+        }
+        if (inst.closed) return false
+        await this.deliver(inst)                          // 方法中发出的事件：交给脚本处理完再重新打开（期间的更新合并为一次）
+        if (inst.closed) return false
+        inst.screen.options.onUpdate?.call(inst.ctx)
+        return !inst.closed
     }
 
     /** 立即替换正在显示的表单（处理完旧表单上的点击后用） */

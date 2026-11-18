@@ -1,0 +1,10 @@
+{
+  "name": "cui_timer_hud",
+  "description": "CUI V15 display baseline restored after failed V17 experiment",
+  "author": "bedrock-cui",
+  "version": "1.0.17",
+  "min_engine_version": "1.21.100",
+  "language": "js",
+  "bp": "794a17e2-f9c5-4811-863e-1749700de66e",
+  "rp": "b879df0c-18b2-4eaa-981c-11fd601ad56a"
+}

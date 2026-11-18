@@ -8,6 +8,21 @@ import {
 const R = (b) => [b.rect.x, b.rect.y, b.rect.w, b.rect.h].map((v) => Math.round(v * 100) / 100)
 const run = (root, viewport = [400, 300]) => layout(finalize(root), { viewport })
 
+test('JavaScript 颜色参数误传字符串或非法数组时在构建前报错；Color 与 RGB 数组保持有效', () => {
+    for (const el of [new Image(Texture.SOLID), new Label('text')]) {
+        for (const value of ['#111b28', [1, 1], [1, 1, NaN], [1, Infinity, 1], null]) {
+            assert.throws(() => el.setColor(value), /颜色必须是 Color/)
+            assert.throws(() => el.set({ color: value }), /颜色必须是 Color/)
+        }
+        el.setColor(Color.hex('#111b28'))
+        assert.deepEqual(el.color.toJSON(), Color.hex('#111b28').toJSON())
+        el.color = [0.1, 0.2, 0.3]
+        assert.deepEqual(el.color.toJSON(), [0.1, 0.2, 0.3])
+        el.color = undefined
+        assert.equal(el.color, undefined)
+    }
+})
+
 test('值类型：Length 加减、Size、Color、Insets、Vec2 输出 JSON UI 写法', () => {
     assert.equal(Length.px(8).toJSON(), 8)
     assert.equal(Length.pct(100).minus(6).toJSON(), '100% - 6px')

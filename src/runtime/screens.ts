@@ -13,11 +13,11 @@ export { ScreenRuntime, type FormPlatform, type FormResult, type FormSpec, type 
 
 /** 行为包中的运行时 */
 export const screenRuntime = new ScreenRuntime<Player>({
-    show(player, spec, onBusy) {
+    show(player, spec, onBusy, isActive) {
         const form = new ActionFormData().title(spec.title).body(spec.body)
         for (const b of spec.buttons) { if (b.icon) form.button(b.text, b.icon); else form.button(b.text) }
         // 刷新时替换旧表单：遇到「玩家正忙」说明旧表单还没关掉，重试前再关一次（只用于刷新，不影响其他附加包的表单）
-        return showForm(player, form, 30, () => { onBusy?.(); if (spec.replace) uiManager.closeAllForms(player) })
+        return showForm(player, form, 30, () => { onBusy?.(); if (spec.replace) uiManager.closeAllForms(player) }, isActive)
     },
     close(player) { uiManager.closeAllForms(player) },
     lockCamera,
