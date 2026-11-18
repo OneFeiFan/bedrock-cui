@@ -31,7 +31,7 @@ const PAGES = [
             ['Scroll', '可滚动的区域，子控件纵向排列。'],
             ['Button', '按钮。外观由 default、hover、pressed 三个状态面板组成。'],
             ['Toggle', '开关。同组互斥；外观由四个状态面板组成。'],
-            
+
             ['Raw', '原样输出的 JSON UI 元素。'],
         ]],
         ['组件', [
