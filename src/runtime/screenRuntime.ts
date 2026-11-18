@@ -54,10 +54,6 @@ class Instance {
     warnedFrequent?: boolean
     /** 已经提示过总时长不一致的数据 */
     warnedTimer?: Set<string>
-    /** 显示中的计时器最早在多少毫秒后结束（form() 中记下）；到时刷新一次 */
-    timerEnd?: number
-    /** 取消「计时结束时刷新」 */
-    stopTimerEnd?: () => void
     /** 刚才点击的按钮的序号（重新打开时它获得默认焦点） */
     focus?: number
     closed = false
@@ -176,7 +172,6 @@ class Instance {
 
     /** 按清单生成表单 */
     form(): FormSpec {
-        this.timerEnd = undefined
         const m = this.manifest
         const own: Record<number, FormButtonSpec> = {}
         for (const p of m.data) {
@@ -198,7 +193,6 @@ class Instance {
                     }
                     own[s.index] = s.tag + t.encode(now)
                     // 进行中的计时器：记下最早结束的时刻，到时刷新一次（显示「完成」）
-                    if (p.refreshAtEnd && t.isRunning(now)) this.timerEnd = Math.min(this.timerEnd ?? Infinity, t.remaining(now) * 1000)
                     return
                 }
                 if (typeof x === 'string' || typeof x === 'number') { own[s.index] = s.tag + String(x); return }
@@ -299,7 +293,7 @@ export class ScreenRuntime<P extends ScreenPlayer = ScreenPlayer> {
         this.log(inst, '关闭界面')
         this.instances.delete(k)
         // 清理中的某一步出错，仍继续取消定时器、解除视角锁定与执行 onClose。
-        const cleanup = [...inst.timers, inst.stopTimerEnd, inst.stopDeferred,
+        const cleanup = [...inst.timers, inst.stopDeferred,
             () => this.platform.close?.(player as P), () => this.platform.lockCamera?.(player as P, false),
             () => screen.options.onClose?.call(inst.ctx)]
         for (const fn of cleanup) {
@@ -391,7 +385,7 @@ export class ScreenRuntime<P extends ScreenPlayer = ScreenPlayer> {
         inst.externalRefreshes.push(now)
         if (inst.externalRefreshes.length >= 3 && !inst.warnedFrequent) {
             inst.warnedFrequent = true
-            console.warn(`[bedrock-cui] ${inst.screen.id}：10 秒内因点击以外的原因刷新了 ${inst.externalRefreshes.length} 次。每次刷新要关闭并重新打开表单，过渡期间玩家的点击会落空。随时间连续变化的显示（倒计时、进度条）请用 Timer 与 Countdown / ProgressBar，它们由客户端的动画推进，计时期间不刷新`)
+            console.warn(`[bedrock-cui] ${inst.screen.id}：10 秒内因点击以外的原因刷新了 ${inst.externalRefreshes.length} 次。每次刷新要关闭并重新打开表单，过渡期间玩家的点击会落空。随时间连续变化的显示请用 Timer 与 ProgressBar，它由客户端的动画推进，计时期间不刷新`)
         }
         // 刷新：关闭当前表单，同一刻立即显示新表单（旧表单迟到的取消忽略、迟到的点击照常处理）
         this.replaceNow(inst)
@@ -408,12 +402,6 @@ export class ScreenRuntime<P extends ScreenPlayer = ScreenPlayer> {
             inst.replacing = false
             this.log(inst, `显示 #${gen}${replace ? '（替换）' : ''}`)
             const spec = inst.form()
-            // 计时结束时刷新一次：动画的时长在构建时已定（总时长），计时结束后它不会自己停在「完成」
-            inst.stopTimerEnd?.()
-            inst.stopTimerEnd = undefined
-            if (inst.timerEnd !== undefined && this.platform.timeout) {
-                inst.stopTimerEnd = this.platform.timeout(() => { if (!inst.closed) { this.log(inst, '计时结束，刷新'); inst.dirty = true; this.enqueue(inst) } }, Math.ceil(inst.timerEnd / 50) + 1)
-            }
             const r = await this.platform.show(inst.player as P, { ...spec, replace },
                 () => this.log(inst, `#${gen} 玩家正忙，重试`), () => !inst.closed && gen === inst.gen)
             const stale = gen !== inst.gen                        // 已被「替换」：这是旧表单迟到的结果

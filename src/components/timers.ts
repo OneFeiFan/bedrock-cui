@@ -1,5 +1,5 @@
 /**
- * 计时显示：ProgressBar（进度条）与 Countdown（倒计时数字），由计时器（Timer）类型的 prop 驱动。
+ * 计时显示：ProgressBar（进度条），由计时器（Timer）类型的数据驱动。
  *
  * 做法「数值定起点，动画匀速走」（真机验证，docs/design/screen-api.md 第 16–18 节）：
  *   - 脚本只在打开或重新打开时传入当前进度（Timer 编码为 I0 / R<千分比> / P<千分比> / D1000）；
@@ -7,10 +7,10 @@
  *   - 之后交给匀速的动画（速度 = 总长度 ÷ 总时长），超出的部分由组件裁掉；计时期间不刷新、不吞点击。
  * 运算只用整数（真机：绑定的运算只有整数）；状态只用「包含」判断（不用比较）。
  */
-import { Image, Label, Panel, type Element } from '../core/element.js'
+import { Image, Panel, type Element } from '../core/element.js'
 import { Anim } from '../core/anim.js'
-import { Anchor, Color, Texture, type TextStyle } from '../core/values.js'
-import { PropRef, lit, type Expr } from '../core/expr.js'
+import { Anchor, Color, Texture } from '../core/values.js'
+import { PropRef, type Expr } from '../core/expr.js'
 import { Timer } from '../core/timer.js'
 
 /** 参数须是默认值为 Timer 的 prop；返回总时长（秒） */
@@ -85,94 +85,6 @@ export class ProgressBar extends Panel {
                     .add(bar(color).setSize(0, H).setAnims(Anim.size([0, H], [W, H], this.seconds))),
             ))
         })
-        this.add(...this.built)
-    }
-}
-
-/**
- * 倒计时：显示剩余的整秒数。进行中时数字匀速向上滚动（里程表式），界面重新打开时从当时的位置接着滚；
- * 未开始、暂停、完成时停在整秒处。组件的高度即一行的高度。
- *
- *   new Countdown(cooldown).setSize(40, 10)
- *   new Countdown(cooldown, (n) => `${n} 秒`).setBackground(Color.hex('#2b2b2b')).setSize(60, 10)
- *
- * 动画的时长在构建时已定，重新打开后它会滚过 0：
- *   - 有底色（setBackground）时：滚动的每一行都有不透明的底，后面放一个静止的「0」——滚过「1」之后露出它，停在 0，不需要刷新；
- *   - 没有底色时：计时结束时由运行时刷新一次（界面选项 timerEndRefresh: false 可关闭）
- */
-export class Countdown extends Panel {
-    private textColor: Color | undefined
-    private textStyle: TextStyle | undefined
-    private background: Color | undefined
-    private built: Element[] = []
-    /** 总时长（秒，取自数据的初始值；按整秒向上取整） */
-    readonly seconds: number
-
-    constructor(readonly value: PropRef, private readonly format: (n: number) => string = (n) => String(n)) {
-        super()
-        this.seconds = Math.ceil(timerSeconds(value, 'Countdown'))
-        value._refreshAtEndCount = (value._refreshAtEndCount ?? 0) + 1     // 没有底色时需要结束时刷新（setBackground 取消）
-        this.setClip(true)
-    }
-
-    /** 数字的颜色 */
-    setTextColor(color: Color): this { this.textColor = color; return this }
-    /** 数字的样式 */
-    setTextStyle(style: TextStyle): this { this.textStyle = style; return this }
-    /** 底色（不透明）：有底色时，倒计时在 0 处准确停下，不需要计时结束时刷新 */
-    setBackground(color: Color): this {
-        if (!this.background) this.value._refreshAtEndCount = Math.max(0, (this.value._refreshAtEndCount ?? 1) - 1)
-        this.background = color
-        return this
-    }
-
-    protected override beforeFinalize(): void {
-        for (const e of this.built) this.remove(e)
-        const [W, LH] = pixelSize(this, 'Countdown')
-        const T = this.seconds
-        const p = permilleOf(this.value)
-        const bg = this.background
-        const label = (n: number, layer?: number) => {
-            const l = new Label(this.format(n)).setAnchor(Anchor.TOP_CENTER)
-            if (this.textStyle) l.setStyle(this.textStyle)
-            if (this.textColor) l.setColor(this.textColor)
-            if (layer !== undefined) l.setLayer(layer)
-            return l
-        }
-        // 一列数字。没有底色：T … 0，之后再接 T 个 0（重新打开后动画可能多滚一段，多出的部分仍显示 0）。
-        // 有底色：滚动的一列只有 T … 1，每行有不透明的底（第 2 层，数字第 3 层），「0」由后面静止的那个提供
-        const strip = (rows: number, opaque: boolean) => {
-            const s = new Panel().setSize(W, rows * LH).setAnchor(Anchor.TOP_LEFT)
-            for (let k = 0; k < rows; k++) {
-                const n = Math.max(T - k, 0)
-                if (opaque) {
-                    s.add(new Panel().setSize(W, LH).setAnchor(Anchor.TOP_LEFT).setOffset(0, k * LH).add(
-                        new Image(Texture.SOLID).setColor(bg!).setSize(W, LH).setLayer(2),
-                        label(n, 3),
-                    ))
-                } else s.add(label(n).setOffset(0, k * LH))
-            }
-            return s
-        }
-        const running = this.value.contains('R')
-        // 未开始、暂停、完成 = 不包含 R：编译为一个等式 ((x - 'R') = x)，不含 not 与 or
-        // （真机 1.59.0 not (not …) 失效；1.60.0「包含 I 或 P 或 D」在暂停时为假）
-        const still = this.value.minus('R').eq(this.value)
-        this.built = [
-            ...(bg ? [
-                new Image(Texture.SOLID).setColor(bg).setSize(W, LH).setAnchor(Anchor.TOP_LEFT),
-                // 静止的「0」：在滚动的一列后面（第 1 层），滚过「1」之后露出
-                new Panel().setName('zero').setSize(W, LH).setAnchor(Anchor.TOP_LEFT).setVisible(running).add(label(0, 1)),
-            ] : []),
-            // 进行中：从已过去的位置（像素，连续）开始，以每秒一行的速度向上滚动
-            new Panel().setName('rolling').setSize(1, 1).setAnchor(Anchor.TOP_LEFT)
-                .setOffset(0, lit(0).minus(p.times(T * LH).div(1000))).setVisible(running)
-                .add(strip(bg ? T : 2 * T + 1, !!bg).setAnims(Anim.offset([0, 0], [0, -T * LH], T))),
-            // 未开始、暂停、完成：停在已过去的整秒处
-            new Panel().setName('still').setSize(1, 1).setAnchor(Anchor.TOP_LEFT)
-                .setOffset(0, lit(0).minus(p.times(T).div(1000).times(LH))).setVisible(still)
-                .add(strip(T + 1, false)),
-        ]
         this.add(...this.built)
     }
 }

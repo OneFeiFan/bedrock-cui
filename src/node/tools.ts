@@ -184,7 +184,7 @@ export function renderGlyphSheet(sheet: GlyphSheet, resolve: (texturePath: strin
 // ───────────── 脚本端运行时：复制进行为包 ─────────────
 
 /** 运行时用到的文件（相对 dist；保持目录结构，相对 import 才找得到）。runtime/serverPages 依赖 @minecraft/server、server-ui（行为包里有） */
-const RUNTIME_FILES = ['runtime/index', 'runtime/serverPages', 'core/serverPagesShared', 'font/rich', 'font/metrics', 'font/gameGlyphs', 'font/unifontWidths', 'core/timer', 'core/liveFrame', 'runtime/liveFrame', 'runtime/eventTimer']
+const RUNTIME_FILES = ['runtime/index', 'runtime/serverPages', 'core/serverPagesShared', 'font/rich', 'font/metrics', 'font/gameGlyphs', 'font/unifontWidths', 'core/timer']
 
 /** 运行时的文件：[相对路径, 内容]（copyRuntime 与 checkScripts 用） */
 export function runtimeFiles(): [string, Buffer][] {

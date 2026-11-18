@@ -4,6 +4,8 @@
 
 ### 不兼容的变化
 
+- 删除计时 HUD（`defineTimerHud`、`TimerHud`、`EventProgressBar`、`CuiConfig.timerHuds`、`bedrock-cui/runtime/timers`）、数值帧与事件计时器（`LiveBar`、`LiveFrame*`、`EventTimerSender` 等），以及倒计时 `Countdown` 与 `timerEndRefresh`。计时显示只保留 `ProgressBar`。
+
 - 底层接口移出公开入口 `bedrock-cui`：`form`、`FormButton`、`FormGate`、`buttonPayload`、`CollectionItem`、`Pages`、`serverForm` / `serverTitle`，以及翻页的标记函数（`pagingButtons` 等）；`bedrock-cui/web` 的 `ServerPagesPreview`。
   删除 `bedrock-cui/runtime/server-pages`（`ServerPagesForm`、`lockCamera`、`showForm`）。
   界面请用界面文件编写：数据用 props，按钮用 `new Button().onClick()`，多页用 `Router`，客户端切换用 `Tabs`。
@@ -19,12 +21,6 @@
 
 ### 新增
 
-- `defineTimerHud({ transport: 'actionbar' })` 支持计时条与原版中央标题、字幕同屏。采用 V22 真机通过的时长换算与事件快照，重新构建后使用 v4 协议。默认传输仍为 `title`，主示例保留 V15 显示基准。
-- 计时 HUD 的中央标题默认依次显示，支持 `mode: 'replace'` 立即替换并取消待显示标题；`updateSubtitle()` 单独更新字幕，`clearTitle()` 取消标题与队列。队列结束只恢复一次当前进度，没有字幕的新标题清理旧字幕。V16 保留 V15 的进度条绘制，新增标题交接仍待真机确认。
-- 试验计时 HUD API：`defineTimerHud`、`TimerHud`、`EventProgressBar` 与 `CuiConfig.timerHuds`。最多三个原生时钟共享完整快照，普通提示支持 actionbar 或原版标题优先；标题结束恢复当前计时状态。构建自动生成 HUD 资源和运行时登记，支持玩家离开清理、重生快照与无轮询的完成调度。V12 真机标题显示正常、进度条失败；V13 改用独立定长字段后动画有推进，但宽度越界。V14 将字段、数字文字、数值拆成独立属性；真机录像确认主要流程及宽度修正，完成事件切换仍有一帧旧快照回跳。
-- 实验性事件计时器（`internal`）：事件发送器与 `eventTimerBarParts` 绘制片段。V11 用户真机反馈确认单计时器的平滑运行、暂停与继续符合预期；脚本模拟验证整段仅四个计时事件。动画使用剩余时长与剩余宽度，表单保持打开；多计时器、延迟和重连尚未验证。
-- 实验性数值帧与发送器（`internal`）：有界整数整帧编码、像素精度去重、合并最新状态、限频、显式重发快照与发送失败重试。单字段绘制已通过 V9 真机测试；多字段解码仍待 V10 验证。
-- 实验性 `bedrock-cui/internal` 的 `LiveBar`：从单个控件的数值表达式直接绑定填充尺寸，不播放计时动画；绘制沿用 V7 单字段 HUD 探针中已通过的 SIZE 结构，尚未提供通用实时传输或动态表单 props。
 - 命令行 `bedrock-cui create`、`dev`、`build`；项目配置 `defineConfig()`（`cui.config.mjs`），界面可写成 `{ build, routed }`。
 - `form.buttonTexture`：图片显示表单按钮的图标，可显示任意已加载的贴图。
 - `form.button(n)`：表单的第 n 个按钮，返回读取该按钮内容的容器（代替 `new CollectionItem('form_buttons', n)`）。
@@ -40,7 +36,7 @@
 - 静态检查：带动画的文字不报 `text-overlap`；新规则 `decimal-arith`。`checkScripts()` 支持项目目录（原地检查 `scripts/`）。
 - 表达式：`gte` / `lte` 编译为 `not <` / `not >`（`>=` 作为 `and` 的一边时游戏解析出错）；常量表达式编译为固定值。
 - `Texture.SOLID` 未指定 `setKeepRatio()` 时拉伸铺满。
-- 计时显示：`Timer`、`ProgressBar`（`setHead()`）、`Countdown`（`setBackground()`）：数值定起点、动画匀速走、裁剪封顶与遮挡，暂停、继续、重新打开后都在终点准确停下，计时期间与结束时都不刷新（没有底色的倒计时在结束时刷新一次，可用 `timerEndRefresh: false` 关闭）；位置绑定支持垂直方向。`Timer.of({ seconds, elapsed, running })` 由已有的数据构造计时器（绑定游戏中的对象）；传入的总时长与构建时不同时提示。
+- 计时显示：`Timer` 与 `ProgressBar`（`setHead()`）：数值定起点、动画匀速走、裁剪封顶，暂停、继续、重新打开后都在右端准确停下，计时期间与结束时都不刷新；位置绑定支持垂直方向。`Timer.of({ seconds, elapsed, running })` 由已有的数据构造计时器（绑定游戏中的对象）；传入的总时长与构建时不同时提示。
 - 表达式：`not` 规范到表达式开头（消去双重否定，德摩根律）；预览中绑定的运算为整数除法（与游戏一致）。
 - 界面文件写成紧凑的 JSON（`useSapdon` 传入 `addPacketResolver` 时；测试包的界面文件 3716 KB → 606 KB）。
 - `bedrock-cui dev --game`：与游戏联动，`/connect` 后保存即构建并让游戏 `reload all`；新项目加 `npm run dev:game`。

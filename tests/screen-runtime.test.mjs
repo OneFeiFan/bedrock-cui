@@ -584,6 +584,6 @@ test('防护：点击以外的刷新 10 秒内达到 3 次时提示一次（每�
         screen.open(P)
         for (let i = 1; i <= 5; i++) { holder.ctx.n = i; await tick(); await tick() }
     } finally { console.warn = warn }
-    const hits = warns.filter((w) => w.includes('cui_ui:busy') && w.includes('Countdown'))
+    const hits = warns.filter((w) => w.includes('cui_ui:busy') && w.includes('ProgressBar'))
     assert.equal(hits.length, 1)
 })

@@ -6,8 +6,6 @@
 
 用 JavaScript 编写 Minecraft 基岩版的界面：一棵控件树，编译成游戏的 JSON UI，在浏览器中按游戏的排版规则预览，构建时检查常见问题。
 
-计时 HUD 提供试验接口 `defineTimerHud()` 与 `EventProgressBar`。V15 真机录像确认了三个计时器与统一标题策略的主要流程，宽度越界和完成事件处的一帧明显回跳已消失。接入方法与验证范围见[事件驱动计时 HUD](docs/guide/timer-hud.md)。
-
 > An object-oriented UI framework for Minecraft Bedrock JSON UI, with a pixel-accurate browser preview, build-time lint and a runtime for server forms. Documentation is in Chinese.
 
 - **对象式的界面描述**：控件即对象，属性有类型，不需要手写 JSON UI。

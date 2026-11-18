@@ -20,7 +20,7 @@ test('面向对象 API 完整：每个控件类的可写属性都有同名的 se
     // 一次设置多项的便捷方法，不对应单个属性
     const COMBINED = new Set(['setAnchor', 'setPlacement', 'setUV', 'setStyle', 'setWidth', 'setHeight', 'setVariable', 'setRaw', 'setButtonBase', 'setBindingAlways'])
     const classes = ['Panel', 'Stack', 'Grid', 'Image', 'Label', 'Button', 'Toggle', 'CollectionItem', 'Raw', 'Row', 'Column', 'Scroll',
-        'Paragraph', 'Text', 'FormButton', 'FormGate', 'Pages', 'EventProgressBar']
+        'Paragraph', 'Text', 'FormButton', 'FormGate', 'Pages']
     const missing = []
     for (const cls of classes) {
         assert.ok(decl[cls], cls)

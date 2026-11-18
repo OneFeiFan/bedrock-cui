@@ -248,8 +248,6 @@ export const asBool = (v: Value) => truthy(v)
 export class PropRef extends Expr {
     /** 定义 prop 时的默认值（组件据此得知例如计时器的总时长） */
     defaultValue?: unknown
-    /** @internal 需要计时结束时刷新一次的组件数（没有底色的 Countdown：它的动画会滚过 0） */
-    _refreshAtEndCount?: number
     constructor(readonly propName: string, readonly index: number, readonly tag: string) {
         super(ref('#form_button_text', { kind: 'collection', collection: 'form_buttons', index }).minus(tag).node)
     }

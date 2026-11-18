@@ -34,8 +34,6 @@
     "./package.json": "./package.json",
     "./dom": "./dist/dom/index.js",
     "./runtime/screens": "./dist/runtime/screens.js",
-    "./runtime/timers": "./dist/runtime/timers.js",
-    "./runtime/timer-core": "./dist/runtime/timerHudRuntime.js",
     "./runtime/core": "./dist/runtime/screenRuntime.js",
     "./internal": "./dist/internal.js",
     "./internal/server-pages": "./dist/runtime/serverPages.js"

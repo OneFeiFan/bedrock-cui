@@ -24,5 +24,3 @@ export { Item, Screen, defineUI, _setScreenRuntime, _propDefault, type PropItem,
 export * from './core/anim.js'
 export * from './core/timer.js'
 export * from './components/timers.js'
-export { TimerHud, defineTimerHud, type TimerHudRef, type TimerHudOptions, type TimerHudManifest, type TimerHudTransport, type HudTitleOptions, type HudTitlePolicy, type HudTitleText } from './core/timerHud.js'
-export { EventProgressBar } from './components/eventTimers.js'

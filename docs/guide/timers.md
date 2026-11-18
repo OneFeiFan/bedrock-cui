@@ -1,15 +1,13 @@
 # 计时显示
 
-独立 HUD 的平滑计时、多个计时器和标题通道管理，见[事件驱动计时 HUD](timer-hud.md)。本节保留服务端表单中的 `ProgressBar` 与 `Countdown` 用法。
-
-倒计时、冷却、加工进度这类随时间匀速推进的显示，由计时器 `Timer` 与两个组件完成：`ProgressBar`（进度条）与 `Countdown`（倒计时数字）。计时期间界面不刷新，玩家的点击不会落空；界面因点击而重新打开时，显示从当时的进度接着走。
+冷却、加工进度这类随时间匀速推进的显示，由计时器 `Timer` 与进度条 `ProgressBar` 完成。计时期间界面不刷新，玩家的点击不会落空；界面因点击而重新打开时，显示从当时的进度接着走。
 
 ## 写法
 
 计时器放在状态中，页面直接显示它。下面的示例在「预览」中点击「开始」即开始计时：
 
 ```js preview=lab 220x90
-import { Anchor, Button, Color, Countdown, defineUI, Image, Label, Page, ProgressBar, Size, Timer } from 'bedrock-cui'
+import { Anchor, Button, Color, defineUI, Image, Label, Page, ProgressBar, Size, Timer } from 'bedrock-cui'
 
 const INK = Color.hex('#3c2814')
 
@@ -25,8 +23,7 @@ const lab = defineUI({
         go.hover.add(new Label('§e开始'))
         return new Page().setSize(200, 70).add(
             new Image('textures/ui/dialog_background_opaque').setSize(Size.full()),
-            new Label('剩余：').setColor(INK).setAnchor(Anchor.TOP_LEFT).setOffset(10, 10),
-            new Countdown(cooldown, (n) => `${n} 秒`).setTextColor(INK).setSize(50, 10).setAnchor(Anchor.TOP_LEFT).setOffset(44, 10),
+            new Label('冷却').setColor(INK).setAnchor(Anchor.TOP_LEFT).setOffset(10, 10),
             new ProgressBar(cooldown).setSize(180, 8).setAnchor(Anchor.TOP_LEFT).setOffset(10, 30),
             go,
         )
@@ -50,21 +47,15 @@ const lab = defineUI({
 | `计时器.remaining()`、`计时器.progress()` | 剩余的秒数、进度（0 到 1） |
 | `计时器.isRunning()`、`计时器.isDone()` | 是否正在计时、是否已经完成 |
 
-计时进行、暂停、继续、界面重新打开时，进度条与倒计时都从真实的进度接着走，到达终点时准确停下，不需要刷新界面（倒计时需要设置底色，见下文）。计时结束后才显示的内容（例如「领取」按钮），可以用 `computed` 判断：`ready() { return this.cooldown.isDone() }`，页面中 `setVisible(ready)`；它在下一次显示界面时生效（结束时的刷新、或玩家的下一次点击）。
+计时进行、暂停、继续、界面重新打开时，进度条从真实的进度接着走，到达右端时准确停下，不需要刷新界面。计时结束后才显示的内容（例如「领取」按钮），可以用 `computed` 判断：`ready() { return this.cooldown.isDone() }`，页面中 `setVisible(ready)`；它在下一次显示界面时生效（例如玩家的下一次点击）。
 
 ## ProgressBar
 
 `new ProgressBar(计时器)` 创建一个进度条，参数是页面函数参数中值为计时器的数据，需要像素尺寸。`进度条.setFill(颜色)` 设置已完成部分的颜色，`进度条.setTrack(颜色)` 设置底色（`undefined` 表示不画底色）。`进度条.setHead(颜色, 宽度, 条数, 间隔)` 在前进的末端加亮色的竖条（缺省 1 条、宽 2 像素）。它们随末端移动，到达右端后停在那里；暂停时停在当前进度处。
 
-## Countdown
-
-`new Countdown(计时器, 格式)` 显示剩余的整秒数。第二个参数可省略，它把秒数转为显示的文字，例如 `(n) => \`${n} 秒\``。组件的高度即一行的高度。计时进行中，数字匀速向上滚动；未开始、暂停与完成时停在整秒处。`倒计时.setTextColor(颜色)`、`倒计时.setTextStyle(样式)` 设置文字的颜色与样式。
-
-`倒计时.setBackground(颜色)` 设置不透明的底色。有底色时，倒计时在 0 处准确停下；没有底色时，它在 0 之后会继续滚动，所以计时结束时界面刷新一次来停住它（界面选项 `timerEndRefresh: false` 关闭这次刷新）。
-
 ## 与游戏对象同步
 
-进度条与倒计时显示的是逻辑传来的进度。把它们绑定到游戏中的对象（例如自定义实体的加工进度）时，需要先弄清两个「钟」：
+进度条显示的是逻辑传来的进度。把它们绑定到游戏中的对象（例如自定义实体的加工进度）时，需要先弄清两个「钟」：
 
 - **逻辑中的计时器**：记录开始的时刻与暂停时已经过去的时间。界面的关闭与重新打开不影响它，它就是真实的进度。
 - **客户端动画自己的钟**：每次打开界面，控件重新创建，这个钟从零开始。但动画的起点由逻辑传来的进度决定，之后按「总宽度 ÷ 总时长」匀速前进。
@@ -93,7 +84,7 @@ const lab = defineUI({
 
 ```js
 // ui/machine.screen.mjs
-import { Color, Countdown, defineUI, Page, ProgressBar, Timer } from 'bedrock-cui'
+import { defineUI, Page, ProgressBar, Timer } from 'bedrock-cui'
 
 export default defineUI({
     id: 'cui_ui:machine',
@@ -102,7 +93,6 @@ export default defineUI({
     },
     page({ progress }) {
         return new Page().setSize(200, 40).add(
-            new Countdown(progress, (n) => `${n} 秒`).setBackground(Color.hex('#3c2814')).setSize(50, 10),
             new ProgressBar(progress).setSize(180, 8),
         )
     },
@@ -138,8 +128,7 @@ world.afterEvents.playerInteractWithEntity.subscribe(({ player, target }) => {
 
 ## 原理
 
-[动画](animation.md)由客户端播放，不需要刷新；但它的时长在构建时已定，界面重新打开时从头开始，也没有「从某个时间点开始播放」的方法。这两个组件用[可续播的动画](animation.md#可续播的动画)中的技巧实现：
+[动画](animation.md)由客户端播放，不需要刷新；但它的时长在构建时已定，界面重新打开时从头开始，也没有「从某个时间点开始播放」的方法。进度条用[可续播的动画](animation.md#可续播的动画)中的技巧实现：
 
-1. **数值定起点**：逻辑只在打开或重新打开界面时，把计时器当前的进度传给界面（编码为 `I0`、`R400`、`P400`、`D1000`：状态用前缀表示，进度为千分比）。界面按进度摆好起点，再交给匀速的动画：进度条的速度是「总宽度 ÷ 总时长」，倒计时是「每秒一行」。因此到达终点的时刻就是计时结束的时刻（真机）。
+1. **数值定起点**：逻辑只在打开或重新打开界面时，把计时器当前的进度传给界面（编码为 `I0`、`R400`、`P400`、`D1000`：状态用前缀表示，进度为千分比）。界面按进度摆好起点，再交给匀速的动画，速度是「总宽度 ÷ 总时长」。因此到达右端的时刻就是计时结束的时刻（真机）。
 2. **裁剪封顶**：动画按总时长播放，重新打开过的话会越过终点。进度条的每一层都放在右边界固定的裁剪容器中，越过的部分不显示；末端的竖条由层的叠放画出（底层画到末端，上一层画到末端减去竖条的宽度），各层的裁剪边界同样错开，所以竖条停在右端（真机 1.62.0 验证了越过的距离，1.63.0 待确认封顶）。
-3. **遮挡**：有底色的倒计时，滚动的每一行都有不透明的底，后面放一个静止的「0」；滚过「1」之后露出它，停在 0。

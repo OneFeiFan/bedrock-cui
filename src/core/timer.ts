@@ -6,7 +6,7 @@
  *   computed: { cooldown() { return this.cooldown } },     // 逻辑中的计时器 → 界面的 prop
  *   methods: { start() { this.cooldown = this.cooldown.start() } },
  *
- * 界面中的 ProgressBar / Countdown 按「数值定起点、动画匀速走」显示：脚本只在打开或重新打开时传入当前进度，
+ * 界面中的 ProgressBar 按「数值定起点、动画匀速走」显示：脚本只在打开或重新打开时传入当前进度，
  * 之后由客户端的动画推进，计时期间不刷新（真机已验证，见 docs/design/screen-api.md 第 17–18 节）。
  * 传给界面的编码：未开始 I0、进行中 R<千分比>、暂停 P<千分比>、完成 D1000（状态用前缀表示：显示条件用「包含」，不用比较）。
  * 计时器不可变：start() 等返回新的计时器，赋值给状态即触发更新。

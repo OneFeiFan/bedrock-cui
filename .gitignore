@@ -3,8 +3,4 @@ dist/
 out/
 *.tgz
 site-dist/
-examples/timer-hud/dev/
-examples/timer-hud/.tmp/
-examples/timer-hud/build.log
-examples/timer-hud/scripts/cui.generated.*
 

@@ -134,8 +134,6 @@ export interface ScreenOptions {
     onUpdate?(this: any): void
     /** 玩家关闭表单，或调用 this.close() 后 */
     onClose?(this: any): void
-    /** 计时器结束时刷新一次（只对没有底色的 Countdown 显示的计时器；缺省 true）：false 时不刷新，倒计时会滚过 0 一段时间 */
-    timerEndRefresh?: boolean
     /**
      * 根页面：页面函数 (data) => Page，构建时运行一次。data 只含你在 props、state、computed、methods 中定义的名字：
      * 数据是占位（显示在控件上），方法用于 new Button().onClick(方法)。多页用 Router、选项卡用 Tabs，放进页面即可
@@ -150,7 +148,7 @@ export interface PropSlot { index: number, tag: string }
 export interface ScreenManifest {
     id: string
     /** 视图读取的数据：来源（prop / state / computed）、种类、占用的按钮、默认值（预览用） */
-    data: { name: string, source: 'prop' | 'state' | 'computed', kind: DataKind, slots: PropSlot[], default: unknown, refreshAtEnd?: boolean, timerSeconds?: number }[]
+    data: { name: string, source: 'prop' | 'state' | 'computed', kind: DataKind, slots: PropSlot[], default: unknown, timerSeconds?: number }[]
     /**
      * 按钮：tag 为普通版的标记，focusTag 为聚焦版的标记；method 与 args 为绑定的方法与参数。
      * 内置：__close（关闭）、__link（跳到 args[0]）、__back、__next、__prev（Router 的跳转）。page 为按钮所在的 Router 子页面（公共部分没有）
@@ -435,14 +433,6 @@ export class Screen {
                 const target = group.order[at + (el.nav === 'next' ? 1 : -1)]
                 if (!target) { el.setVisible(false); continue }
                 tabToggle(el, group, target, true)
-            }
-        }
-
-        // 计时器需要结束时刷新（没有底色的 Countdown 标记的数据通道）
-        if (this.options.timerEndRefresh !== false) {
-            for (const d of manifest.data) {
-                const refs = channels.get(d.name)
-                if ((Array.isArray(refs) ? refs : [refs]).some((r) => (r?._refreshAtEndCount ?? 0) > 0)) d.refreshAtEnd = true
             }
         }
 

@@ -25,7 +25,6 @@
 - [页面](pages.md)
 - [动画](animation.md)
 - [计时显示](timers.md)
-- [事件驱动计时 HUD](timer-hud.md)
 
 ### 界面内的交互
 
@@ -71,7 +70,6 @@
 - [Text 与 InlineIcon](components/text.md)
 - [Tabs](components/tabs.md)
 - [GlyphSheet](components/glyph-sheet.md)
-- [EventProgressBar](components/event-progress-bar.md)
 
 ## 参考
 

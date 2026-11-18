@@ -1,5 +1,5 @@
 // 界面模型的真机验证：数据（props）、逻辑（state、computed、methods、onClose）与视图写在一个文件里
-import { Anchor, Button, Close, Color, Countdown, defineUI, Image, Item, Label, Panel, Size, Texture, Timer } from 'bedrock-cui'
+import { Anchor, Button, Close, Color, defineUI, Image, Item, Label, Panel, ProgressBar, Size, Texture, Timer } from 'bedrock-cui'
 
 const INK = Color.hex('#3c2814')
 
@@ -13,7 +13,7 @@ export default defineUI({
 
     // ———— 逻辑：在游戏中运行 ————
     state() {
-        return { n: 0, countdown: Timer.idle(5) }          // 点了几次「点我」；5 秒的倒计时
+        return { n: 0, countdown: Timer.idle(5) }          // 点了几次「点我」；5 秒的计时（进度条显示）
     },
     computed: {
         greeting() { return this.n === 0 ? '欢迎！点「点我」试试' : `点了 ${this.n} 次` },
@@ -25,7 +25,7 @@ export default defineUI({
         hello() { this.n += 1; this.emit('hello', this.n) },
         // this.mc：逻辑中直接使用游戏的脚本 API（@minecraft/server）
         apple() { this.player.getComponent('minecraft:inventory')?.container?.addItem(new this.mc.ItemStack('minecraft:apple', 1)) },
-        // 倒计时：计时器只记开始的时刻，客户端的动画推进，计时期间不刷新界面（早期每秒刷新的做法会吞点击，已废弃）
+        // 计时：计时器只记开始的时刻，进度条由客户端的动画推进，计时期间不刷新界面（早期每秒刷新的做法会吞点击，已废弃）
         start() { this.countdown = this.countdown.start() },
     },
     onClose() {
@@ -44,8 +44,8 @@ export default defineUI({
         hello.default.add(new Image('textures/ui/purpleBorder').setNineslice(4).setSize(Size.full()), new Label('点我'))
         hello.hover.add(new Image(Texture.SOLID).setKeepRatio(false).setColor(Color.hex('#6040a0')).setSize(Size.full()), new Label('§e点我'))
         const start = new Button().onClick(startIt).setSize(70, 18).setAnchor(Anchor.BOTTOM_RIGHT).setOffset(-12, -10)
-        start.default.add(new Image('textures/ui/purpleBorder').setNineslice(4).setSize(Size.full()), new Label('倒计时'))
-        start.hover.add(new Image(Texture.SOLID).setKeepRatio(false).setColor(Color.hex('#6040a0')).setSize(Size.full()), new Label('§e倒计时'))
+        start.default.add(new Image('textures/ui/purpleBorder').setNineslice(4).setSize(Size.full()), new Label('开始计时'))
+        start.hover.add(new Image(Texture.SOLID).setKeepRatio(false).setColor(Color.hex('#6040a0')).setSize(Size.full()), new Label('§e开始计时'))
         // this.mc 的测试：给玩家一个苹果
         const apple = new Button().onClick(appleIt).setSize(70, 18).setAnchor(Anchor.BOTTOM_CENTER).setOffset(0, -10)
         apple.default.add(new Image('textures/ui/purpleBorder').setNineslice(4).setSize(Size.full()), new Label('给我苹果'))
@@ -60,7 +60,7 @@ export default defineUI({
             new Label('§6★ 会员').setSize(50, 10).setAnchor(Anchor.TOP_RIGHT).setOffset(-24, 10).setVisible(vip),
             ...row(item, 28),
             ...goods.flatMap((g, i) => row(g, 54 + i * 22)),
-            new Countdown(countdown, (n) => `倒计时：${n}`).setTextColor(INK).setBackground(Color.hex('#c6c6c6')).setSize(90, 10).setAnchor(Anchor.BOTTOM_RIGHT).setOffset(-12, -32),
+            new ProgressBar(countdown).setSize(90, 6).setAnchor(Anchor.BOTTOM_RIGHT).setOffset(-12, -32),
             hello,
             apple,
             start,

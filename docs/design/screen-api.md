@@ -455,3 +455,9 @@ world.afterEvents.itemUse.subscribe((e) => shop.open(e.source))
 - 检查：运行时当年对比用的 wait 刷新方式早已不在（只剩替换刷新，供点击以外的状态变化使用，带合并、0.4 秒推迟、迟到点击照常处理）；手册没有每秒刷新的示例。测试包 props 演示仍保留阶段 C 的每秒 setInterval 倒计时——改为 Timer + Countdown（有底色，不刷新），测试包 1.65.0。
 - 防护：运行时在一个界面 10 秒内因点击以外的原因刷新 3 次以上时，console.warn 一次（指向 Timer 与 Countdown / ProgressBar）；手册「逻辑 · 更新显示」写明。
 - 顺带修正：keep-ratio 静态检查对 Texture.SOLID 误报（SOLID 缺省拉伸，检查规则没跟上）。
+
+### 21.3 只保留进度条（2026-11，用户决定）
+
+- 删除 GPT 的计时 HUD 与配套：defineTimerHud、TimerHud、EventProgressBar、CuiConfig.timerHuds、bedrock-cui/runtime/timers 与 runtime/timer-core、LiveBar、LiveFrame 编码与发送器、EventTimerSender、eventTimerBarParts；examples/timer-hud、手册两页、8 个测试文件与 2 个基线文件。保留同一提交中与动画无关的运行时修正（点击串行化、formRetry 的 UserBusy 重试与停止、颜色参数校验、checkScripts 的精简运行时支持）。
+- 删除 Countdown，以及只为它服务的「计时结束时刷新一次」（timerEndRefresh、清单的 refreshAtEnd、运行时的安排）。计时显示只有 ProgressBar（数值定起点、匀速、裁剪封顶）。
+- 测试包 1.66.0：props 演示的计时改为进度条（按钮「开始计时」）；计时实验只保留进度条。动画实验的「A 数字倒计时」是 Anim 的能力实验（不是 Countdown 组件），暂留，待用户确认。
