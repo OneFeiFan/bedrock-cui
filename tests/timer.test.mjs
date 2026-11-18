@@ -180,4 +180,7 @@ test('文字的逻辑组合（真机 1.68.0 N、O 错误，1.69.0 AA 正确）�
     assert.match(textLogicRisk(s.contains('a').and(t.contains('b')).not()), /被 not 包住/, '1.68.0 N、O 的形式')
     assert.equal(textLogicRisk(t.contains('P:x;').or(t.minus('P:').eq(t))), undefined, '测试书的标题翻页：(包含) or 文字等式')
     assert.equal(textLogicRisk(n.gt(3).or(n.gt(7))), undefined, '数字的 or 正确（V、W）')
+    assert.equal(textLogicRisk(s.contains('a').and(s.contains('b'))), undefined, '文字比较之间的 and 正确（AC）')
+    assert.match(textLogicRisk(n.gt(3).and(n.contains('5'))), /数字比较与文字比较/, '1.70.0 AB')
+    assert.match(textLogicRisk(n.gt(7).or(n.contains('5'))), /数字比较与文字比较|or 右边/, '1.70.0 AE')
 })

@@ -156,12 +156,18 @@ function normalizeNot(n: ExprNode): ExprNode {
  * 静态检查用：规范化之后仍有的、真机上结果错误的文字逻辑组合：
  *   - or 右边是被 not 包住的文字比较（例如 … or 包含 X）——1.60.0；
  *   - not 包住含文字比较的 and / or——1.68.0（N、O）。
- * 正确的：(包含 X) or 文字等式（测试书的标题翻页，1.5.x 起）、(not 包含) and 不包含（Q）、同一数据的「包含任一」（合并为一次比较，AA）、数字比较的各种组合（V–Z）
+ *   - 数字比较与文字比较写在同一个表达式里——1.70.0（AB、AE）。
+ * 正确的：(包含 X) or 文字等式（测试书的标题翻页，1.5.x 起）、文字比较之间的 and（Q、AC）、同一数据的「包含任一」（合并为一次比较，AA；N、O 合并后 1.70.0 正确）、数字比较的各种组合（V–Z）
  */
 export function textLogicRisk(e: ExprLike): string | undefined {
     const root = normalizeNot(node(e))
     const isTextEq = (n: ExprNode) => n.k === 'bin' && n.op === '=' && n.a.k === 'bin' && n.a.op === '-' && keyOf(n.a.a) === keyOf(n.b)
     const hasText = (n: ExprNode): boolean => isTextEq(n) || (n.k === 'not' && hasText(n.a)) || (n.k === 'bin' && (n.op === 'and' || n.op === 'or') && (hasText(n.a) || hasText(n.b)))
+    // 数字运算或大小比较（1.70.0：AB「(5>3) 且 含 5」、AE「(5>7) 或 含 5」——与文字比较写在同一个表达式里时结果错误）
+    const hasNumeric = (n: ExprNode): boolean => (n.k === 'not' && hasNumeric(n.a))
+        || (n.k === 'bin' && (['>', '<', '>=', '<=', '*', '/', '%'].includes(n.op) || hasNumeric(n.a) || hasNumeric(n.b)))
+    const anyText = (n: ExprNode): boolean => isTextEq(n) || (n.k === 'not' && anyText(n.a)) || (n.k === 'bin' && (anyText(n.a) || anyText(n.b)))
+    if (anyText(root) && hasNumeric(root)) return '数字比较与文字比较（例如「包含」）写在同一个表达式里'
     let risk: string | undefined
     const visit = (n: ExprNode) => {
         if (risk) return
