@@ -2,7 +2,7 @@
   "name": "cui_toggle_test",
   "description": "CUI 真机测试：静态界面、混合翻页、软换行、行内图标、叠放规则、按钮图标、defineScreen 的 props 与按钮",
   "author": "bedrock-cui",
-  "version": "1.68.0",
+  "version": "1.69.0",
   "min_engine_version": "1.21.0",
   "language": "js",
   "bp": "6a3f0e2c-91d4-4b7a-8c55-0e1f7a2b9c31",

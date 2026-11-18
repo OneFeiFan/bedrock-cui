@@ -33,14 +33,17 @@ export default defineUI({
             ['O  含 z 或 含 b（显示）', s.contains('z').or(s.contains('b'))],
             ['P  不含 z（显示）', s.contains('z').not()],
             ['Q  含 a 且不含 z（显示）', s.contains('a').and(s.contains('z').not())],
-            // 1.67.0：小数能否参与运算（1.51.0 只验证了「表单整数之间的除法是整数除法」）。按整数算：R、S、T 隐藏，U 显示；支持小数：R、S、T 显示，U 隐藏
-            ['R  (5÷20)>0（对照）', n.div(20).gt(0)],
-            ['S  (5×0.1)>0', n.times(0.1).gt(0)],
-            ['T  (5÷12.5)>0', n.div(12.5).gt(0)],
-            ['U  (5÷2)=2（对照）', n.div(2).eq(2)],
+            // 1.67.0 R–U（已有结论：运算只有整数）已移除。1.68.0 真机：N、O 不显示——编译器把「或」改写成的 not (A and B) 结果错误。
+            // 1.69.0：or 本身是否可用、not 在什么位置可靠。全部应当显示
+            ['V  (5>3) 或 (5>7)', n.gt(3).or(n.gt(7))],
+            ['W  (5>7) 或 (5>3)', n.gt(7).or(n.gt(3))],
+            ['X  非 ((5>3) 且 (5>7))', n.gt(3).and(n.gt(7)).not()],
+            ['Y  (5>7) 或 非 (5>7)', n.gt(7).or(n.gt(7).not())],
+            ['Z  (5>3) 且 非 (5>7)', n.gt(3).and(n.gt(7).not())],
+            ['AA 含 a 或 z（一次比较）', s.minus('a').minus('z').eq(s).not()],
         ]
-        // 两列（1.67.0 起行数超过一屏的高度）：每列 11 行
-        const perColumn = 11
+        // 两列（1.67.0 起行数超过一屏的高度）：每列 12 行
+        const perColumn = 12
         const box = new Panel().setSize(430, 22 + perColumn * 14)
         box.add(new Image('textures/ui/dialog_background_opaque').setSize(Size.full()))
         box.add(new Label('条件成立时显示绿色方块').setColor(INK).setAnchor(Anchor.TOP_LEFT).setOffset(10, 6))
