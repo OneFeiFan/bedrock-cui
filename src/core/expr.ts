@@ -200,10 +200,12 @@ export function evalExpr(e: ExprLike, env: EvalEnv): Value {
             case 'not': return !truthy(visit(n.a))
             case 'bin': {
                 const a = visit(n.a), b = visit(n.b)
+                // 绑定中的运算只有整数（真机 1.51.0、1.67.0：5 × 0.1 为 0，5 ÷ 12.5 为 0，5 ÷ 2 为 2）；常量折叠（exact）精确计算
+                const int = (v: Value) => (env.exact ? Number(v) : Math.trunc(Number(v)))
                 switch (n.op) {
-                    case '+': return typeof a === 'number' && typeof b === 'number' ? a + b : `${a}${b}`
+                    case '+': return typeof a === 'number' && typeof b === 'number' ? int(a) + int(b) : `${a}${b}`
                     case '-':
-                        if (typeof a === 'number' && typeof b === 'number') return a - b
+                        if (typeof a === 'number' && typeof b === 'number') return int(a) - int(b)
                         return String(b) === '' ? String(a) : String(a).split(String(b)).join('')
                     case '*': {
                         // JSON UI 的 %.Ns 字符串格式；计时快照仅使用 ASCII 定长字段。
@@ -218,10 +220,10 @@ export function evalExpr(e: ExprLike, env: EvalEnv): Value {
                             }
                             return result
                         }
-                        return Number(a) * Number(b)
+                        return int(a) * int(b)
                     }
-                    case '/': return env.exact ? Number(a) / Number(b) : Math.trunc(Number(a) / Number(b))      // 绑定的运算只有整数（真机 1.51.0：1 ÷ 4 = 0）
-                    case '%': return Number(a) % Number(b)
+                    case '/': return env.exact ? Number(a) / Number(b) : Math.trunc(int(a) / int(b))
+                    case '%': return int(a) % int(b)
                     case '=': return typeof a === 'number' && typeof b === 'number' ? a === b : String(a) === String(b)
                     case '>': return Number(a) > Number(b)
                     case '<': return Number(a) < Number(b)

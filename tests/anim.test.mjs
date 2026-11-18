@@ -144,3 +144,10 @@ test('静态检查：Texture.SOLID 未指定 setKeepRatio() 时不报 keep-ratio
     const root = new Panel().setSize(200, 40).add(new Image(Texture.SOLID).setSize(180, 4))
     assert.ok(!compileNamespace('t', { root }).issues.some((i) => i.rule === 'keep-ratio'))
 })
+
+test('预览中绑定的运算只有整数（真机 1.67.0：5 × 0.1 为 0，5 ÷ 12.5 为 0，5 ÷ 2 为 2）；常量折叠精确', async () => {
+    const { evalExpr, lit } = await import('../dist/core/expr.js')
+    const ev = (e) => evalExpr(e, { ref: () => '' })
+    assert.deepEqual([ev(lit(5).times(0.1)), ev(lit(5).div(12.5)), ev(lit(5).div(2)), ev(lit(5).div(20))], [0, 0, 2, 0])
+    assert.equal(evalExpr(lit(5).times(0.1), { ref: () => '', exact: true }), 0.5)
+})
