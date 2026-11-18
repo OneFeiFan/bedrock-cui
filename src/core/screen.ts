@@ -438,6 +438,14 @@ export class Screen {
             }
         }
 
+        // 计时器需要结束时刷新（没有底色的 Countdown 标记的数据通道）
+        if (this.options.timerEndRefresh !== false) {
+            for (const d of manifest.data) {
+                const refs = channels.get(d.name)
+                if ((Array.isArray(refs) ? refs : [refs]).some((r) => (r?._refreshAtEndCount ?? 0) > 0)) d.refreshAtEnd = true
+            }
+        }
+
         // 4. Router：「原地不动」按钮（当前页没有被点中的按钮时接住点击），清单记子页面的顺序
         if (router) {
             root.add(router.pages.stayButton())
