@@ -239,7 +239,7 @@ export function lint(roots: RNode[], options: LintOptions = {}): LintIssue[] {
     walk(roots, (n) => {
         for (const [key, v] of Object.entries(n.props)) {
             const d = decimalIn(v)
-            if (d !== undefined) push('decimal-arith', 'warning', n, `${key} 的表达式中有小数常数 ${d}：绑定的运算只有整数（真机），小数会按整数计算——改用整数，例如先乘后除，或让脚本直接传入算好的整数`)
+            if (d !== undefined) push('decimal-arith', 'warning', n, `${key} 的表达式中有小数常数 ${d}：界面的数据转为数字后是整数，整数之间的除法是整数除法（真机）；小数常数参与运算的结果尚未验证。稳妥的做法是改用整数，或让脚本直接传入算好的整数`)
         }
         if (n.props.web) push('web-only', 'error', n, `${n.props.web.tag === 'a' ? 'Link' : 'Html'} 是网页专用的元素（bedrock-cui/dom），不能编译成 JSON UI`)
         checkSiblings(n.children)

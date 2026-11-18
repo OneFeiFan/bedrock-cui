@@ -461,3 +461,10 @@ world.afterEvents.itemUse.subscribe((e) => shop.open(e.source))
 - 删除 GPT 的计时 HUD 与配套：defineTimerHud、TimerHud、EventProgressBar、CuiConfig.timerHuds、bedrock-cui/runtime/timers 与 runtime/timer-core、LiveBar、LiveFrame 编码与发送器、EventTimerSender、eventTimerBarParts；examples/timer-hud、手册两页、8 个测试文件与 2 个基线文件。保留同一提交中与动画无关的运行时修正（点击串行化、formRetry 的 UserBusy 重试与停止、颜色参数校验、checkScripts 的精简运行时支持）。
 - 删除 Countdown，以及只为它服务的「计时结束时刷新一次」（timerEndRefresh、清单的 refreshAtEnd、运行时的安排）。计时显示只有 ProgressBar（数值定起点、匀速、裁剪封顶）。
 - 测试包 1.66.0：props 演示的计时改为进度条（按钮「开始计时」）；计时实验只保留进度条。动画实验的「A 数字倒计时」是 Anim 的能力实验（不是 Countdown 组件），暂留，待用户确认。
+
+### 21.4 小数能否参与运算（2026-11-19，GPT 的分析）
+
+- 远端 338b0fb（用户与 GPT）：ProgressBar 的数值模式 `new ProgressBar(数值, 上限)`（脚本算好整数千分比再传入）、计时器的输入校验、表单等待结果时打开另一个界面的处理。拉取后 146 条测试通过。
+- GPT 指出：「运算只有整数」说得太宽。已验证的只是：表单文字转换得到整数，整数之间的除法是整数除法（1.51.0：1÷4、25÷100 为 0），小数文字转换后不可用；固定的小数属性（裁剪 0.25）正常；原版经验条把引擎给的小数 #exp_progress 直接绑定到 #clip_ratio。小数常数参与运算的结果从未单独验证。
+- 手册、真机规则与 decimal-arith 的提示改为区分「已验证」与「待确认」。
+- 1.67.0 比较实验加 R–U（n = 5）：R (5÷20)>0 对照、S (5×0.1)>0、T (5÷12.5)>0、U (5÷2)=2 对照。按整数算：R、S、T 隐藏，U 显示；支持小数：R、S、T 显示，U 隐藏。GPT 建议的 property_bag 写 4.0 无法实现（编译输出经 JSON 序列化，4.0 写成 4），改用本身就是小数的常数。比较实验改为两列。

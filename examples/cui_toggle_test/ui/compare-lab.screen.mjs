@@ -33,14 +33,21 @@ export default defineUI({
             ['O  含 z 或 含 b（显示）', s.contains('z').or(s.contains('b'))],
             ['P  不含 z（显示）', s.contains('z').not()],
             ['Q  含 a 且不含 z（显示）', s.contains('a').and(s.contains('z').not())],
+            // 1.67.0：小数能否参与运算（1.51.0 只验证了「表单整数之间的除法是整数除法」）。按整数算：R、S、T 隐藏，U 显示；支持小数：R、S、T 显示，U 隐藏
+            ['R  (5÷20)>0（对照）', n.div(20).gt(0)],
+            ['S  (5×0.1)>0', n.times(0.1).gt(0)],
+            ['T  (5÷12.5)>0', n.div(12.5).gt(0)],
+            ['U  (5÷2)=2（对照）', n.div(2).eq(2)],
         ]
-        const box = new Panel().setSize(240, 22 + rows.length * 14)
+        // 两列（1.67.0 起行数超过一屏的高度）：每列 11 行
+        const perColumn = 11
+        const box = new Panel().setSize(430, 22 + perColumn * 14)
         box.add(new Image('textures/ui/dialog_background_opaque').setSize(Size.full()))
         box.add(new Label('条件成立时显示绿色方块').setColor(INK).setAnchor(Anchor.TOP_LEFT).setOffset(10, 6))
         rows.forEach(([text, cond], i) => {
-            const y = 20 + i * 14
-            box.add(new Label(text).setColor(INK).setAnchor(Anchor.TOP_LEFT).setOffset(10, y))
-            box.add(new Image(Texture.SOLID).setColor(Color.hex('#3fa04a')).setSize(10, 10).setAnchor(Anchor.TOP_LEFT).setOffset(200, y - 1).setVisible(cond))
+            const x = 10 + Math.floor(i / perColumn) * 210, y = 20 + (i % perColumn) * 14
+            box.add(new Label(text).setColor(INK).setAnchor(Anchor.TOP_LEFT).setOffset(x, y))
+            box.add(new Image(Texture.SOLID).setColor(Color.hex('#3fa04a')).setSize(10, 10).setAnchor(Anchor.TOP_LEFT).setOffset(x + 180, y - 1).setVisible(cond))
         })
         const close = new Close().setSize(12, 12).setAnchor(Anchor.TOP_RIGHT).setOffset(-6, 6)
         close.default.add(new Label('§4x'))
