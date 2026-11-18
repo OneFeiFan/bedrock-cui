@@ -49,6 +49,9 @@ class Instance {
     dir: 'prev' | 'next' | 'back' = 'next'
     /** 多页时的历史（back() 返回用） */
     history: string[] = []
+    /** 最近 10 秒内点击以外的刷新时刻（防护：过于频繁时提示一次） */
+    externalRefreshes?: number[]
+    warnedFrequent?: boolean
     /** 已经提示过总时长不一致的数据 */
     warnedTimer?: Set<string>
     /** 显示中的计时器最早在多少毫秒后结束（form() 中记下）；到时刷新一次 */
@@ -381,6 +384,14 @@ export class ScreenRuntime<P extends ScreenPlayer = ScreenPlayer> {
             this.log(inst, `推迟刷新 ${Math.round(wait)} 毫秒`)
             inst.stopDeferred = this.platform.timeout(() => { inst.stopDeferred = undefined; inst.deferred = false; this.enqueue(inst) }, Math.max(1, Math.ceil(wait / 50)))
             return
+        }
+        // 防护：点击以外的刷新过于频繁（例如每秒修改状态的倒计时）。每次刷新有约 150 毫秒的过渡，其间的点击会落空（真机 1.39–1.43）
+        const now = this.now()
+        inst.externalRefreshes = (inst.externalRefreshes ?? []).filter((t) => now - t < 10000)
+        inst.externalRefreshes.push(now)
+        if (inst.externalRefreshes.length >= 3 && !inst.warnedFrequent) {
+            inst.warnedFrequent = true
+            console.warn(`[bedrock-cui] ${inst.screen.id}：10 秒内因点击以外的原因刷新了 ${inst.externalRefreshes.length} 次。每次刷新要关闭并重新打开表单，过渡期间玩家的点击会落空。随时间连续变化的显示（倒计时、进度条）请用 Timer 与 Countdown / ProgressBar，它们由客户端的动画推进，计时期间不刷新`)
         }
         // 刷新：关闭当前表单，同一刻立即显示新表单（旧表单迟到的取消忽略、迟到的点击照常处理）
         this.replaceNow(inst)

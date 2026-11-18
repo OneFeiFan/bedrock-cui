@@ -1,5 +1,5 @@
 // 界面模型的真机验证：数据（props）、逻辑（state、computed、methods、onClose）与视图写在一个文件里
-import { Anchor, Button, Close, Color, defineUI, Image, Item, Label, Panel, Size, Texture } from 'bedrock-cui'
+import { Anchor, Button, Close, Color, Countdown, defineUI, Image, Item, Label, Panel, Size, Texture, Timer } from 'bedrock-cui'
 
 const INK = Color.hex('#3c2814')
 
@@ -13,12 +13,11 @@ export default defineUI({
 
     // ———— 逻辑：在游戏中运行 ————
     state() {
-        return { n: 0, left: 0, stopTimer: undefined }    // 点了几次「点我」；倒计时剩余秒数
+        return { n: 0, countdown: Timer.idle(5) }          // 点了几次「点我」；5 秒的倒计时
     },
     computed: {
         greeting() { return this.n === 0 ? '欢迎！点「点我」试试' : `点了 ${this.n} 次` },
         vip() { return this.n % 2 === 1 },                 // 奇数次时显示「★ 会员」
-        countdown() { return this.left > 0 ? `倒计时：${this.left}` : '倒计时：未开始' },
         goods() { return [{ text: `绿宝石 ×${this.n + 1}`, icon: 'textures/items/emerald' }, { text: '金锭', icon: 'textures/items/gold_ingot' }, '第 3 项（没有图标）'] },
     },
     methods: {
@@ -26,15 +25,8 @@ export default defineUI({
         hello() { this.n += 1; this.emit('hello', this.n) },
         // this.mc：逻辑中直接使用游戏的脚本 API（@minecraft/server）
         apple() { this.player.getComponent('minecraft:inventory')?.container?.addItem(new this.mc.ItemStack('minecraft:apple', 1)) },
-        // 倒计时：定时器每秒修改状态，界面随之更新（阶段 C）；界面关闭时定时器自动取消
-        start() {
-            this.stopTimer?.()
-            this.left = 5
-            this.stopTimer = this.setInterval(() => {
-                this.left -= 1
-                if (this.left <= 0) this.stopTimer()
-            }, 20)
-        },
+        // 倒计时：计时器只记开始的时刻，客户端的动画推进，计时期间不刷新界面（早期每秒刷新的做法会吞点击，已废弃）
+        start() { this.countdown = this.countdown.start() },
     },
     onClose() {
         this.player.sendMessage(`[props 演示] 已关闭，共点了 ${this.n} 次`)
@@ -68,7 +60,7 @@ export default defineUI({
             new Label('§6★ 会员').setSize(50, 10).setAnchor(Anchor.TOP_RIGHT).setOffset(-24, 10).setVisible(vip),
             ...row(item, 28),
             ...goods.flatMap((g, i) => row(g, 54 + i * 22)),
-            new Label(countdown).setColor(INK).setSize(90, 10).setAnchor(Anchor.BOTTOM_RIGHT).setOffset(-12, -32),
+            new Countdown(countdown, (n) => `倒计时：${n}`).setTextColor(INK).setBackground(Color.hex('#c6c6c6')).setSize(90, 10).setAnchor(Anchor.BOTTOM_RIGHT).setOffset(-12, -32),
             hello,
             apple,
             start,

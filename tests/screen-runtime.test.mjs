@@ -570,3 +570,20 @@ test('显示请求在替换与关闭后失效；关闭时取消推迟刷新，�
     assert.ok(requests.at(-1)())
     c.screen.close(P)
 })
+
+test('防护：点击以外的刷新 10 秒内达到 3 次时提示一次（每秒修改状态的倒计时会吞点击），之后不再重复提示', async () => {
+    const holder = {}
+    const warns = [], warn = console.warn
+    console.warn = (s) => warns.push(String(s))
+    try {
+        const { screen } = setup({
+            id: 'cui_ui:busy', state() { return { n: 0 } }, computed: { v() { return String(this.n) } },
+            onOpen() { holder.ctx = this },
+            page: ({ v }) => new Panel().setSize(100, 30).add(new Label(v).setSize(50, 10)),
+        })
+        screen.open(P)
+        for (let i = 1; i <= 5; i++) { holder.ctx.n = i; await tick(); await tick() }
+    } finally { console.warn = warn }
+    const hits = warns.filter((w) => w.includes('cui_ui:busy') && w.includes('Countdown'))
+    assert.equal(hits.length, 1)
+})

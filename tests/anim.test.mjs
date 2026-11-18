@@ -138,3 +138,9 @@ test('除法：预览中绑定的运算为整数除法（与游戏一致，真�
     assert.equal(evalExpr(lit(1).div(4), { ref: () => '' }), 0)
     assert.equal(evalExpr(lit(1).div(4), { ref: () => '', exact: true }), 0.25)
 })
+
+test('静态检查：Texture.SOLID 未指定 setKeepRatio() 时不报 keep-ratio（它缺省拉伸）', async () => {
+    const { Texture } = await import('../dist/index.js')
+    const root = new Panel().setSize(200, 40).add(new Image(Texture.SOLID).setSize(180, 4))
+    assert.ok(!compileNamespace('t', { root }).issues.some((i) => i.rule === 'keep-ratio'))
+})

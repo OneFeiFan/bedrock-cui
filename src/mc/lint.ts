@@ -5,7 +5,7 @@ import { isExpr } from '../core/expr.js'
 import { walk, type RNode } from '../core/node.js'
 import { parseSize } from '../layout/units.js'
 import { measureText, textWidth, usesUnifont, withMetricsProfile, type MetricsProfile } from '../font/metrics.js'
-import { Texture } from '../core/values.js'
+import { SOLID_TEXTURE, Texture } from '../core/values.js'
 import { GlyphSheet } from '../core/glyphs.js'
 import { InlineIcon } from '../core/inline.js'
 import { batchKey, layout, type Box, type TextureInfo } from '../layout/engine.js'
@@ -251,7 +251,8 @@ export function lint(roots: RNode[], options: LintOptions = {}): LintIssue[] {
         }
 
         // keep_ratio 缺省 true：非正方形区域里拉伸贴图会被缩成居中的正方形 / 一个点（known-pitfalls §4.20）
-        if (n.type === 'image' && n.props.keepRatio === undefined && n.props.nineslice === undefined) {
+        // 内置纯白贴图（Texture.SOLID）未指定时编译为拉伸（keep_ratio: false），不检查
+        if (n.type === 'image' && n.props.keepRatio === undefined && n.props.nineslice === undefined && n.props.texture !== SOLID_TEXTURE) {
             const [w, h] = n.props.size ?? []
             const tex = isExpr(n.props.texture) ? undefined : options.textures?.(n.props.texture) ?? Texture.info(n.props.texture)
             if (isFixed(w) && isFixed(h) && !tex?.nineslice) {
