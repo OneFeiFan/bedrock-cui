@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>bedrock-cui：用 JavaScript 写基岩版附加包的界面</title>
+<meta name="description" content="给基岩版附加包写界面：用 JavaScript 搭界面，构建时生成游戏读取的 JSON UI。">
+<link rel="stylesheet" href="home.css">
+<script src="assets/cui-preview.js"></script>
+</head>
+<body class="home">
+
+<header class="h-top">
+  <nav class="h-wrap h-nav">
+    <a class="h-brand" href="index.html">bedrock-cui</a>
+    <div class="h-links">
+      <a href="introduction.html">指南</a>
+      <a href="components/panel.html">组件</a>
+      <a href="reference/api-core.html">参考</a>
+      <a href="contents.html">目录</a>
+      <a href="https://github.com/OneFeiFan/bedrock-cui">GitHub</a>
+    </div>
+  </nav>
+</header>
+
+<section class="h-wrap h-hero">
+  <div class="h-logo">
+    <h1>BEDROCK-CUI</h1>
+    <div class="h-splash">改完就能预览！</div>
+  </div>
+  <p class="h-lead">给基岩版附加包写界面：用 JavaScript 搭界面，构建时生成游戏读取的 JSON UI。</p>
+  <div class="h-menu">
+    <a class="mc-btn" href="quick-start.html">快速上手</a>
+    <a class="mc-btn" href="introduction.html">阅读手册</a>
+    <div class="h-row">
+      <a class="mc-btn" href="https://github.com/OneFeiFan/bedrock-cui">GitHub</a>
+      <a class="mc-btn" href="components/panel.html">组件一览</a>
+    </div>
+  </div>
+  <div class="h-chat">npx bedrock-cui create my_ui<span class="h-caret">_</span></div>
+</section>
+
+<section class="h-wrap h-try">
+  <h2>点一下试试</h2>
+  <!--SHOP_PREVIEW-->
+  <p class="h-note">这个商店界面就是下面那段代码，由手册网站的预览引擎在网页上运行。</p>
+</section>
+
+<section class="h-band">
+  <div class="h-wrap h-section">
+    <h2>它能做什么</h2>
+    <div class="h-cards">
+      <div class="mc-panel"><h3>不用手写 JSON UI</h3><p>控件、排版、文字换行都写在 JavaScript 里，构建时生成游戏读取的 JSON 文件。</p></div>
+      <div class="mc-panel"><h3>一个界面一个文件</h3><p>显示什么、点了按钮做什么，都写在同一个 .screen.mjs 里。逻辑中可以直接调用 @minecraft/server。</p></div>
+      <div class="mc-panel"><h3>先在浏览器里看</h3><p>npm run dev 打开预览，保存后自动刷新。按钮、翻页和计时在预览里同样能用。</p></div>
+      <div class="mc-panel"><h3>翻页与选项卡</h3><p>多页用 Router，选项卡用 Tabs，跳转都用 Link、Back、Next。在同一个位置连续点「下一页」，每次都能翻过去。</p></div>
+      <div class="mc-panel"><h3>会自己走的进度条</h3><p>进度条由游戏客户端播放，计时期间不用重新打开表单。暂停、继续，或者关掉再打开，都从当前进度接着走。</p></div>
+      <div class="mc-panel"><h3>在游戏里试过的规则</h3><p>哪些写法在游戏里会出错，是做测试包一条条试出来的。构建时遇到这些写法会直接提示。</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="h-wrap h-code">
+  <div class="h-code-text">
+    <h2>一个界面的全部代码</h2>
+    <p>上面那个商店界面就是这些代码。它分三部分，运行的地方不一样：</p>
+    <ol class="h-parts">
+      <li><span class="mc-num">1</span><div><b>数据（props）</b><br>行为包脚本打开界面时传进来，比如物品的名字和图标。</div></li>
+      <li><span class="mc-num">2</span><div><b>逻辑（state、computed、methods）</b><br>在游戏里运行，每个玩家一份。点按钮调用方法，状态变了界面就跟着更新。</div></li>
+      <li><span class="mc-num">3</span><div><b>页面（page）</b><br>只在构建时运行一次，生成 JSON UI，作用相当于 Vue 的模板。</div></li>
+    </ol>
+    <a class="h-more" href="screens.html">阅读「界面文件」一章 &gt;</a>
+  </div>
+  <pre class="h-pre"><code><!--SHOP_CODE--></code></pre>
+</section>
+
+<section class="h-band">
+  <div class="h-wrap h-section">
+    <h2>开始用</h2>
+    <div class="h-steps">
+      <div><div class="h-step">1. 创建项目</div><div class="h-chat h-multi">npx bedrock-cui create my_ui
+cd my_ui
+npm install</div><p>会得到一个带示例小书的附加包项目。</p></div>
+      <div><div class="h-step">2. 在浏览器里预览</div><div class="h-chat">npm run dev</div><p>改界面文件，预览会跟着刷新，静态检查也会给出提示。</p></div>
+      <div><div class="h-step">3. 构建附加包</div><div class="h-chat">npm run build</div><p>生成资源包和行为包，在游戏里启用就能用。</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="h-wrap h-section">
+  <div class="h-stats">
+    <div><div class="h-num"><!--STAT:rules--></div><div>条在游戏里验证过的规则</div></div>
+    <div><div class="h-num"><!--STAT:lint--></div><div>项构建检查</div></div>
+    <div><div class="h-num"><!--STAT:examples--></div><div>个能在网页上运行的例子</div></div>
+    <div><div class="h-num">MIT</div><div>许可</div></div>
+  </div>
+  <p class="h-dogfood">这个网站也是用 bedrock-cui 生成的：手册页面的结构由它的控件搭成，例子用的是同一套排版代码。</p>
+</section>
+
+<footer class="h-foot">
+  <div class="h-wrap h-foot-row">
+    <span>MIT License · © OneFeiFan</span>
+    <span>Minecraft 是 Mojang 的商标，本项目与 Mojang、Microsoft 无关。</span>
+  </div>
+</footer>
+
+</body>
+</html>

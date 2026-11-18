@@ -29,7 +29,8 @@ for (const line of fs.readFileSync(path.join(guide, 'index.md'), 'utf8').split('
     if (l && sections.length) sections.at(-1).pages.push({ file: l[2], title: l[1].replace(/`/g, '') })
 }
 const order = sections.flatMap((s) => s.pages)
-const htmlName = (file) => file.replace(/\.md$/, '.html')
+// index.md 是手册目录（侧栏的分组与顺序也读它）：生成 contents.html，index.html 留给首页
+const htmlName = (file) => (file === 'index.md' ? 'contents.html' : file.replace(/\.md$/, '.html'))
 
 // ───────── Markdown ─────────
 
@@ -231,6 +232,32 @@ document.querySelectorAll('.sidebar a').forEach((a) => a.addEventListener('click
     fs.writeFileSync(to, doc)
 }
 fs.copyFileSync(path.join(root, 'docs', 'site', 'site.css'), path.join(out, 'site.css'))
+
+// ───────── 首页（docs/site/home）：游戏风格，商店界面由预览引擎真实运行，数字在构建时统计 ─────────
+{
+    const home = path.join(root, 'docs', 'site', 'home')
+    const shopCode = fs.readFileSync(path.join(home, 'shop.screen.mjs'), 'utf8').trimEnd()
+    const shopScript = shopCode.replace(/^import\s*\{([^}]*)\}\s*from\s*'bedrock-cui'\s*;?\s*$/gm, (_, names) => `const {${names}} = CUI`)
+        .replace(/^export\s+default\s+\w+\s*;?\s*$/gm, '')
+    // 真机规则：各表格的数据行；静态检查：lint.md 的规则行；在线示例：手册中 preview= 的代码块
+    const rulesMd = fs.readFileSync(path.join(guide, 'reference', 'rules.md'), 'utf8').split('\n')
+    const rules = rulesMd.filter((l, i) => l.startsWith('| ') && !/^\|\s*-/.test(l) && !/^\|\s*-/.test(rulesMd[i + 1] ?? '')).length
+    const lint = (fs.readFileSync(path.join(guide, 'reference', 'lint.md'), 'utf8').match(/^\| `[a-z-]+` \|/gm) ?? []).length
+    const examples = files.reduce((n, f) => n + (fs.readFileSync(path.join(guide, f), 'utf8').match(/^```js[^\n]*preview=/gm) ?? []).length, 0)
+    const html = fs.readFileSync(path.join(home, 'index.html'), 'utf8')
+        .replace('<!--SHOP_CODE-->', highlight(shopCode, 'js'))
+        .replace('<!--SHOP_PREVIEW-->', `<div class="cui-preview" id="home-shop"></div>\n<script>(() => {\n${shopScript.replace(/<\/script/g, '<\\/script')}\nCUI_PREVIEW('home-shop', shop, { w: 160, h: 84, base: '' })\n})()</script>`)
+        .replace('<!--STAT:rules-->', String(rules)).replace('<!--STAT:lint-->', String(lint)).replace('<!--STAT:examples-->', String(examples))
+    fs.writeFileSync(path.join(out, 'index.html'), html)
+    fs.copyFileSync(path.join(home, 'home.css'), path.join(out, 'home.css'))
+    fs.mkdirSync(path.join(out, 'fonts'), { recursive: true })
+    for (const f of ['unifont-home.woff2', 'LICENSE.txt']) fs.copyFileSync(path.join(home, 'fonts', f), path.join(out, 'fonts', f))
+    // 首页的文字都要在字体子集里（改了首页的文字后运行 python3 scripts/subset-home-font.py）
+    const have = new Set(fs.readFileSync(path.join(home, 'fonts', 'unifont-home.chars'), 'utf8'))
+    const text = html.replace(/<!--[\s\S]*?-->/g, '').replace(/<(script|style|pre)[^>]*>[\s\S]*?<\/\1>/g, '').replace(/<[^>]+>/g, ' ')
+    const missing = [...new Set(text)].filter((c) => c.trim() && !have.has(c))
+    if (missing.length) console.warn(`首页用到了字体子集中没有的字：${missing.join('')}——运行 python3 scripts/subset-home-font.py`)
+}
 fs.copyFileSync(path.join(root, 'docs', 'site', 'site.js'), path.join(out, 'site.js'))
 
 // 在线示例：浏览器脚本（bedrock-cui + 预览）、替代贴图、Unifont
@@ -256,6 +283,12 @@ fs.writeFileSync(path.join(tex, 'white_vanilla.png'), png(15, 15, (x, y) => (x <
 // 物品图标：不模仿原版的样子，统一用紫黑格（游戏中贴图缺失时的样子），一看就知道是占位
 const missing = png(16, 16, (x, y) => ((x < 8) === (y < 8) ? [248, 0, 248, 255] : [0, 0, 0, 255]))
 for (const f of ['diamond.png', 'stick.png', 'sword.png']) fs.writeFileSync(path.join(tex, f), missing)
+// 首页商店的宝石：自己画的像素图（8×8 放大为 16×16），不是原版贴图
+{
+    const art = ['........', '..aaaa..', '.bdbbbb.', '.cccccc.', '..bbbb..', '...aa...', '........', '........']
+    const pal = { a: [30, 107, 102, 255], b: [47, 181, 172, 255], c: [110, 227, 217, 255], d: [216, 255, 251, 255] }
+    fs.writeFileSync(path.join(tex, 'gem.png'), png(16, 16, (x, y) => pal[art[y >> 1][x >> 1]] ?? null))
+}
 const unifont = path.join(process.env.BEDROCK_CUI_FONT_DIR ?? path.join(os.homedir(), '.cache', 'bedrock-cui', 'font'), 'unifont.hex.gz')
 if (fs.existsSync(unifont)) {
     fs.mkdirSync(path.join(out, 'font'), { recursive: true })

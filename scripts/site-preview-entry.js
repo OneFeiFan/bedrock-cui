@@ -15,6 +15,7 @@ const STANDINS = {
     'textures/items/diamond': { file: 'diamond.png', size: [16, 16] },
     'textures/items/stick': { file: 'stick.png', size: [16, 16] },
     'textures/items/diamond_sword': { file: 'sword.png', size: [16, 16] },
+    'textures/cui_example/gem': { file: 'gem.png', size: [16, 16] },       // 首页商店：自己画的像素宝石
 }
 
 window.CUI = CUI
