@@ -1,18 +1,18 @@
 // 测量实验（1.49.0 / 1.50.0）：位置绑定与裁剪比例绑定的单位与运算
 // 1.49.0 真机：绑定纯常数不合法（Must define a source property name），O2、O3、C1、C3 作废；O4（prop 40）看不见，C2（prop 0.6）满格——1.50.0 全部改用 prop
 // 1.48.0 真机：偏移为 0 的控件都正常，偏移不为 0 的都看不见——怀疑 #anchored_offset_value_x 的单位不是像素
-import { Anchor, Color, Image, Label, Panel, Size, Texture, defineScreen } from 'bedrock-cui'
+import { Anchor, Close, Color, defineUI, Image, Label, Panel, Size, Texture } from 'bedrock-cui'
 
 const INK = Color.hex('#3c2814')
 const W = 160, H = 8
 
-export default defineScreen({
+export default defineUI({
     id: 'cui_ui:measure_lab',
     // 1.50.0 真机：O4（40）看不见、O5 / O6（0.25）在 0、C2 / C4（0.6）满格，C1 固定 0.5 右半边可见（clip_direction 'right' = 可见部分靠右）。
     // 怀疑小数转换后变成 0，位置单位不是像素——1.51.0 全部用整数
     props: { one: { type: String, default: '1' }, two: { type: String, default: '2' }, twentyfive: { type: String, default: '25' } },   // 默认值即可
 
-    view({ one, two, twentyfive, button, close: closeIt }) {
+    page({ one, two, twentyfive }) {
         const X0 = 70
         /** 一条轨道：背景 + 0、¼、½、¾、满五个刻度 */
         const track = (y) => {
@@ -27,7 +27,7 @@ export default defineScreen({
         const green = () => new Image(Texture.SOLID).setKeepRatio(false).setColor(Color.hex('#3fa04a')).setSize(W, H).setAnchor(Anchor.TOP_LEFT)
         const row = (name, y, child) => [new Label(name).setColor(INK).setAnchor(Anchor.TOP_LEFT).setOffset(10, y), track(y).add(child)]
 
-        const close = button().onClick(closeIt).setSize(12, 12).setAnchor(Anchor.TOP_RIGHT).setOffset(-6, 6)
+        const close = new Close().setSize(12, 12).setAnchor(Anchor.TOP_RIGHT).setOffset(-6, 6)
         close.default.add(new Label('§4x'))
         close.hover.add(new Label('§cx'))
 

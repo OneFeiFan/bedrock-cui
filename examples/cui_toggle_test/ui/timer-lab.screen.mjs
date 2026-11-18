@@ -1,10 +1,10 @@
 // 计时实验（1.58.0）：ProgressBar 与 Countdown——计时期间不刷新，重新打开时从当时的进度接着走
 // 1.60.0：静止的一列不用 not（1.59.0 双重否定失效：进行中时背后多一个不动的数字、暂停时整个消失）；计时结束时自动刷新一次；进度条加白色的「头」；右上显示界面收到的数据
-import { Anchor, Color, Countdown, Image, Label, Panel, ProgressBar, Size, Texture, Timer, defineScreen } from 'bedrock-cui'
+import { Anchor, Button, Close, Color, Countdown, defineUI, Image, Label, Panel, ProgressBar, Size, Texture, Timer } from 'bedrock-cui'
 
 const INK = Color.hex('#3c2814')
 
-export default defineScreen({
+export default defineUI({
     id: 'cui_ui:timer_lab',
     state() { return { cooldown: Timer.idle(10) } },
     // 1.62.0：结束时不刷新——精度 1 的头越过右端消失，精度 49 稍微越过（真机与预测一致）。
@@ -16,14 +16,14 @@ export default defineScreen({
         pause() { this.cooldown = this.cooldown.isRunning() ? this.cooldown.pause() : this.cooldown.resume() },
         again() { },                                    // 什么也不做：重新打开，看是否接着走
     },
-    view({ cooldown, start, pause, again, button, close: closeIt }) {
+    page({ cooldown, start, pause, again }) {
         const btn = (method, text, x) => {
-            const b = button().onClick(method).setSize(60, 16).setAnchor(Anchor.BOTTOM_LEFT).setOffset(x, -8)
+            const b = new Button().onClick(method).setSize(60, 16).setAnchor(Anchor.BOTTOM_LEFT).setOffset(x, -8)
             b.default.add(new Image('textures/ui/purpleBorder').setNineslice(4).setSize(Size.full()), new Label(text))
             b.hover.add(new Image(Texture.SOLID).setColor(Color.hex('#6040a0')).setSize(Size.full()), new Label(`§e${text}`))
             return b
         }
-        const close = button().onClick(closeIt).setSize(12, 12).setAnchor(Anchor.TOP_RIGHT).setOffset(-6, 6)
+        const close = new Close().setSize(12, 12).setAnchor(Anchor.TOP_RIGHT).setOffset(-6, 6)
         close.default.add(new Label('§4x'))
         close.hover.add(new Label('§cx'))
         return new Panel().setSize(220, 90).add(

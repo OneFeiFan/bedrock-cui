@@ -3,15 +3,15 @@
 // 1.55.0 真机：A–F、H、I 全部正确（单个比较可用）；只有 G「(5>=0) and (5<10)」错误——1.56.0 加 J–M 区分是 and 还是与 0 比较的问题
 // 1.56.0 真机：J、K、L 正确，G、M 错误——两者都是 >= 作为 and 的一边。1.57.0：>= / <= 编译为 not < / not >，预期除 B、E 外全部显示
 // 1.57.0 真机：除 B、E 外全部显示。1.61.0 加 N–Q：or 连接的「包含」与「不包含」（编译时 not 规范到表达式开头）
-import { Anchor, Color, Image, Label, Panel, Size, Texture, defineScreen } from 'bedrock-cui'
+import { Anchor, Close, Color, defineUI, Image, Label, Panel, Size, Texture } from 'bedrock-cui'
 
 const INK = Color.hex('#3c2814')
 
-export default defineScreen({
+export default defineUI({
     id: 'cui_ui:compare_lab',
     props: { n: { type: String, default: '5' }, s: { type: String, default: 'abc' } },     // 默认值即可
 
-    view({ n: nText, s, button, close: closeIt }) {
+    page({ n: nText, s }) {
         const n = nText.number
         // 每一行：说明（括号里是按数学应有的结果）＋ 条件成立时显示的绿色方块
         const rows = [
@@ -42,7 +42,7 @@ export default defineScreen({
             box.add(new Label(text).setColor(INK).setAnchor(Anchor.TOP_LEFT).setOffset(10, y))
             box.add(new Image(Texture.SOLID).setColor(Color.hex('#3fa04a')).setSize(10, 10).setAnchor(Anchor.TOP_LEFT).setOffset(200, y - 1).setVisible(cond))
         })
-        const close = button().onClick(closeIt).setSize(12, 12).setAnchor(Anchor.TOP_RIGHT).setOffset(-6, 6)
+        const close = new Close().setSize(12, 12).setAnchor(Anchor.TOP_RIGHT).setOffset(-6, 6)
         close.default.add(new Label('§4x'))
         close.hover.add(new Label('§cx'))
         return box.add(close)

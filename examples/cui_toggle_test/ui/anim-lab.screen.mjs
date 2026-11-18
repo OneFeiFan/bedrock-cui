@@ -1,5 +1,5 @@
 // 动画实验（1.44.0 / 1.45.0）：客户端自己播放的动画（JSON UI anims），不需要脚本刷新
-import { Anchor, Anim, Color, Image, Label, Panel, Size, Texture, defineScreen, lit } from 'bedrock-cui'
+import { Anchor, Anim, Button, Close, Color, defineUI, Image, Label, lit, Panel, Size, Texture } from 'bedrock-cui'
 
 const INK = Color.hex('#3c2814')
 
@@ -9,7 +9,7 @@ const W = 160, H = 8, T = 10           // 宽、高（像素），总时长（�
 /** 第 k 秒到第 k+1 秒之间显示（k 从 0 起）：先透明 k 秒，显示 1 秒，再隐藏 */
 const showDuring = (k) => (k === 0 ? Anim.alpha(1, 1, 1) : Anim.alpha(0, 0, k).then(Anim.alpha(1, 1, 1))).then(Anim.alpha(0, 0, 0.05))
 
-export default defineScreen({
+export default defineUI({
     id: 'cui_ui:anim_lab',
 
     // 进度（千分比）由脚本在每次打开时算出，通过 prop 传进界面。文字带状态前缀：未开始 I0、进行中 R400、完成 D1000
@@ -28,7 +28,7 @@ export default defineScreen({
         again() { },                 // 什么也不做：点击后表单重新打开，观察动画是否从头播放
     },
 
-    view({ progress, start: startIt, again: againIt, button, close: closeIt }) {
+    page({ progress, start: startIt, again: againIt }) {
         const title = (text, y) => new Label(text).setColor(INK).setAnchor(Anchor.TOP_LEFT).setOffset(12, y)
 
         // A 数字倒计时：6 个文字叠在同一位置
@@ -92,14 +92,14 @@ export default defineScreen({
                     .setAnims(Anim.size([0, H], [W, H], T))),
         )
         const reading = new Label(progress).setColor(INK).setSize(60, 10).setAnchor(Anchor.TOP_LEFT).setOffset(180, 131)
-        const start = button().onClick(startIt).setSize(60, 16).setAnchor(Anchor.BOTTOM_RIGHT).setOffset(-12, -8)
+        const start = new Button().onClick(startIt).setSize(60, 16).setAnchor(Anchor.BOTTOM_RIGHT).setOffset(-12, -8)
         start.default.add(new Image('textures/ui/purpleBorder').setNineslice(4).setSize(Size.full()), new Label('开始'))
         start.hover.add(new Image(Texture.SOLID).setKeepRatio(false).setColor(Color.hex('#6040a0')).setSize(Size.full()), new Label('§e开始'))
 
-        const again = button().onClick(againIt).setSize(80, 18).setAnchor(Anchor.BOTTOM_LEFT).setOffset(12, -10)
+        const again = new Button().onClick(againIt).setSize(80, 18).setAnchor(Anchor.BOTTOM_LEFT).setOffset(12, -10)
         again.default.add(new Image('textures/ui/purpleBorder').setNineslice(4).setSize(Size.full()), new Label('重新打开'))
         again.hover.add(new Image(Texture.SOLID).setKeepRatio(false).setColor(Color.hex('#6040a0')).setSize(Size.full()), new Label('§e重新打开'))
-        const close = button().onClick(closeIt).setSize(12, 12).setAnchor(Anchor.TOP_RIGHT).setOffset(-6, 6)
+        const close = new Close().setSize(12, 12).setAnchor(Anchor.TOP_RIGHT).setOffset(-6, 6)
         close.default.add(new Label('§4x'))
         close.hover.add(new Label('§cx'))
 

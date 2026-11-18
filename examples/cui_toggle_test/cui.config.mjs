@@ -14,7 +14,7 @@ export default defineConfig({
     screens: {
         [FORM.title]: () => buildBook(),                       // 测试书（静态界面、混合翻页）
         [RESPONSIVE_FORM.title]: () => buildResponsiveDemo(),  // 响应式演示
-        [propsDemo.id]: propsDemo,                             // defineScreen：props 与按钮（阶段 A）
+        [propsDemo.id]: propsDemo,                             // 界面文件：props 与按钮
         [animLab.id]: animLab,                                 // 动画实验（客户端自己播放）
         [progressLab.id]: progressLab,                         // 进度实验（数值绑定）
         [measureLab.id]: measureLab,                           // 测量实验（绑定的单位与运算）

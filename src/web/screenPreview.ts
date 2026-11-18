@@ -62,7 +62,8 @@ export function runScreenInBrowser(screen: Screen, o: ScreenPreviewOptions): { c
             if (!pending) return false
             const r = pending; pending = undefined
             const b = o.manifest.buttons.find((x) => x.index === index)
-            if (b) o.log(b.method === '__close' ? '点击了按钮：关闭界面' : `点击了按钮：调用 ${b.method}(${b.args.map((a) => JSON.stringify(a)).join(', ')})`)
+            const nav: Record<string, string> = { __close: '关闭界面', __back: '返回上一页', __next: '下一页', __prev: '上一页' }
+            if (b) o.log(b.method === '__link' ? `点击了跳转：到「${String(b.args[0])}」` : nav[b.method] ? `点击了按钮：${nav[b.method]}` : `点击了按钮：调用 ${b.method}(${b.args.map((a) => JSON.stringify(a)).join(', ')})`)
             r({ canceled: false, selection: index })
             return true
         },
