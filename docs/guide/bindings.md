@@ -8,24 +8,24 @@
 
 | 来源 | 写法 | 介绍 |
 |---|---|---|
-| 界面的数据 | 视图参数中的名字（props、state、computed） | [数据（props）](props.md) |
+| 界面的数据 | 页面函数参数中的名字（props、state、computed） | [数据（props）](props.md) |
 | 开关的状态 | `toggleState(开关名)` | 下文「开关的状态」 |
 
-视图参数中的数据本身就是一个表达式：用在 `Label` 上取它的文字，用在 `Image` 上取它的图标，用在 `setVisible()` 上表示「有值」。在它上面调用运算方法，得到新的表达式。
+页面函数参数中的数据本身就是一个表达式：用在 `Label` 上取它的文字，用在 `Image` 上取它的图标，用在 `setVisible()` 上表示「有值」。在它上面调用运算方法，得到新的表达式。
 
 ## 显示条件
 
 `控件.setVisible(表达式)` 在表达式的值为真时显示控件。下面根据 `rank` 中是否包含 `VIP`，显示不同的文字：
 
 ```js preview=card 220x60
-import { Color, Image, Label, Panel, Size, defineScreen } from 'bedrock-cui'
+import { Color, defineUI, Image, Label, Page, Size } from 'bedrock-cui'
 
-const card = defineScreen({
+const card = defineUI({
     id: 'cui_ui:card',
     props: { rank: { type: String, default: 'VIP 会员' } },
-    view({ rank }) {
+    page({ rank }) {
         const vip = rank.contains('VIP')
-        return new Panel().setSize(200, 40).add(
+        return new Page().setSize(200, 40).add(
             new Image('textures/ui/dialog_background_opaque').setSize(Size.full()),
             new Label('§6欢迎，尊贵的会员').setSize(160, 10).setVisible(vip),
             new Label('欢迎').setColor(Color.hex('#3c2814')).setSize(160, 10).setVisible(vip.not()),

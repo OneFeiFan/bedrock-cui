@@ -6,24 +6,24 @@
 
 ## 写法
 
-计时器放在状态中，视图直接显示它。下面的示例在「预览」中点击「开始」即开始计时：
+计时器放在状态中，页面直接显示它。下面的示例在「预览」中点击「开始」即开始计时：
 
 ```js preview=lab 220x90
-import { Anchor, Color, Countdown, Image, Label, Panel, ProgressBar, Size, Timer, defineScreen } from 'bedrock-cui'
+import { Anchor, Button, Color, Countdown, defineUI, Image, Label, Page, ProgressBar, Size, Timer } from 'bedrock-cui'
 
 const INK = Color.hex('#3c2814')
 
-const lab = defineScreen({
+const lab = defineUI({
     id: 'cui_ui:furnace',
     state() { return { cooldown: Timer.idle(10) } },        // 10 秒的计时器，尚未开始
     methods: {
         start() { this.cooldown = this.cooldown.start() },  // 开始：重新赋值，界面随之更新
     },
-    view({ cooldown, start, button }) {
-        const go = button().onClick(start).setSize(40, 14).setAnchor(Anchor.BOTTOM_RIGHT).setOffset(-10, -8)
+    page({ cooldown, start }) {
+        const go = new Button().onClick(start).setSize(40, 14).setAnchor(Anchor.BOTTOM_RIGHT).setOffset(-10, -8)
         go.default.add(new Label('开始').setColor(INK))
         go.hover.add(new Label('§e开始'))
-        return new Panel().setSize(200, 70).add(
+        return new Page().setSize(200, 70).add(
             new Image('textures/ui/dialog_background_opaque').setSize(Size.full()),
             new Label('剩余：').setColor(INK).setAnchor(Anchor.TOP_LEFT).setOffset(10, 10),
             new Countdown(cooldown, (n) => `${n} 秒`).setTextColor(INK).setSize(50, 10).setAnchor(Anchor.TOP_LEFT).setOffset(44, 10),
@@ -50,11 +50,11 @@ const lab = defineScreen({
 | `计时器.remaining()`、`计时器.progress()` | 剩余的秒数、进度（0 到 1） |
 | `计时器.isRunning()`、`计时器.isDone()` | 是否正在计时、是否已经完成 |
 
-计时进行、暂停、继续、界面重新打开时，进度条与倒计时都从真实的进度接着走，到达终点时准确停下，不需要刷新界面（倒计时需要设置底色，见下文）。计时结束后才显示的内容（例如「领取」按钮），可以用 `computed` 判断：`ready() { return this.cooldown.isDone() }`，视图中 `setVisible(ready)`；它在下一次显示界面时生效（结束时的刷新、或玩家的下一次点击）。
+计时进行、暂停、继续、界面重新打开时，进度条与倒计时都从真实的进度接着走，到达终点时准确停下，不需要刷新界面（倒计时需要设置底色，见下文）。计时结束后才显示的内容（例如「领取」按钮），可以用 `computed` 判断：`ready() { return this.cooldown.isDone() }`，页面中 `setVisible(ready)`；它在下一次显示界面时生效（结束时的刷新、或玩家的下一次点击）。
 
 ## ProgressBar
 
-`new ProgressBar(计时器)` 创建一个进度条，参数是视图参数中值为计时器的数据，需要像素尺寸。`进度条.setFill(颜色)` 设置已完成部分的颜色，`进度条.setTrack(颜色)` 设置底色（`undefined` 表示不画底色）。`进度条.setHead(颜色, 宽度, 条数, 间隔)` 在前进的末端加亮色的竖条（缺省 1 条、宽 2 像素）。它们随末端移动，到达右端后停在那里；暂停时停在当前进度处。
+`new ProgressBar(计时器)` 创建一个进度条，参数是页面函数参数中值为计时器的数据，需要像素尺寸。`进度条.setFill(颜色)` 设置已完成部分的颜色，`进度条.setTrack(颜色)` 设置底色（`undefined` 表示不画底色）。`进度条.setHead(颜色, 宽度, 条数, 间隔)` 在前进的末端加亮色的竖条（缺省 1 条、宽 2 像素）。它们随末端移动，到达右端后停在那里；暂停时停在当前进度处。
 
 ## Countdown
 
@@ -93,15 +93,15 @@ const lab = defineScreen({
 
 ```js
 // ui/machine.screen.mjs
-import { Color, Countdown, Panel, ProgressBar, Timer, defineScreen } from 'bedrock-cui'
+import { Color, Countdown, defineUI, Page, ProgressBar, Timer } from 'bedrock-cui'
 
-export default defineScreen({
+export default defineUI({
     id: 'cui_ui:machine',
     props: {
         progress: { type: Timer, default: Timer.idle(30) },      // 加工一件需要 30 秒（组件按它决定速度）
     },
-    view({ progress }) {
-        return new Panel().setSize(200, 40).add(
+    page({ progress }) {
+        return new Page().setSize(200, 40).add(
             new Countdown(progress, (n) => `${n} 秒`).setBackground(Color.hex('#3c2814')).setSize(50, 10),
             new ProgressBar(progress).setSize(180, 8),
         )

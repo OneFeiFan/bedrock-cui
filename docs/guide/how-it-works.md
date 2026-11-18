@@ -60,12 +60,12 @@ bedrock-cui 利用第 3 条特性，改写服务端表单的外观：
 
 ```js
 // ui/shop.screen.mjs（界面文件）
-import { Label, Panel, defineScreen } from 'bedrock-cui'
+import { defineUI, Label, Page } from 'bedrock-cui'
 
-export default defineScreen({
+export default defineUI({
     id: 'cui_ui:shop',
-    view() {
-        return new Panel().setSize(200, 100).add(new Label('商店'))
+    page() {
+        return new Page().setSize(200, 100).add(new Label('商店'))
     },
 })
 ```
@@ -84,7 +84,7 @@ shop.open(player)
 界面上的内容全部由 bedrock-cui 绘制，原版的按钮列表不再显示。bedrock-cui 借用表单的按钮做两件事。这是 bedrock-cui 的做法，不是原版的特性：
 
 1. **传递数据**：界面的每一项[数据（props）](props.md)占用一个表单按钮。脚本打开界面时，bedrock-cui 把数据写进这个按钮的文字与图标；界面中显示这项数据的控件，读取的就是这个按钮。
-2. **接收点击**：界面中用 `button()` 创建的每个按钮也对应一个表单按钮。玩家点击它时，效果与点击原版的按钮相同：表单关闭，脚本得到这个按钮的序号，bedrock-cui 再按序号找到 `onClick()` 绑定的方法并调用它。[页面](pages.md)的跳转按钮也是这样实现的。
+2. **接收点击**：界面中绑定了方法的每个按钮（`new Button().onClick(方法)`），以及 `Close`、页面跳转用的按钮，都对应一个表单按钮。玩家点击它时，效果与点击原版的按钮相同：表单关闭，脚本得到这个按钮的序号，bedrock-cui 再按序号找到绑定的方法并调用它，或者完成跳转、关闭界面。
 
 哪项数据、哪个按钮对应第几个表单按钮，由 bedrock-cui 在构建时分配，写进构建生成的 `cui.generated.js`。使用者只与数据和方法打交道，接触不到序号。
 

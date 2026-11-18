@@ -145,17 +145,17 @@ new Label('§c红色§r 普通 §l粗体§r')
 
 ## 运行期文字
 
-由脚本提供的文字是界面的[数据（props）](props.md)，在视图中直接显示：
+由脚本提供的文字是界面的[数据（props）](props.md)，在页面中直接显示：
 
 ```js
-import { Label, Panel, defineScreen } from 'bedrock-cui'
+import { defineUI, Label, Page } from 'bedrock-cui'
 
-const storyBook = defineScreen({
+const storyBook = defineUI({
     id: 'cui_ui:story',
     props: { story: { type: String } },
-    view({ story }) {
+    page({ story }) {
         // 显示数据的控件需要像素尺寸：宽 110，最多显示 6 行
-        return new Panel().setSize(130, 80).add(new Label(story).setSize(110, 60))
+        return new Page().setSize(130, 80).add(new Label(story).setSize(110, 60))
     },
 })
 ```

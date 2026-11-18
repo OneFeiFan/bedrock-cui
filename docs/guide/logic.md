@@ -1,24 +1,24 @@
 # 逻辑
 
-逻辑是界面文件中在游戏里运行的部分：界面的状态、点击按钮后做什么、何时更新显示。它写在 `defineScreen` 的 `state`、`computed`、`methods` 与生命周期函数中，由行为包脚本运行。本节依次介绍这些部分。
+逻辑是界面文件中在游戏里运行的部分：界面的状态、点击按钮后做什么、何时更新显示。它写在 `defineUI` 的 `state`、`computed`、`methods` 与生命周期函数中，由行为包脚本运行。本节依次介绍这些部分。
 
 ## 按钮与方法
 
-视图中的 `button()` 创建一个按钮，`按钮.onClick(方法)` 指定点击时调用的方法。方法从视图的参数中解构得到：
+`new Button().onClick(方法)` 创建一个按钮，点击时调用逻辑中的方法。方法从页面函数的参数中解构得到：
 
 ```js
 methods: {
     buy() { this.coins -= 1 },
 },
-view({ buy, button }) {
-    const b = button().onClick(buy).setSize(60, 18)
+page({ buy }) {
+    const b = new Button().onClick(buy).setSize(60, 18)
     b.default.add(new Label('购买'))         // 平时的样子
     b.hover.add(new Label('§e购买'))         // 鼠标悬停时的样子
-    return new Panel().setSize(200, 100).add(b)
+    return new Page().setSize(200, 100).add(b)
 },
 ```
 
-按钮有三个状态：`default`（平时）、`hover`（悬停或获得焦点）、`pressed`（按下）。`按钮.default.add(控件…)` 把控件加入某个状态；`按钮.add(控件…)` 加入始终显示的内容。按钮需要像素尺寸。
+按钮有三个状态：`default`（平时）、`hover`（悬停或获得焦点）、`pressed`（按下）。`按钮.default.add(控件…)` 把控件加入某个状态；`按钮.add(控件…)` 加入始终显示的内容。绑定了方法的按钮需要像素尺寸。
 
 `onClick()` 的第一个参数之后可以跟随参数，点击时传给方法。一个方法可以绑定到多个按钮，例如列表中每一行一个「购买」：
 
@@ -26,15 +26,15 @@ view({ buy, button }) {
 methods: {
     buy(name, price) { this.coins -= price },
 },
-view({ buy, button }) {
-    return new Panel().setSize(200, 100).add(
-        button().onClick(buy, '苹果', 1).setSize(60, 16),
-        button().onClick(buy, '钻石', 5).setSize(60, 16).setOffset(0, 20),
+page({ buy }) {
+    return new Page().setSize(200, 100).add(
+        new Button().onClick(buy, '苹果', 1).setSize(60, 16),
+        new Button().onClick(buy, '钻石', 5).setSize(60, 16).setOffset(0, 20),
     )
 },
 ```
 
-参数在构建时写进界面的清单，须是文字、数字、布尔值、数组或普通对象。`close` 是内置的方法：`button().onClick(close)` 点击时关闭界面。没有绑定方法的 `button()` 在构建时报错。
+参数在构建时写进界面的清单，须是文字、数字、布尔值、数组或普通对象。关闭界面用 `new Close()`，它与按钮一样设置外观。没有绑定方法的 `Button` 只是界面内部的按钮，点击时不通知逻辑。
 
 点击后，方法执行完毕，界面以最新的数据重新打开，刚才点击的按钮获得默认焦点。游戏只在鼠标移动时重新判断悬停的位置，鼠标不动时的点击交给默认焦点，因此连续点击同一个按钮时，每一次都落在这个按钮上（真机）。
 
@@ -59,15 +59,15 @@ view({ buy, button }) {
 
 ## 计算值
 
-`computed` 中的函数由状态计算出一个值，每次显示界面时重新计算。视图可以直接显示它：
+`computed` 中的函数由状态计算出一个值，每次显示界面时重新计算。页面可以直接显示它：
 
 ```js
 state() { return { coins: 10 } },
 computed: {
     coinText() { return `金币：${this.coins}` },
 },
-view({ coinText }) {
-    return new Panel().setSize(200, 40).add(new Label(coinText).setSize(160, 10))
+page({ coinText }) {
+    return new Page().setSize(200, 40).add(new Label(coinText).setSize(160, 10))
 },
 ```
 

@@ -9,7 +9,7 @@
 | 规则 | 说明 |
 |---|---|
 | `bad-size` | 尺寸表达式无法解析。 |
-| `collection-index` | 使用了不存在的 `collection_index` 属性（bedrock-cui 内部的读取方式出错，使用 props 与 `button()` 时不会出现）。 |
+| `collection-index` | 使用了不存在的 `collection_index` 属性（bedrock-cui 内部的读取方式出错，使用 props 与按钮时不会出现）。 |
 | `collection-ref-outside` | 表单按钮的数据在读取它的容器之外使用（使用 props 时由 bedrock-cui 处理，不会出现）。 |
 | `collection-through-toggle` | 开关内部读取开关之外的表单按钮数据（使用 props 时由 bedrock-cui 在控件处读取，不会出现）。 |
 | `duplicate-name` | 同一父控件中存在同名的子控件。 |
@@ -22,7 +22,7 @@
 
 | 规则 | 说明 |
 |---|---|
-| `collection-item-size` | 显示 props 的控件或 `button()` 没有像素尺寸，内容不会显示。用 `setSize(宽, 高)` 设置像素尺寸。 |
+| `collection-item-size` | 显示 props 的控件或绑定了方法的按钮没有像素尺寸，内容不会显示。用 `setSize(宽, 高)` 设置像素尺寸。 |
 | `decimal-arith` | 绑定的运算中有小数常数（例如 `× 0.16`）。运算只有整数（真机），小数会按整数计算；改用整数，或让脚本直接传入算好的整数。 |
 | `engine-wrap-short-line` | 由游戏折行的静态文字会在上一行末尾留下大段空白。应改用 `Paragraph`；运行期文字使用 `softWrap()`。 |
 | `flex-overflow` | 弹性布局的内容在某种屏幕尺寸下放不下。会变长的内容应放进 `Scroll`，或调大 `setMinSize()`。 |

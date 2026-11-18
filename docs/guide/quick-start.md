@@ -33,9 +33,9 @@ my_ui/
 
 - **数据**（`props`）：行为包脚本传给界面的数据，例如玩家的名字、物品的数量。在这里定义每项数据和它的默认值；脚本打开界面时传入实际的值，没有传入的显示默认值；
 - **逻辑**（`state`、`methods` 等）：在游戏中运行，例如点击按钮后做什么；
-- **视图**（`view`；有多页时为 `pages` 与 `layout`）：返回控件树，即界面的样子。视图在构建时运行一次，编译为游戏读取的界面文件，相当于 Vue 的模板。
+- **页面**（`page`）：页面函数返回一个 `Page`，即界面的样子；多页时页面中放一个 `Router`。页面函数在构建时运行一次，编译为游戏读取的界面文件，相当于 Vue 的模板。
 
-示例小书 `ui/book.screen.mjs` 有两页，所以视图写在 `pages` 中（见[页面](pages.md)）。浏览器预览中也会运行逻辑：点击按钮、翻页都与游戏中一样。界面怎样显示在游戏中，见[工作原理](how-it-works.md)。
+示例小书 `ui/book.screen.mjs` 有两页，所以根页面中放了一个 `Router`（见[页面](pages.md)）。浏览器预览中也会运行逻辑：点击按钮、翻页都与游戏中一样。界面怎样显示在游戏中，见[工作原理](how-it-works.md)。
 
 ## 在浏览器中预览
 
@@ -53,9 +53,9 @@ npm run dev
 
 ```js preview=card 220x120
 // ui/card.screen.mjs
-import { Anchor, Color, Image, Label, Panel, Paragraph, Size, defineScreen } from 'bedrock-cui'
+import { Anchor, Color, defineUI, Image, Label, Page, Paragraph, Size } from 'bedrock-cui'
 
-const card = defineScreen({
+const card = defineUI({
     id: 'cui_ui:card',
 
     // 数据：行为包脚本打开界面时传入的问候语，没有传入时显示「欢迎」
@@ -63,9 +63,9 @@ const card = defineScreen({
         greeting: { type: String, default: '欢迎' },
     },
 
-    // 视图：从参数中取出要用的数据
-    view({ greeting }) {
-        return new Panel().setName('card').setSize(200, 100).add(
+    // 根页面：从参数中取出要用的数据
+    page({ greeting }) {
+        return new Page().setName('card').setSize(200, 100).add(
             // 背景图，与面板同样大小
             new Image('textures/ui/dialog_background_opaque').setSize(Size.full()),
             // 问候语：显示数据 greeting，水平居中，距顶部 8 像素
@@ -78,12 +78,12 @@ const card = defineScreen({
 export default card
 ```
 
-- `defineScreen({ … })` 定义一个界面。`id` 是界面 id：脚本打开表单时，表单的标题就是它；
+- `defineUI({ … })` 定义一个界面。`id` 是界面 id：脚本打开表单时，表单的标题就是它；
 - `new Panel()` 创建一块面板，`.add(…)` 把括号中的控件加入面板。每个 `setXxx(…)` 设置一项属性并返回控件本身，因此可以连续调用；
 - `props` 声明脚本传给界面的数据：`greeting` 是文字（`type: String`），默认值为「欢迎」；
-- 视图的参数中有声明过的数据，`view({ greeting })` 取出 `greeting`。`new Label(greeting)` 在预览中显示默认值「欢迎」，在游戏中显示脚本传入的值。显示数据的控件需要像素尺寸（这里是 `setSize(120, 10)`）。
+- 页面函数的参数中有声明过的数据，`page({ greeting })` 取出 `greeting`。`new Label(greeting)` 在预览中显示默认值「欢迎」，在游戏中显示脚本传入的值。显示数据的控件需要像素尺寸（这里是 `setSize(120, 10)`）。
 
-这个界面没有逻辑，所以只有数据和视图两块。控件与布局见「搭建界面」一章。
+这个界面没有逻辑，所以只有数据和页面两块。控件与布局见「搭建界面」一章。
 
 ## 登记界面
 

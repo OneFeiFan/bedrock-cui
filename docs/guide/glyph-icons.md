@@ -50,13 +50,13 @@ bag.open(player, { info: `${GI.DIAMOND} 钻石 ×3\n${GI.SWORD} 钻石剑 ×1` }
 显示这段文字的 `Label` 应设置行距：
 
 ```js
-import { Label, Panel, defineScreen } from 'bedrock-cui'
+import { defineUI, Label, Page } from 'bedrock-cui'
 
-const bag = defineScreen({
+const bag = defineUI({
     id: 'cui_ui:bag',
     props: { info: { type: String } },
-    view({ info }) {
-        return new Panel().setSize(130, 60).add(new Label(info).setSize(110, 40).setLineSpacing(6))
+    page({ info }) {
+        return new Page().setSize(130, 60).add(new Label(info).setSize(110, 40).setLineSpacing(6))
     },
 })
 ```
