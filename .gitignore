@@ -4,3 +4,8 @@ out/
 *.tgz
 site-dist/
 
+# 示例项目的构建产物（每个示例也可以有自己的 .gitignore；这里兜底，删除示例时不会让残留的产物被提交）
+examples/*/dev/
+examples/*/.tmp/
+examples/*/build.log
+examples/*/scripts/cui.generated.*
