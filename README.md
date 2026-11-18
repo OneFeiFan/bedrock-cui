@@ -27,7 +27,7 @@ npm run dev      # 在浏览器中预览
 npm run build    # 构建附加包；npm run pack 同时打包为 .mcaddon
 ```
 
-一个界面写在一个文件中（`ui/*.screen.mjs`）：数据、逻辑、视图各占一块。
+一个界面写在一个文件中（`ui/*.screen.mjs`）：数据、逻辑、页面各占一块。
 
 ```js
 import { Anchor, Button, Close, Image, Label, Page, Size, defineUI } from 'bedrock-cui'
@@ -72,7 +72,7 @@ world.afterEvents.itemUse.subscribe((e) => { if (e.itemStack.typeId === 'minecra
 手册：<https://onefeifan.github.io/bedrock-cui/>
 
 - [快速上手](https://onefeifan.github.io/bedrock-cui/quick-start.html)：创建项目、预览、构建并在游戏中打开；
-- [界面文件](https://onefeifan.github.io/bedrock-cui/screens.html)：数据、逻辑与视图；
+- [界面文件](https://onefeifan.github.io/bedrock-cui/screens.html)：数据、逻辑与页面；
 - [工作原理](https://onefeifan.github.io/bedrock-cui/how-it-works.html)：原版的服务端表单，以及 bedrock-cui 怎样在它上面显示界面；
 - [组件](https://onefeifan.github.io/bedrock-cui/components/panel.html)：每个组件的示例与全部属性、方法；
 - [真机规则](https://onefeifan.github.io/bedrock-cui/reference/rules.html)：框架所依据的、在真机上测得的游戏行为。
