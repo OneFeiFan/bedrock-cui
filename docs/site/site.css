@@ -1,15 +1,15 @@
 /* bedrock-cui 手册网站。页面的弹性布局由 bedrock-cui/dom 输出（行内样式），这里只管尺寸、排版、颜色。 */
 :root {
-    /* 浅色：浅底便于阅读，游戏风格只用在标题、按钮、代码、示例等处 */
-    --bg: #f3f2ee; --bg-soft: #e9e7e1; --bg-code: #e2dfd6; --line: #c4c0b6;
-    --text: #2b2b2b; --text-soft: #5e5b55; --brand: #2f7d4a; --brand-soft: #dfeee3;
-    --tip: #2f7d4a; --tip-bg: #e4f0e7; --warn: #a86500; --warn-bg: #f6ecd6;
-    --hl: rgba(255, 255, 85, 0.10);
-    --tok-c: #8a9a9b; --tok-s: #ffd27a; --tok-k: #ff7ae0; --tok-n: #8fd3ff;          /* 代码块是深色的面板（两种模式相同） */
-    --code: #e0e0e0; --code-bg: #141414;
-    --heading-shadow: rgba(0, 0, 0, 0.14); --th: #dcd9d0;
-    --pattern: rgba(0, 0, 0, 0.014);
-    --active: #c6c6c6; --active-text: #202020; --active-hi: #ffffff; --active-lo: #555555;
+    /* 浅色：以阅读为主——暖白的纸面、清楚的对比、细线条；游戏风格只用在像素字体的标题、浅灰的斜面按钮与顶栏 */
+    --bg: #fcfbf8; --bg-soft: #f6f4ef; --bg-code: #f2efe8; --line: #e6e1d6;
+    --text: #262626; --text-soft: #5f5a51; --brand: #2f7d4a; --brand-soft: #e7f2ea;
+    --tip: #2f7d4a; --tip-bg: #eef6f0; --warn: #a86500; --warn-bg: #fbf3e2;
+    --hl: rgba(47, 125, 74, 0.08);
+    --tok-c: #8a8578; --tok-s: #a3521a; --tok-k: #7b3fb5; --tok-n: #1b6fa8;
+    --code: #2b2b2b; --code-bg: #f7f5f0;
+    --heading-shadow: transparent; --th: #f5f2ec;
+    --pattern: transparent;
+    --active: #e7f2ea; --active-text: #1f5c35; --active-hi: #2f7d4a; --active-lo: transparent;
     --font: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
     --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
     --px: 'Unifont CUI', var(--mono);
@@ -21,7 +21,8 @@
         --text: #e0e0e0; --text-soft: #a8a5a0; --brand: #ffff55; --brand-soft: #2d2c12;
         --tip: #80ff20; --tip-bg: #1b2414; --warn: #ffaa00; --warn-bg: #2a2214;
         --hl: rgba(255, 255, 85, 0.10);
-        --code-bg: #0f0f0f;
+        --tok-c: #8a9a9b; --tok-s: #ffd27a; --tok-k: #ff7ae0; --tok-n: #8fd3ff;
+        --code: #e0e0e0; --code-bg: #0f0f0f;
         --heading-shadow: #3f3f3f; --th: #2b2a28;
         --pattern: rgba(255, 255, 255, 0.025);
         --active: #6f6f6f; --active-text: #ffffff; --active-hi: #a8a8a8; --active-lo: #3c3c3c;
@@ -237,13 +238,13 @@ pre.code .line.hl { box-shadow: inset 3px 0 0 #ffff55; }
    Chrome、Edge、Safari：::-webkit-scrollbar 画出斜面与黑框。
    Firefox 只支持标准的 scrollbar-color / scrollbar-width（颜色与粗细，不能画斜面）；
    Chrome 121 起，元素一旦设置了这两个标准属性，::-webkit-scrollbar 就不再生效，所以只对不支持 ::-webkit-scrollbar 的浏览器设置 */
-:root { --sb-track: #dcd9d0; --sb-thumb: #8b8b8b; --sb-hi: #c6c6c6; --sb-lo: #555555; }
-@media (prefers-color-scheme: dark) { :root { --sb-track: #121110; --sb-thumb: #6f6f6f; --sb-hi: #a8a8a8; --sb-lo: #3c3c3c; } }
+:root { --sb-track: #f0ede6; --sb-thumb: #c6c6c6; --sb-hi: #ffffff; --sb-lo: #8b8b8b; --sb-border: #7a7a7a; }
+@media (prefers-color-scheme: dark) { :root { --sb-track: #121110; --sb-thumb: #6f6f6f; --sb-hi: #a8a8a8; --sb-lo: #3c3c3c; --sb-border: #000000; } }
 ::-webkit-scrollbar { width: 12px; height: 12px; }
 ::-webkit-scrollbar-track { background: var(--sb-track); }
-::-webkit-scrollbar-thumb { background: var(--sb-thumb); border: 2px solid #000; box-shadow: inset 2px 2px 0 var(--sb-hi), inset -2px -2px 0 var(--sb-lo); }
-::-webkit-scrollbar-thumb:hover { background: #9b9b9b; }
-::-webkit-scrollbar-thumb:active { background: #a9a9a9; }
+::-webkit-scrollbar-thumb { background: var(--sb-thumb); border: 2px solid var(--sb-border); box-shadow: inset 2px 2px 0 var(--sb-hi), inset -2px -2px 0 var(--sb-lo); }
+::-webkit-scrollbar-thumb:hover { filter: brightness(1.12); }
+::-webkit-scrollbar-thumb:active { filter: brightness(1.22); }
 ::-webkit-scrollbar-corner { background: var(--sb-track); }
 ::-webkit-scrollbar-button { display: none; }
 /* 深色面板（代码块）中的滚动条：两种模式下都是深色的轨道 */
@@ -264,3 +265,36 @@ pre.code::-webkit-scrollbar-thumb:hover { background: #5a5a5a; }
 .example .ex-vary input[type="range"]::-moz-range-track { height: 8px; background: #2a2a2a; border: 0; box-shadow: inset 2px 2px 0 #0a0a0a, inset -2px -2px 0 #5a5a5a; }
 .example .ex-vary input[type="range"]::-moz-range-thumb { width: 12px; height: 20px; border-radius: 0; background: #8b8b8b; border: 2px solid #000; box-shadow: inset 2px 2px 0 #c6c6c6, inset -2px -2px 0 #555; }
 .example .ex-vary input[type="range"]:hover::-moz-range-thumb { background: #a9a9a9; }
+
+/* ───────── 浅色模式：以阅读为主（深色模式保持与首页相同的游戏风格） ───────── */
+@media (prefers-color-scheme: light) {
+    .content h2 { border-top-width: 1px; }
+    .content th, .content td { border-width: 1px; padding: 8px 12px; }
+    .content th { font-weight: 600; }
+    .content :not(pre) > code { border: 1px solid var(--line); padding: 1px 5px; color: #333; }
+    .sidebar { border-right-width: 1px; }
+    .side-link.active { box-shadow: inset 3px 0 0 var(--active-hi); }
+    .pager { border-top-width: 1px; }
+    .mobile-toc { border-width: 1px; }
+
+    /* 代码：浅色的纸面 */
+    pre.code { border: 1px solid #ddd7cb; box-shadow: none; }
+    pre.code .line.hl { box-shadow: inset 3px 0 0 var(--brand); }
+    pre.code::-webkit-scrollbar-track, pre.code::-webkit-scrollbar-corner { background: #efebe3; }
+    pre.code::-webkit-scrollbar-thumb { background: #c6c6c6; box-shadow: inset 2px 2px 0 #ffffff, inset -2px -2px 0 #8b8b8b; }
+    .codebox .copy { color: #555; background: #fff; border-color: #d6d0c4; }
+
+    /* 在线示例与翻页：浅灰的斜面按钮，深色的字 */
+    .example { border: 1px solid #ddd7cb; background: var(--bg); }
+    .example .ex-bar { background: var(--bg-soft); border-bottom: 1px solid #ddd7cb; box-shadow: none; }
+    .example .ex-bar [data-tab], .example .ex-edit, .example .ex-actions button, .pager a {
+        color: #2b2b2b; text-shadow: none; background: #e6e3dc; border: 1px solid #a9a397;
+        box-shadow: inset 1px 1px 0 #ffffff, inset -1px -1px 0 #c3bdb1;
+    }
+    .example .ex-bar [data-tab].on { color: var(--active-text); background: #dcd7cc; box-shadow: inset 1px 1px 0 #c3bdb1, inset -1px -1px 0 #f2efe8; }
+    .example .ex-bar [data-tab]:hover, .example .ex-edit:hover, .example .ex-actions button:hover, .pager a:hover {
+        color: var(--active-text); outline: none; border-color: var(--brand);
+    }
+    .cui-preview { border: 1px solid #ddd7cb; border-top: none; }
+    .example .cui-preview { border: 0; }
+}
