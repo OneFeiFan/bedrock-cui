@@ -1,5 +1,5 @@
 /* 手册首页：游戏风格（斜面按钮、灰色面板、像素字体）。素材都是自己画的；字体为 GNU Unifont 的子集（SIL OFL 1.1） */
-@font-face { font-family: 'Unifont CUI'; src: url('fonts/unifont-home.woff2') format('woff2'); font-display: swap; }
+@font-face { font-family: 'Unifont CUI'; src: url('fonts/unifont-site.woff2') format('woff2'); font-display: swap; }
 :root { color-scheme: dark; --px: 'Unifont CUI', ui-monospace, monospace; }
 * { box-sizing: border-box; }
 body.home {

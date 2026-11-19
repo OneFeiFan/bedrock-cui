@@ -250,13 +250,21 @@ fs.copyFileSync(path.join(root, 'docs', 'site', 'site.css'), path.join(out, 'sit
         .replace('<!--STAT:rules-->', String(rules)).replace('<!--STAT:lint-->', String(lint)).replace('<!--STAT:examples-->', String(examples))
     fs.writeFileSync(path.join(out, 'index.html'), html)
     fs.copyFileSync(path.join(home, 'home.css'), path.join(out, 'home.css'))
+}
+
+// ───────── 像素字体（GNU Unifont 的子集，SIL OFL 1.1）：首页、各页标题、侧栏与界面上的固定文字 ─────────
+{
+    const fonts = path.join(root, 'docs', 'site', 'fonts')
     fs.mkdirSync(path.join(out, 'fonts'), { recursive: true })
-    for (const f of ['unifont-home.woff2', 'LICENSE.txt']) fs.copyFileSync(path.join(home, 'fonts', f), path.join(out, 'fonts', f))
-    // 首页的文字都要在字体子集里（改了首页的文字后运行 python3 scripts/subset-home-font.py）
-    const have = new Set(fs.readFileSync(path.join(home, 'fonts', 'unifont-home.chars'), 'utf8'))
-    const text = html.replace(/<!--[\s\S]*?-->/g, '').replace(/<(script|style|pre)[^>]*>[\s\S]*?<\/\1>/g, '').replace(/<[^>]+>/g, ' ')
-    const missing = [...new Set(text)].filter((c) => c.trim() && !have.has(c))
-    if (missing.length) console.warn(`首页用到了字体子集中没有的字：${missing.join('')}——运行 python3 scripts/subset-home-font.py`)
+    for (const f of ['unifont-site.woff2', 'LICENSE.txt']) fs.copyFileSync(path.join(fonts, f), path.join(out, 'fonts', f))
+    // 用像素字体显示的文字都要在子集里（改了标题或首页的文字后运行 python3 scripts/subset-site-font.py）
+    const have = new Set(fs.readFileSync(path.join(fonts, 'unifont-site.chars'), 'utf8'))
+    const homeText = fs.readFileSync(path.join(out, 'index.html'), 'utf8').replace(/<!--[\s\S]*?-->/g, '')
+        .replace(/<(script|style|pre)[^>]*>[\s\S]*?<\/\1>/g, '').replace(/<[^>]+>/g, ' ')
+    const headings = files.flatMap((f) => fs.readFileSync(path.join(guide, f), 'utf8').split('\n').filter((l) => /^#{1,3} /.test(l)))
+    const used = new Set([...homeText, ...headings.join(''), ...fs.readFileSync(path.join(guide, 'index.md'), 'utf8')])
+    const missing = [...used].filter((c) => c.trim() && !have.has(c))
+    if (missing.length) console.warn(`像素字体的子集中没有这些字：${missing.join('')}——运行 python3 scripts/subset-site-font.py`)
 }
 fs.copyFileSync(path.join(root, 'docs', 'site', 'site.js'), path.join(out, 'site.js'))
 

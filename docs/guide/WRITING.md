@@ -113,5 +113,5 @@
 网站首页不由 Markdown 生成，源文件在 `docs/site/home/`：`index.html`（文字与结构）、`home.css`（游戏风格的样式）、`shop.screen.mjs`（首页上真实运行、并原样展示的商店界面）。手册目录 `index.md` 生成为 `contents.html`。
 
 - 首页的数字（真机规则、静态检查、在线示例）在构建网站时统计，不要手写。
-- 标题与按钮用 GNU Unifont 的子集（`fonts/unifont-home.woff2`，SIL OFL 1.1）。改了首页的文字后运行 `python3 scripts/subset-home-font.py`（需要 `pip install fonttools brotli`）重新裁剪；构建网站时若有字体中没有的字，会给出提示。
+- 首页与手册各页的标题、侧栏、按钮用 GNU Unifont 的子集（`docs/site/fonts/unifont-site.woff2`，SIL OFL 1.1）。改了标题、侧栏或首页的文字后运行 `python3 scripts/subset-site-font.py`（需要 `pip install fonttools brotli`）重新裁剪；构建网站时若有子集中没有的字，会给出提示。
 - 素材都是自己画的；不使用原版贴图（仓库是 MIT 许可，Mojang 的素材无法随之授权）。可以使用游戏截图。

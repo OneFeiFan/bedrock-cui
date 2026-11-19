@@ -1,22 +1,33 @@
 /* bedrock-cui 手册网站。页面的弹性布局由 bedrock-cui/dom 输出（行内样式），这里只管尺寸、排版、颜色。 */
 :root {
-    --bg: #ffffff; --bg-soft: #f6f6f7; --bg-code: #f6f6f7; --line: #e2e2e3;
-    --text: #213547; --text-soft: #5c6b7a; --brand: #2f7d4a; --brand-soft: #e7f3eb;
-    --tip: #2f7d4a; --tip-bg: #eef7f1; --warn: #b26b00; --warn-bg: #fdf6e7;
-    --hl: rgba(47, 125, 74, 0.12);
-    --tok-c: #8a96a3; --tok-s: #b35a1f; --tok-k: #7b3fb5; --tok-n: #1b6fa8;
+    /* 浅色：浅底便于阅读，游戏风格只用在标题、按钮、代码、示例等处 */
+    --bg: #f3f2ee; --bg-soft: #e9e7e1; --bg-code: #e2dfd6; --line: #c4c0b6;
+    --text: #2b2b2b; --text-soft: #5e5b55; --brand: #2f7d4a; --brand-soft: #dfeee3;
+    --tip: #2f7d4a; --tip-bg: #e4f0e7; --warn: #a86500; --warn-bg: #f6ecd6;
+    --hl: rgba(255, 255, 85, 0.10);
+    --tok-c: #8a9a9b; --tok-s: #ffd27a; --tok-k: #ff7ae0; --tok-n: #8fd3ff;          /* 代码块是深色的面板（两种模式相同） */
+    --code: #e0e0e0; --code-bg: #141414;
+    --heading-shadow: rgba(0, 0, 0, 0.14); --th: #dcd9d0;
+    --pattern: rgba(0, 0, 0, 0.014);
+    --active: #c6c6c6; --active-text: #202020; --active-hi: #ffffff; --active-lo: #555555;
     --font: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
     --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    --px: 'Unifont CUI', var(--mono);
 }
 @media (prefers-color-scheme: dark) {
     :root {
-        --bg: #1b1b1f; --bg-soft: #202127; --bg-code: #161618; --line: #2e2e32;
-        --text: #dfdfd6; --text-soft: #98989f; --brand: #5fbf7f; --brand-soft: #1f3327;
-        --tip: #5fbf7f; --tip-bg: #1d2a22; --warn: #e2a33b; --warn-bg: #2d2516;
-        --hl: rgba(95, 191, 127, 0.14);
-        --tok-c: #6b7580; --tok-s: #e3a26f; --tok-k: #c792ea; --tok-n: #79b8ff;
+        /* 深色：与首页相同的配色 */
+        --bg: #1c1b1a; --bg-soft: #161514; --bg-code: #2b2a28; --line: #3a3836;
+        --text: #e0e0e0; --text-soft: #a8a5a0; --brand: #ffff55; --brand-soft: #2d2c12;
+        --tip: #80ff20; --tip-bg: #1b2414; --warn: #ffaa00; --warn-bg: #2a2214;
+        --hl: rgba(255, 255, 85, 0.10);
+        --code-bg: #0f0f0f;
+        --heading-shadow: #3f3f3f; --th: #2b2a28;
+        --pattern: rgba(255, 255, 255, 0.025);
+        --active: #6f6f6f; --active-text: #ffffff; --active-hi: #a8a8a8; --active-lo: #3c3c3c;
     }
 }
+@font-face { font-family: 'Unifont CUI'; src: url('fonts/unifont-site.woff2') format('woff2'); font-display: swap; }
 
 * { box-sizing: border-box; }
 html { scroll-padding-top: 72px; }
@@ -172,3 +183,52 @@ pre.code .line.hl { background: var(--hl); box-shadow: inset 3px 0 0 var(--brand
 
 /* 在线示例运行逻辑时的日志（最新的一条） */
 .cui-preview-log { margin: 6px 0 0; min-height: 1.4em; font: 12px var(--mono); color: var(--brand); }
+
+/* ───────── 游戏风格（与首页相搭）：像素字体的标题与导航、斜面按钮、深色代码面板、硬边框 ───────── */
+body { background-color: var(--bg); background-image: repeating-linear-gradient(0deg, var(--pattern) 0 8px, transparent 8px 16px), repeating-linear-gradient(90deg, var(--pattern) 0 8px, transparent 8px 16px); }
+.topbar { background: #1c1b1a; border-bottom: 2px solid #000; }
+.topbar .brand { font-family: var(--px); font-weight: 400; font-size: 16px; color: #fff; text-shadow: 2px 2px 0 #3f3f3f; }
+.topbar .nav { font-family: var(--px); font-size: 16px; color: #e0e0e0; }
+.topbar .nav:hover { color: #ffff55; }
+.menu { color: #fff; border-radius: 0; }
+.menu:hover { background: rgba(255, 255, 255, 0.1); }
+.sidebar { border-right: 2px solid var(--line); }
+.side-title, .toc-title { font-family: var(--px); font-weight: 400; font-size: 16px; }
+.side-link.active { margin: 0 -8px; padding-left: 8px; padding-right: 8px; font-weight: 400; color: var(--active-text); background: var(--active); box-shadow: inset 2px 2px 0 var(--active-hi), inset -2px -2px 0 var(--active-lo); }
+
+.content h1, .content h2, .content h3 { font-family: var(--px); font-weight: 400; letter-spacing: 0; text-shadow: 2px 2px 0 var(--heading-shadow); }
+.content h1 { font-size: 32px; }
+.content h2 { font-size: 24px; border-top: 2px solid var(--line); }
+.content h3 { font-size: 16px; text-shadow: none; }
+.content :not(pre) > code { border-radius: 0; }
+.content th, .content td { border: 2px solid var(--line); }
+.content th { background: var(--th); }
+.content blockquote { border-left-width: 4px; }
+
+pre.code { border-radius: 0; background: var(--code-bg); color: var(--code); border: 2px solid #000; box-shadow: inset 2px 2px 0 #2a2a2a; }
+pre.code .line.hl { box-shadow: inset 3px 0 0 #ffff55; }
+.codebox .copy { border-radius: 0; color: #e0e0e0; background: #3a3a3a; border-color: #000; }
+
+.callout { border-radius: 0; border-left-width: 4px; }
+
+.example { border: 2px solid #000; border-radius: 0; background: var(--bg-soft); }
+.example .ex-bar { gap: 6px; padding: 6px 8px; background: #8b8b8b; border-bottom: 2px solid #000; box-shadow: inset 2px 2px 0 #c6c6c6, inset -2px -2px 0 #555; }
+.example .ex-bar [data-tab], .example .ex-edit, .example .ex-actions button {
+    padding: 2px 12px; font: 16px/1.5 var(--px); color: #fff; text-shadow: 2px 2px 0 #3f3f3f;
+    background: #6f6f6f; border: 2px solid #000; border-radius: 0; box-shadow: inset 2px 2px 0 #a8a8a8, inset -2px -2px 0 #3c3c3c;
+}
+.example .ex-bar [data-tab].on { color: #ffff55; background: #4a4a4a; border-bottom-color: #000; box-shadow: inset 2px 2px 0 #2a2a2a, inset -2px -2px 0 #6a6a6a; }
+.example .ex-bar [data-tab]:hover, .example .ex-edit:hover, .example .ex-actions button:hover { color: #ffffa0; outline: 2px solid #fff; outline-offset: -2px; }
+.cui-preview { border-radius: 0; border: 2px solid #000; border-top: none; }
+.example .cui-preview { border: 0; }
+.example .ex-editor { border-radius: 0; }
+
+.pager a { font-family: var(--px); font-size: 16px; color: #fff; text-shadow: 2px 2px 0 #3f3f3f; background: #6f6f6f; border: 2px solid #000; border-radius: 0; box-shadow: inset 2px 2px 0 #a8a8a8, inset -2px -2px 0 #3c3c3c; }
+.pager a:hover { color: #ffffa0; border-color: #000; outline: 2px solid #fff; outline-offset: -2px; }
+.pager { border-top: 2px solid var(--line); }
+.mobile-toc { border-radius: 0; border-width: 2px; }
+@media (max-width: 860px) {
+    .content h1 { font-size: 24px; }
+    .content h2 { font-size: 20px; }
+    .sidebar { box-shadow: 4px 0 0 rgba(0, 0, 0, 0.35); }
+}
