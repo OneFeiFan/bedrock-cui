@@ -26,6 +26,15 @@ function bevel(w, h, fill, raised) {
 // 白字加阴影（游戏中按钮与数值的文字）
 const light = (text) => new Label(text).setShadow()
 
+// 关闭按钮上的 ×：6 × 6 的像素画（文字的 x 带着字距，无法精确居中）
+function cross(color) {
+    const box = new Panel().setSize(6, 6)
+    for (let i = 0; i < 6; i++) {
+        box.add(rect(color, 1, 1, i, i), rect(color, 1, 1, 5 - i, i))
+    }
+    return box
+}
+
 const shop = defineUI({
     id: 'cui_ui:shop',
     // 数据：脚本传入
@@ -34,18 +43,25 @@ const shop = defineUI({
     },
     // 逻辑：在游戏中运行
     state() { return { coins: 10 } },
-    computed: { coinText() { return `金币：${this.coins}` } },
+    computed: {
+        coinText() { return `金币：${this.coins}` },
+        broke() { return this.coins < 5 },
+    },
     methods: { buy() { if (this.coins >= 5) this.coins -= 5 } },
     // 页面：构建时生成 JSON UI
-    page: ({ coinText, item, buy }) => {
+    page: ({ coinText, broke, item, buy }) => {
         const buyButton = new Button().onClick(buy).setSize(48, 18)
             .setAnchor(Anchor.BOTTOM_RIGHT).setOffset(-6, -6)
         buyButton.default.add(bevel(48, 18, '#6f6f6f', true), light('购买'))
         buyButton.hover.add(bevel(48, 18, '#7f7f7f', true), light('§e购买'))
         const close = new Close().setSize(12, 12)
             .setAnchor(Anchor.TOP_RIGHT).setOffset(-5, 5)
-        close.default.add(bevel(12, 12, '#8b8b8b', true), light('x'))
-        close.hover.add(bevel(12, 12, '#9b9b9b', true), light('§ex'))
+        close.default.add(bevel(12, 12, '#8b8b8b', true), cross('#ffffff'))
+        close.hover.add(bevel(12, 12, '#9b9b9b', true), cross('#ffff55'))
+        // 金币不够时，盖在「购买」上的灰色样子（按钮仍可点，buy() 中会判断）
+        const soldOut = new Panel().setSize(48, 18).setLayer(20)
+            .setAnchor(Anchor.BOTTOM_RIGHT).setOffset(-6, -6).setVisible(broke)
+            .add(bevel(48, 18, '#555555', true), new Label('购买').setColor(Color.hex('#9a9a9a')))
         return new Page().setSize(168, 92).add(
             new Image('textures/ui/dialog_background_opaque').setSize(Size.full()),
             at(new Label('杂货铺').setColor(INK), 7, 6),
@@ -56,6 +72,7 @@ const shop = defineUI({
             at(new Label(item).setColor(INK).setSize(80, 10), 30, 40),
             at(new Label('每个 5 金币').setColor(GRAY).setSize(80, 10), 30, 50),
             buyButton,
+            soldOut,
             close,
         )
     },
