@@ -14,7 +14,7 @@ const label = new Label('钻石')
 panel.add(label)
 ```
 
-属性可以直接赋值，也可以通过 `setXxx()` 链式设置，或用 `set({ ... })` 一次设置多项，见[控件与组件树](../elements.md#属性)。
+属性可以直接赋值，也可以通过 `setXxx()` 链式设置，或用 `set({ ... })` 一次设置多项，见[控件与组件树](../elements.md#设置属性)。
 
 ## API
 

@@ -42,6 +42,8 @@ useSapdon(config, { GRegistry, UISystemRegistry, addPacketResolver })
 registry.submit()
 ```
 
+`addPacketResolver` 可以省略：传入时，bedrock-cui 编译出的界面文件写成紧凑的 JSON；省略时由 sapdon 按缩进写出，内容相同，但文件大得多（嵌套很深的控件树中，缩进约占八成）。
+
 行为包脚本的写法与新建的项目相同：
 
 ```js
@@ -69,4 +71,4 @@ book.open(player)
 - 不应同时使用 `@sapdon/ui` 中的服务端表单界面（`ServerFormUI`、`SapdonFormUI`、`SapdonGuideBook`）。它们与 bedrock-cui 都改写 `ui/server_form.json`，构建时报错。
 - sapdon 3 中 `GRegistry` 与 `UISystemRegistry` 都在 `@sapdon/core`，写作 `import * as sapdon from '@sapdon/core'` 与 `useSapdon(config, sapdon)`。
 
-完整的示例见仓库的 `examples/sapdon-project`（已在 sapdon 4.0.0 与 3.7.1 上实测）。
+完整的示例见仓库的 `examples/sapdon-project`。bedrock-cui 依赖 sapdon 4；sapdon 3 的写法为早期版本测试所用，当前版本未再测试。

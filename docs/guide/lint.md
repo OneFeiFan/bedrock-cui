@@ -44,4 +44,4 @@ new Panel().setSize(116, 160).setPadding(Insets.of(3, 0, 3, 9)).setContain()
 
 ## 贴图信息
 
-与贴图尺寸有关的检查（如 `keep-ratio`、`nineslice-too-small`）需要贴图信息，由配置的 `textures` 提供，见[贴图信息](images.md#贴图信息)。
+与贴图尺寸有关的检查（如 `keep-ratio`、`nineslice-too-small`）需要贴图信息，由配置的 `textures` 提供，见[贴图的信息从哪里来](images.md#贴图的信息从哪里来)。

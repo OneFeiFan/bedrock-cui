@@ -64,14 +64,14 @@ const cmp = new Panel().setSize(180, 64).add(
 
 静态检查和浏览器预览需要知道贴图的像素尺寸与九宫格的边宽。bedrock-cui 从项目中的贴图文件读取这些信息：
 
-- 项目配置的 `textures` 列出存放资源包文件的目录。新建的项目中是 `res/`，构建时它的内容会复制进资源包，所以 `res/textures/ui/panel.png` 在游戏中的路径是 `textures/ui/panel`；
+- 项目配置的 `textures` 列出存放资源包文件的目录。新建的项目中是 `res/`，构建时它的内容会复制进资源包，所以新建项目中的示例贴图 `res/textures/cui_example/panel.png` 在游戏中的路径是 `textures/cui_example/panel`。自己的贴图放在单独的目录中（例如以附加包命名），不要放进原版的 `textures/ui/`，以免与原版的贴图同名而覆盖它；
 - 像素尺寸读自 PNG 文件本身；
 - 九宫格的边宽读自与 PNG 同名的 `.json` 文件，例如 `panel.png` 旁边的 `panel.json`。游戏也从这个文件读取九宫格：
 
 ```
 res/
 └─ textures/
-   └─ ui/
+   └─ cui_example/
       ├─ panel.png
       └─ panel.json        { "nineslice_size": 4, "base_size": [16, 16] }
 ```

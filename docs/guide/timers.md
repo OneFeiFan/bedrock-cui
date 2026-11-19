@@ -57,23 +57,23 @@ const lab = defineUI({
 
 ### 数值进度
 
-`new ProgressBar(value, max)` 显示给定数值占上限的比例，每次显示表单时按当前数据绘制。参数可用有限数字或页面参数中的数值数据。两者都支持小数，`max` 须大于 0，填充范围为 0 至 100%。
+`new ProgressBar(数值, 上限)` 显示数值占上限的比例，例如容量、生命值。两个参数可以是数字，也可以是页面函数参数中的数值数据；都可以是小数，`上限` 须大于 0，比例限制在 0 到 100% 之间。
 
 ```js
-import { defineUI, ProgressBar } from 'bedrock-cui'
+import { defineUI, Page, ProgressBar } from 'bedrock-cui'
 
 const capacity = defineUI({
     id: 'cui_ui:capacity',
     props: { used: { type: Number, default: 2.5 }, total: { type: Number, default: 4 } },
-    page: ({ used, total }) => new ProgressBar(used, total).setSize(160, 8),
+    page: ({ used, total }) => new Page().setSize(180, 20).add(new ProgressBar(used, total).setSize(160, 8)),
 })
 ```
 
-默认显示 62.5%。脚本调用 `capacity.open(player, { used: 3.25, total: 5 })` 时会按新值显示。表单绑定接收脚本算好的整数千分比，数值模式的进度条随表单数据更新。
+默认显示 62.5%；脚本调用 `capacity.open(player, { used: 3.25, total: 5 })` 时显示 65%。界面中的运算只有整数（见[表达式](bindings.md)），所以比例由逻辑在显示界面时算好，以整数千分比传给界面，小数也能准确显示。数值模式没有动画：数据变化后，进度条在下一次显示界面时更新。
 
 ## 与游戏对象同步
 
-进度条显示的是逻辑传来的进度。把它们绑定到游戏中的对象（例如自定义实体的加工进度）时，需要先弄清两个「钟」：
+进度条显示的是逻辑传来的进度。把它绑定到游戏中的对象（例如自定义实体的加工进度）时，需要先弄清两个「钟」：
 
 - **逻辑中的计时器**：记录开始的时刻与暂停时已经过去的时间。界面的关闭与重新打开不影响它，它就是真实的进度。
 - **客户端动画自己的钟**：每次打开界面，控件重新创建，这个钟从零开始。但动画的起点由逻辑传来的进度决定，之后按「总宽度 ÷ 总时长」匀速前进。

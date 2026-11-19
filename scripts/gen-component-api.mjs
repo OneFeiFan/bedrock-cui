@@ -19,9 +19,12 @@ const exportsMap = new Map(checker.getExportsOfModule(checker.getSymbolAtLocatio
 
 const esc = (s) => s.replace(/\|/g, '\\|').replace(/\n/g, ' ')
 const isDeprecated = (node) => ts.getJSDocTags(node).some((t) => t.tagName.text === 'deprecated')
+// 标了 @internal 的成员（框架内部使用）不进组件页的表格
+const isInternal = (node) => ts.getJSDocTags(node).some((t) => t.tagName.text === 'internal') || /@internal\b/.test(node.getFullText().slice(0, node.getLeadingTriviaWidth()))
 const isPublic = (m) => {
     const mods = ts.getCombinedModifierFlags(m)
     if (mods & (ts.ModifierFlags.Private | ts.ModifierFlags.Protected)) return false
+    if (isInternal(m)) return false
     const n = m.name?.getText?.() ?? ''
     return !n.startsWith('_') && !n.startsWith('#')
 }

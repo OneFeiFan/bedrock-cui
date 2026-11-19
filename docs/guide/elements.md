@@ -28,6 +28,8 @@ const list = new Stack('vertical')                        // 让子控件纵向�
 | `Grid` | 网格。 |
 | `Scroll` | 内容超出时可滚动的区域。 |
 | `Button`、`Toggle` | 按钮与开关。 |
+| `Page`、`Router`、`Tabs`、`Link`、`Close` 等 | 界面文件中的页面、页面组与跳转（见[界面文件](screens.md#页面函数)）。 |
+| `ProgressBar` | 随计时器前进的进度条（见[计时显示](timers.md)）。 |
 
 ## 设置属性
 

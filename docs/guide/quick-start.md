@@ -79,7 +79,7 @@ export default card
 ```
 
 - `defineUI({ … })` 定义一个界面。`id` 是界面 id：脚本打开表单时，表单的标题就是它；
-- `new Panel()` 创建一块面板，`.add(…)` 把括号中的控件加入面板。每个 `setXxx(…)` 设置一项属性并返回控件本身，因此可以连续调用；
+- `new Page()` 创建一页，`.add(…)` 把括号中的控件加入这一页。每个 `setXxx(…)` 设置一项属性并返回控件本身，因此可以连续调用；
 - `props` 声明脚本传给界面的数据：`greeting` 是文字（`type: String`），默认值为「欢迎」；
 - 页面函数的参数中有声明过的数据，`page({ greeting })` 取出 `greeting`。`new Label(greeting)` 在预览中显示默认值「欢迎」，在游戏中显示脚本传入的值。显示数据的控件需要像素尺寸（这里是 `setSize(120, 10)`）。
 
@@ -107,10 +107,10 @@ export default defineConfig({
 
 ## 静态检查
 
-预览页面下方显示静态检查的结果。例如，对面板调用 `setContain()`，表示其中的控件不得越出面板；再把正文的折行宽度改为 260：
+预览页面下方显示静态检查的结果。例如，对这一页调用 `setContain()`，表示其中的控件不得越出它；再把正文的折行宽度改为 260：
 
 ```js
-new Panel().setName('card').setSize(200, 100).setContain()
+new Page().setName('card').setSize(200, 100).setContain()
 // ……
 new Paragraph('……', 260).setName('intro')
 ```

@@ -10,7 +10,7 @@ npm run dev          # 即 bedrock-cui dev
 
 - 左侧是界面列表；
 - 中间是按游戏规则绘制的预览，下方是静态检查的结果；
-- 界面文件（`defineUI`）的界面在浏览器中运行它的[逻辑](logic.md)：点击按钮调用方法，状态变化后重新显示，翻页与定时器照常工作；发出的事件与 `this.player.sendMessage()` 的消息写进日志（预览中没有行为包脚本处理事件）；
+- 界面文件（`defineUI`）的界面在浏览器中运行它的[逻辑](logic.md)：点击按钮调用方法，状态变化后重新显示，页面跳转与定时器照常工作；发出的事件与 `this.player.sendMessage()` 的消息写进日志（预览中没有行为包脚本处理事件）；
 - 动画按时间播放，界面重新显示时从头开始（见[动画](animation.md#在浏览器中)）。
 
 修改界面代码并保存后，预览自动刷新。`--port` 指定端口，默认为 5173。
@@ -54,7 +54,7 @@ export default defineConfig({
 
 ## 预览与游戏的差异
 
-- 预览中的点击按位置判断。游戏中鼠标不移动时，点击交给获得默认焦点的控件，[翻页](pages.md)中的「原地不动」依赖这一行为，预览中无法模拟。
+- 预览中的点击按位置判断。游戏中鼠标不移动时，点击交给获得默认焦点的控件，[页面](pages.md)中的「原地不动」依赖这一行为，预览中无法模拟。
 - 原版贴图（`textures/ui/...` 等）不在项目的 `res` 目录中，预览无法显示。
 - 预览默认按 PC 的字宽排版。安卓上的折行见[跨平台](cross-platform.md)。
 
@@ -75,4 +75,4 @@ mountPreview(document.getElementById('app'), {
 })
 ```
 
-表单数据通过 `title`、`formText`、`formButtons` 三个信号（`signal()`）提供。界面文件的点击、状态与翻页由 `runScreenInBrowser()` 处理，各选项见 [API 参考](reference/api-web.md)。
+表单数据通过 `title`、`formText`、`formButtons` 三个信号（`signal()`）提供。界面文件的点击、状态与页面跳转由 `runScreenInBrowser()` 处理，各选项见 [API 参考](reference/api-web.md)。

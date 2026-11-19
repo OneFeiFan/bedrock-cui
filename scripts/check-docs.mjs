@@ -20,11 +20,18 @@ let bad = 0, ran = 0
 // 用正则排除恰好包含这几个字的组合（如「按其实际字宽」中的「其实」）
 const BANNED = [/首先/, /其次/, /总之/, /综上所述/, /值得注意的是/, /好消息是/, /强大/, /轻松/, /无缝/, /你会注意到/, /你已经学会/, /下面马上/, /其实(?!际|现)/, /当然/]
 const typed = []       // [临时文件, 页面, 第几个代码块]：运行之后统一做类型检查
+// 链接中的锚点（#一节）：与网站生成的标题 id 规则相同（scripts/build-site.mjs 的 slug）
+const slug = (text) => text.replace(/<[^>]+>/g, '').replace(/`/g, '').trim().replace(/\s+/g, '-').replace(/[^\p{L}\p{N}\-_]/gu, '').toLowerCase()
+const sectionsOf = (file) => new Set(fs.readFileSync(file, 'utf8').replace(/```[\s\S]*?```/g, '').split('\n').filter((l) => /^#{2,3} /.test(l)).map((l) => slug(l.replace(/^#+ /, ''))))
 for (const file of files) {
     const text = fs.readFileSync(file, 'utf8')
-    for (const m of text.matchAll(/\]\(([^)#\s]+)(#[^)]*)?\)/g)) {
-        if (/^https?:/.test(m[1])) continue
-        if (!fs.existsSync(path.resolve(path.dirname(file), m[1]))) { console.error(`✗ ${path.relative(guide, file)}：链接 ${m[1]} 指向的文件不存在`); bad++ }
+    for (const m of text.replace(/```[\s\S]*?```/g, '').matchAll(/\]\(([^)#\s]*)(#[^)]*)?\)/g)) {
+        if (/^https?:/.test(m[1]) || (!m[1] && !m[2])) continue
+        const target = m[1] ? path.resolve(path.dirname(file), m[1]) : file
+        if (!fs.existsSync(target)) { console.error(`✗ ${path.relative(guide, file)}：链接 ${m[1]} 指向的文件不存在`); bad++; continue }
+        if (m[2] && target.endsWith('.md') && !sectionsOf(target).has(slug(decodeURIComponent(m[2].slice(1))))) {
+            console.error(`✗ ${path.relative(guide, file)}：链接 ${m[1]}${m[2]} 指向的一节不存在`); bad++
+        }
     }
     if (!file.endsWith('WRITING.md')) {
         const prose = text.replace(/```[\s\S]*?```/g, '').replace(/`[^`]*`/g, '')
