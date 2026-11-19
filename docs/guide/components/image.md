@@ -1,6 +1,6 @@
 # Image
 
-`Image` 显示一张贴图。参数是资源包中的贴图路径，不含扩展名。
+`Image` 显示一张贴图。参数是资源包中的贴图路径，不含扩展名。用法见[图片与贴图](../images.md)。
 
 ```js preview=card 220x90
 import { Anchor, Color, Image, Panel, Size, Texture } from 'bedrock-cui'

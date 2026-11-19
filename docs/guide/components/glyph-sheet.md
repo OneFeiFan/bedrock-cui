@@ -1,6 +1,6 @@
 # GlyphSheet
 
-`GlyphSheet` 对应一张字形图（emoji 页 `E2`–`F8`），用于在运行期文字中显示图标。图标由 `icon()` 登记，转换为字符串即其字符。
+`GlyphSheet` 对应一张字形图（emoji 页 `E2`–`F8`），用于在运行期文字中显示图标。图标由 `icon()` 登记，转换为字符串即其字符。用法见[字形图标](../glyph-icons.md)。
 
 ```js
 import { GlyphSheet } from 'bedrock-cui'

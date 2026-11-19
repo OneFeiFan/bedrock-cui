@@ -31,3 +31,24 @@ const bag = defineUI({
 | `new Tabs({ 名称: 页面函数 })` | 一组选项卡；每一块由页面函数返回 |
 | `选项卡.startAt(名称)` | 一开始显示的一块（缺省为第一块） |
 | `new Link(名称)` | 切换到某一块的开关；`selected` 为选中时的外观 |
+
+<!-- api: Tabs -->
+**创建**
+
+- `new Tabs(routes: Record<string, PageFunction>)`
+
+**属性**
+
+| 属性 | 设置方法 | 类型 | 说明 |
+|---|---|---|---|
+| `routes` | 只读 | `Record<string, PageFunction>` | 子页面（按定义的顺序） |
+| `start` | — | `string \| undefined` | 一开始显示的子页面（缺省为第一个） |
+
+**方法**
+
+| 方法 | 说明 |
+|---|---|
+| `startAt(name: string)` | 一开始显示的子页面 |
+
+另有所有控件共有的属性与方法，见 [Element](element.md)。
+<!-- /api -->

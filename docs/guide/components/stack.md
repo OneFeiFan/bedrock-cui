@@ -1,6 +1,6 @@
 # Stack
 
-`Stack` 将子控件沿一个方向依次排列：`'vertical'`（默认）或 `'horizontal'`。需要间距、对齐与伸展时，使用 [`Row` 与 `Column`](row-column.md)。
+`Stack` 将子控件沿一个方向依次排列：`'vertical'`（默认）或 `'horizontal'`。需要间距、对齐与伸展时，使用 [`Row` 与 `Column`](row-column.md)。其他布局方式见[尺寸与位置](../layout.md)。
 
 ```js preview=card 220x60
 import { Color, Image, Label, Panel, Size, Stack } from 'bedrock-cui'

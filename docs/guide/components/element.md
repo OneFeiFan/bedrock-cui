@@ -1,17 +1,20 @@
 # Element
 
-`Element` 是所有控件的基类。尺寸、位置、层级、显示条件、名称等属性，以及 `add()`、`remove()`、`clone()` 等方法，所有控件都可以使用。
+`Element` 是所有控件的基类。尺寸、位置、层级、显示条件、名称等属性，以及 `add()`、`remove()`、`clone()` 等方法，所有控件都可以使用。用法见[控件与组件树](../elements.md)与[尺寸与位置](../layout.md)。
 
-```js
-import { Anchor, Label, Panel } from 'bedrock-cui'
+```js preview=panel 160x60
+import { Anchor, Color, Image, Label, Panel, Size } from 'bedrock-cui'
 
 const panel = new Panel().setName('card').setSize(120, 40)
-const label = new Label('钻石')
-    .setAnchor(Anchor.TOP_LEFT)      // 位置：锚点与偏移
-    .setOffset(4, 4)
-    .setLayer(2)                     // 层级
-    .setVisible(true)                // 显示条件，也可以是表达式
-panel.add(label)
+panel.add(
+    new Image('textures/ui/dialog_background_opaque').setSize(Size.full()),   // 尺寸：与父控件相同
+    new Label('钻石')
+        .setColor(Color.hex('#3c2814'))
+        .setAnchor(Anchor.TOP_LEFT)      // 位置：锚点与偏移
+        .setOffset(6, 6)
+        .setLayer(2)                     // 层级
+        .setVisible(true),               // 显示条件，也可以是表达式
+)
 ```
 
 属性可以直接赋值，也可以通过 `setXxx()` 链式设置，或用 `set({ ... })` 一次设置多项，见[控件与组件树](../elements.md#设置属性)。

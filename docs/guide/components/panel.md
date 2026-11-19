@@ -1,6 +1,6 @@
 # Panel
 
-`Panel` 是没有外观的容器。子控件按各自的锚点与偏移定位，常用来组合背景、文字等控件。
+`Panel` 是没有外观的容器。子控件按各自的锚点与偏移定位，常用来组合背景、文字等控件。子控件的定位见[尺寸与位置](../layout.md#锚点与偏移)。
 
 ```js preview=card 220x90
 import { Anchor, Color, Image, Label, Panel, Size } from 'bedrock-cui'

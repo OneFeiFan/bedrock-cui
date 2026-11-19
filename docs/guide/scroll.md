@@ -4,11 +4,12 @@
 
 `Scroll` 是一个可以滚动的区域。子控件纵向排列，内容高度为子控件高度之和，超出区域的部分通过滚动查看：
 
-```js
-import { Label, Length, Paragraph, Scroll } from 'bedrock-cui'
+```js preview=box 150x110
+import { Color, Image, Label, Panel, Scroll, Size } from 'bedrock-cui'
 
 const list = new Scroll().setSize(110, 80).setGap(2)
-for (let i = 1; i <= 20; i++) list.add(new Label(`第 ${i} 条`))
+for (let i = 1; i <= 20; i++) list.add(new Label(`第 ${i} 条`).setColor(Color.hex('#3c2814')))
+const box = new Panel().setSize(130, 96).add(new Image('textures/ui/dialog_background_opaque').setSize(Size.full()), list)
 ```
 
 `Scroll` 与 [`Column`](layout.md#弹性布局) 一样支持 `setGap()` 与 `setAlign()`。

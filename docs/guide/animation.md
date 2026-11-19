@@ -6,11 +6,14 @@
 
 `Anim` 的静态方法创建一段动画，`控件.setAnims(动画)` 把它加到控件上。任何控件都可以加动画。
 
-```js
-import { Anim, Label } from 'bedrock-cui'
+```js preview=card 160x50 first=preview
+import { Anim, Color, Image, Label, Panel, Size } from 'bedrock-cui'
 
-// 0.5 秒内从透明变为不透明
-new Label('欢迎').setAnims(Anim.alpha(0, 1, 0.5))
+const card = new Panel().setSize(120, 30).add(
+    new Image('textures/ui/dialog_background_opaque').setSize(Size.full()),
+    // 0.5 秒内从透明变为不透明
+    new Label('欢迎').setColor(Color.hex('#3c2814')).setAnims(Anim.alpha(0, 1, 0.5)),
+)
 ```
 
 | 方法 | 变化的属性 |
@@ -44,7 +47,7 @@ const card = new Panel().setSize(140, 30).add(
 
 下面照原版熔炉做一个循环播放的进度箭头：空箭头上叠一个满箭头，满箭头从左侧开始显示（`'left'`：可见部分靠左），裁剪比例在 3 秒内从 1 变为 0：
 
-```js
+```js preview=arrow 60x40 first=preview
 import { Anim, Image, Panel } from 'bedrock-cui'
 
 const arrow = new Panel().setSize(22, 15).add(

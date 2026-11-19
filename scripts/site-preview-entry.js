@@ -12,10 +12,12 @@ const STANDINS = {
     'textures/ui/purpleBorder': { file: 'purple.png', size: [16, 16], nineslice: 4 },
     'textures/ui/white': { file: 'white_vanilla.png', size: [15, 15] },     // 原版：四周 2 像素黑边
     'textures/bedrock_cui/solid': { file: 'white.png', size: [2, 2] },     // Texture.SOLID
-    'textures/items/diamond': { file: 'diamond.png', size: [16, 16] },
+    'textures/items/diamond': { file: 'gem.png', size: [16, 16] },             // 示意图标（自己画的），不是原版贴图
     'textures/items/stick': { file: 'stick.png', size: [16, 16] },
     'textures/items/diamond_sword': { file: 'sword.png', size: [16, 16] },
-    'textures/cui_example/gem': { file: 'gem.png', size: [16, 16] },       // 首页商店：自己画的像素宝石
+    'textures/cui_example/gem': { file: 'gem.png', size: [16, 16] },
+    'textures/ui/arrow_inactive': { file: 'arrow_inactive.png', size: [22, 15] },   // 示意图（自己画的）
+    'textures/ui/arrow_active': { file: 'arrow_active.png', size: [22, 15] },       // 首页商店：自己画的像素宝石
 }
 
 window.CUI = CUI

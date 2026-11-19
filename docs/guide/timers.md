@@ -59,7 +59,7 @@ const lab = defineUI({
 
 `new ProgressBar(数值, 上限)` 显示数值占上限的比例，例如容量、生命值。两个参数可以是数字，也可以是页面函数参数中的数值数据；都可以是小数，`上限` 须大于 0，比例限制在 0 到 100% 之间。
 
-```js
+```js preview=capacity 200x40
 import { defineUI, Page, ProgressBar } from 'bedrock-cui'
 
 const capacity = defineUI({

@@ -1,6 +1,6 @@
 # Scroll
 
-`Scroll` 是可以滚动的区域。子控件纵向排列，超出区域的部分通过滚动查看。滚动条位于区域内侧右边，宽 8 像素。
+`Scroll` 是可以滚动的区域。子控件纵向排列，超出区域的部分通过滚动查看。滚动条位于区域内侧右边，宽 8 像素。用法见[滚动](../scroll.md)。
 
 ```js preview=card 200x100
 import { Anchor, Color, Image, Label, Panel, Scroll, Size } from 'bedrock-cui'

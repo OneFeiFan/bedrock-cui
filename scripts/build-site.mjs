@@ -84,7 +84,7 @@ function previewScript(code, id, name, w, h, base, form, opts = {}) {
     return `<div class="example" data-id="${id}" data-name="${name.replace(/\(\)$/, '()')}" data-w="${w}" data-h="${h}" data-base="${base}"${form ? ` data-form="${form}"` : ''}>
 <div class="ex-bar"><button type="button" data-tab="code"${first === 'code' ? ' class="on"' : ''}>代码</button><button type="button" data-tab="preview"${first === 'preview' ? ' class="on"' : ''}>预览</button><span class="ex-tools"><button type="button" class="ex-edit">修改并运行</button></span></div>
 <div class="ex-pane ex-code"${first === 'code' ? '' : ' hidden'}>${opts.pre}</div>
-<div class="ex-pane ex-preview"${first === 'preview' ? '' : ' hidden'}><div class="cui-preview" id="${id}"></div>${vary}<p class="cui-preview-note">预览：按游戏的排版规则绘制。英文字母的字形与游戏不同；界面贴图以近似的替代图显示，物品图标以紫黑格占位（游戏中显示实际的贴图）。</p><p class="ex-error" hidden></p></div>
+<div class="ex-pane ex-preview"${first === 'preview' ? '' : ' hidden'}><div class="cui-preview" id="${id}"></div>${vary}<p class="cui-preview-note">预览：按游戏的排版规则绘制。英文字母的字形与游戏不同；界面贴图与物品图标以示意图代替（游戏中显示实际的贴图）。</p><p class="ex-error" hidden></p></div>
 <script type="text/plain" class="ex-src">${esc(code)}</script>
 </div>\n` +
         `<script>(() => {\n${body.replace(/<\/script/g, '<\\/script')}\nCUI_PREVIEW('${id}', ${name}, { w: ${w}, h: ${h}, base: '${base}'${form ? `, form: ${form}` : ''} })\n})()</script>\n`
@@ -114,7 +114,8 @@ function renderMarkdown(src, file) {
                 const form = (lang.match(/form=(\w+)/) ?? [])[1]
                 const vary = (lang.match(/vary=(\S+)/) ?? [])[1]
                 // 学习章节：代码优先（正文逐段讲解代码）；组件页：预览优先（展示组件的样子）
-                const first = file.startsWith('components/') ? 'preview' : 'code'
+                // 先显示哪一页：组件页先显示预览，章节先显示代码；代码块可以用 first=preview / first=code 指定（例如动画先显示预览）
+                const first = lang.match(/\bfirst=(code|preview)\b/)?.[1] ?? (file.startsWith('components/') ? 'preview' : 'code')
                 return previewScript(text, `pv-${++previews}`, pv[1], Number(pv[2] ?? 240), Number(pv[3] ?? 140), base, form, { pre, vary, first })
             },
             link({ href, title, tokens }) {
@@ -288,14 +289,29 @@ fs.writeFileSync(path.join(tex, 'purple.png'), png(16, 16, (x, y) => (edge(x, y)
 fs.writeFileSync(path.join(tex, 'white.png'), png(2, 2, () => [255, 255, 255, 255]))
 // 原版 textures/ui/white 的样子：15×15，四周 2 像素黑边（不是纯色——预览与游戏一致）
 fs.writeFileSync(path.join(tex, 'white_vanilla.png'), png(15, 15, (x, y) => (x < 2 || y < 2 || x > 12 || y > 12 ? [0, 0, 0, 255] : [255, 255, 255, 255])))
-// 物品图标：不模仿原版的样子，统一用紫黑格（游戏中贴图缺失时的样子），一看就知道是占位
-const missing = png(16, 16, (x, y) => ((x < 8) === (y < 8) ? [248, 0, 248, 255] : [0, 0, 0, 255]))
-for (const f of ['diamond.png', 'stick.png', 'sword.png']) fs.writeFileSync(path.join(tex, f), missing)
-// 首页商店的宝石：自己画的像素图（8×8 放大为 16×16），不是原版贴图
+// 物品图标：自己画的示意图标（原版贴图是 Mojang 的资源，不随网站发布）。手册示例中的 textures/items/diamond、
+// stick、diamond_sword 在预览中显示为宝石、木棍、剑；游戏中显示实际的贴图
 {
-    const art = ['........', '..aaaa..', '.bdbbbb.', '.cccccc.', '..bbbb..', '...aa...', '........', '........']
-    const pal = { a: [30, 107, 102, 255], b: [47, 181, 172, 255], c: [110, 227, 217, 255], d: [216, 255, 251, 255] }
-    fs.writeFileSync(path.join(tex, 'gem.png'), png(16, 16, (x, y) => pal[art[y >> 1][x >> 1]] ?? null))
+    const draw = (file, art, pal) => fs.writeFileSync(path.join(tex, file), png(16, 16, (x, y) => pal[art[y][x]] ?? null))
+    const gem = ['........', '..aaaa..', '.bdbbbb.', '.cccccc.', '..bbbb..', '...aa...', '........', '........']
+    const gemPal = { a: [30, 107, 102, 255], b: [47, 181, 172, 255], c: [110, 227, 217, 255], d: [216, 255, 251, 255] }
+    draw('gem.png', gem.flatMap((r) => [r, r]).map((r) => [...r].flatMap((c) => [c, c]).join('')), gemPal)
+    draw('stick.png', [
+        '................', '................', '................', '............ab..',
+        '...........abb..', '..........abb...', '.........abb....', '........abb.....',
+        '.......abb......', '......abb.......', '.....abb........', '....abb.........',
+        '...abb..........', '...bb...........', '................', '................',
+    ], { a: [176, 126, 70, 255], b: [107, 68, 35, 255] })
+    // 熔炉式的进度箭头（22 × 15）：空箭头为灰色，满箭头为白色
+    const inArrow = (x, y) => (y >= 5 && y <= 9 && x <= 13) || (x >= 13 && x <= 21 && Math.abs(y - 7) <= (21 - x) * 7 / 8)
+    fs.writeFileSync(path.join(tex, 'arrow_inactive.png'), png(22, 15, (x, y) => (inArrow(x, y) ? [139, 139, 139, 255] : null)))
+    fs.writeFileSync(path.join(tex, 'arrow_active.png'), png(22, 15, (x, y) => (inArrow(x, y) ? [255, 255, 255, 255] : null)))
+    draw('sword.png', [
+        '................', '.............kk.', '............kwk.', '...........kwk..',
+        '..........kwk...', '.........kwk....', '........kwk.....', '.......kwk......',
+        '..gg..kwk.......', '...gg.wk........', '....ggg.........', '....hgg.........',
+        '...hh..g........', '..hh............', '.pp.............', '................',
+    ], { k: [58, 143, 138, 255], w: [216, 244, 242, 255], g: [74, 58, 42, 255], h: [138, 90, 43, 255], p: [96, 96, 96, 255] })
 }
 const unifont = path.join(process.env.BEDROCK_CUI_FONT_DIR ?? path.join(os.homedir(), '.cache', 'bedrock-cui', 'font'), 'unifont.hex.gz')
 if (fs.existsSync(unifont)) {

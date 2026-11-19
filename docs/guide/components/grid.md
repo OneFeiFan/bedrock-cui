@@ -1,6 +1,6 @@
 # Grid
 
-`Grid` 是一个网格，由列数与行数创建。子控件用 `setGridPos(列, 行)` 指定所在的格子，格子的大小为网格尺寸均分。
+`Grid` 是一个网格，由列数与行数创建。子控件用 `setGridPos(列, 行)` 指定所在的格子，格子的大小为网格尺寸均分。其他布局方式见[尺寸与位置](../layout.md)。
 
 ```js preview=card 160x80
 import { Grid, Image, Panel, Size } from 'bedrock-cui'

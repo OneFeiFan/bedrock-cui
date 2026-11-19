@@ -1,6 +1,6 @@
 # Paragraph
 
-`Paragraph` 用于较长的文字。它与 `Label` 一样交给游戏折行，但会调整汉字与英文、数字交界处的间隔，使 PC 与安卓上的折行都排得整齐。第二个参数是折行宽度。
+`Paragraph` 用于较长的文字。它与 `Label` 一样交给游戏折行，但会调整汉字与英文、数字交界处的间隔，使 PC 与安卓上的折行都排得整齐。第二个参数是折行宽度。用法见[文字](../text.md#paragraph)。
 
 ```js preview=card 220x70
 import { Anchor, Color, Image, Panel, Paragraph, Size } from 'bedrock-cui'

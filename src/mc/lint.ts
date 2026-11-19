@@ -245,6 +245,7 @@ export function lint(roots: RNode[], options: LintOptions = {}): LintIssue[] {
             }
             if (d !== undefined) push('decimal-arith', 'warning', n, `${key} 的表达式中有小数常数 ${d}：绑定中的运算只有整数，小数常数参与运算时结果仍是整数（真机 1.67.0：5 × 0.1 为 0）——改用整数，例如先乘后除，或让脚本直接传入算好的整数`)
         }
+        if (n.props.cuiTabsStep) push('tabs-step', 'warning', n, '选项卡（Tabs）中的 Prev / Next 编译为客户端的开关：鼠标不动时连续点击，第二次会落到错误的位置（真机）。需要在同一位置连续翻页时，改用 Router')
         if (n.props.web) push('web-only', 'error', n, `${n.props.web.tag === 'a' ? 'Link' : 'Html'} 是网页专用的元素（bedrock-cui/dom），不能编译成 JSON UI`)
         checkSiblings(n.children)
         if (n.slots) for (const s of Object.values(n.slots)) checkSiblings(s)

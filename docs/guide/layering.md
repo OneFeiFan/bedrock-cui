@@ -12,7 +12,7 @@
 
 `控件.setLayer(层级)` 设置控件的层级，层级高的控件画在上面。层级相对于父控件累加：父控件在第 1 层、子控件设置 `setLayer(2)` 时，子控件实际位于第 3 层。
 
-```js
+```js preview=row 140x40
 import { Image, Label, Panel, Size } from 'bedrock-cui'
 
 const row = new Panel().setSize(110, 18).add(

@@ -627,3 +627,11 @@ test('防护：点击以外的刷新 10 秒内达到 3 次时提示一次（每�
     const hits = warns.filter((w) => w.includes('cui_ui:busy') && w.includes('ProgressBar'))
     assert.equal(hits.length, 1)
 })
+
+test('静态检查 tabs-step：选项卡中的 Prev / Next 给出警告（客户端连续点击不可靠）；Router 中的不警告', () => {
+    const lintOf = (page) => CuiApp.fromConfig({ namespace: 'n', screens: [defineUI({ id: 'cui_ui:ts' + Math.random().toString(36).slice(2, 6), page })] }).compile().issues.filter((i) => i.rule === 'tabs-step')
+    const tabs = lintOf(() => new Page().setSize(200, 80).add(new Tabs({ a: () => new Page().add(new Next().setSize(20, 10)), b: () => new Page() })))
+    assert.equal(tabs.length, 1)
+    const router = lintOf(() => new Page().setSize(200, 80).add(new Router({ a: () => new Page().add(new Next().setSize(20, 10)), b: () => new Page() })))
+    assert.equal(router.length, 0)
+})

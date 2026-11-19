@@ -1,6 +1,6 @@
 # Row 与 Column
 
-`Row` 横向、`Column` 纵向排列子控件，支持间距（`setGap()`）、主轴方向的分布（`setJustify()`）、交叉轴方向的对齐（`setAlign()`），子控件可以调用 `setGrow()` 占用剩余空间。
+`Row` 横向、`Column` 纵向排列子控件，支持间距（`setGap()`）、主轴方向的分布（`setJustify()`）、交叉轴方向的对齐（`setAlign()`），子控件可以调用 `setGrow()` 占用剩余空间。用法见[尺寸与位置](../layout.md#弹性布局)。两者都继承自 `Flex`。
 
 ```js preview=card 220x80
 import { Align, Color, Column, Image, Justify, Label, Panel, Row, Size } from 'bedrock-cui'

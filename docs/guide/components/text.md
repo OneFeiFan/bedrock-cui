@@ -1,6 +1,6 @@
 # Text 与 InlineIcon
 
-`Text` 是可以插入行内图标的文字，由 bedrock-cui 排版。图标由 `InlineIcon.of()` 创建，以模板字符串写入文字。
+`Text` 是可以插入行内图标的文字，由 bedrock-cui 排版。图标由 `InlineIcon.of()` 创建，以模板字符串写入文字。用法见[文字](../text.md#文字中的图标)。
 
 ```js preview=card 180x70
 import { Anchor, Color, Image, InlineIcon, Panel, Size, Text, TextStyle } from 'bedrock-cui'
