@@ -246,7 +246,7 @@ fs.copyFileSync(path.join(root, 'docs', 'site', 'site.css'), path.join(out, 'sit
     const examples = files.reduce((n, f) => n + (fs.readFileSync(path.join(guide, f), 'utf8').match(/^```js[^\n]*preview=/gm) ?? []).length, 0)
     const html = fs.readFileSync(path.join(home, 'index.html'), 'utf8')
         .replace('<!--SHOP_CODE-->', highlight(shopCode, 'js'))
-        .replace('<!--SHOP_PREVIEW-->', `<div class="cui-preview" id="home-shop"></div>\n<script>(() => {\n${shopScript.replace(/<\/script/g, '<\\/script')}\nCUI_PREVIEW('home-shop', shop, { w: 160, h: 84, base: '' })\n})()</script>`)
+        .replace('<!--SHOP_PREVIEW-->', `<div class="cui-preview" id="home-shop"></div>\n<script>(() => {\n${shopScript.replace(/<\/script/g, '<\\/script')}\nCUI_PREVIEW('home-shop', shop, { w: 168, h: 92, base: '' })\n})()</script>`)
         .replace('<!--STAT:rules-->', String(rules)).replace('<!--STAT:lint-->', String(lint)).replace('<!--STAT:examples-->', String(examples))
     fs.writeFileSync(path.join(out, 'index.html'), html)
     fs.copyFileSync(path.join(home, 'home.css'), path.join(out, 'home.css'))

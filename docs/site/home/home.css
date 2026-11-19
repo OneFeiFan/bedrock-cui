@@ -53,15 +53,16 @@ body.home {
 .mc-panel { flex: 1 1 300px; min-width: 0; background: #c6c6c6; border: 2px solid #000; box-shadow: inset 2px 2px 0 #fff, inset -2px -2px 0 #555; padding: 18px 20px; color: #404040; display: flex; flex-direction: column; gap: 8px; }
 .mc-panel p { margin: 0; }
 
-.h-code { padding-top: 80px; padding-bottom: 80px; display: flex; flex-wrap: wrap; gap: 40px; align-items: flex-start; }
-.h-code-text { flex: 1 1 320px; min-width: 0; display: flex; flex-direction: column; gap: 16px; }
+/* 真实的代码比设计稿里的示意长：说明在上、代码在下（全宽），不横向滚动 */
+.h-code { padding-top: 80px; padding-bottom: 80px; display: flex; flex-direction: column; gap: 28px; }
+.h-code-text { display: flex; flex-direction: column; gap: 16px; }
 .h-code-text p { margin: 0; color: #d0d0d0; }
-.h-parts { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 14px; color: #b0b0b0; }
-.h-parts li { display: flex; gap: 14px; }
+.h-parts { margin: 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 14px 24px; color: #b0b0b0; }
+.h-parts li { flex: 1 1 260px; min-width: 0; display: flex; gap: 14px; }
 .h-parts b { color: #fff; font-weight: 400; }
 .mc-num { flex: 0 0 auto; width: 28px; height: 28px; background: #6f6f6f; border: 2px solid #000; box-shadow: inset 2px 2px 0 #a8a8a8, inset -2px -2px 0 #3c3c3c; color: #fff; font-family: var(--px); display: flex; align-items: center; justify-content: center; }
 .h-more { font-family: var(--px); text-decoration: none; }
-.h-pre { flex: 1 1 520px; min-width: 0; margin: 0; padding: 18px 20px; background: #0f0f0f; border: 2px solid #000; box-shadow: inset 2px 2px 0 #2a2a2a; overflow-x: auto; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13.5px; line-height: 1.7; color: #e0e0e0; }
+.h-pre { min-width: 0; margin: 0; padding: 18px 20px; background: #0f0f0f; border: 2px solid #000; box-shadow: inset 2px 2px 0 #2a2a2a; overflow-x: auto; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13.5px; line-height: 1.7; color: #e0e0e0; }
 .h-pre .tok-k { color: #ff7ae0; } .h-pre .tok-s { color: #ffd27a; } .h-pre .tok-n { color: #8fd3ff; } .h-pre .tok-c { color: #8a9a9b; }
 
 .h-steps { display: flex; flex-wrap: wrap; gap: 16px; }
