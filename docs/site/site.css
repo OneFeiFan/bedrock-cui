@@ -232,3 +232,35 @@ pre.code .line.hl { box-shadow: inset 3px 0 0 #ffff55; }
     .content h2 { font-size: 20px; }
     .sidebar { box-shadow: 4px 0 0 rgba(0, 0, 0, 0.35); }
 }
+
+/* ───────── 滚动条与滑块（与首页相同的斜面风格；各浏览器原生的样子不一） ─────────
+   Chrome、Edge、Safari：::-webkit-scrollbar 画出斜面与黑框。
+   Firefox 只支持标准的 scrollbar-color / scrollbar-width（颜色与粗细，不能画斜面）；
+   Chrome 121 起，元素一旦设置了这两个标准属性，::-webkit-scrollbar 就不再生效，所以只对不支持 ::-webkit-scrollbar 的浏览器设置 */
+:root { --sb-track: #dcd9d0; --sb-thumb: #8b8b8b; --sb-hi: #c6c6c6; --sb-lo: #555555; }
+@media (prefers-color-scheme: dark) { :root { --sb-track: #121110; --sb-thumb: #6f6f6f; --sb-hi: #a8a8a8; --sb-lo: #3c3c3c; } }
+::-webkit-scrollbar { width: 12px; height: 12px; }
+::-webkit-scrollbar-track { background: var(--sb-track); }
+::-webkit-scrollbar-thumb { background: var(--sb-thumb); border: 2px solid #000; box-shadow: inset 2px 2px 0 var(--sb-hi), inset -2px -2px 0 var(--sb-lo); }
+::-webkit-scrollbar-thumb:hover { background: #9b9b9b; }
+::-webkit-scrollbar-thumb:active { background: #a9a9a9; }
+::-webkit-scrollbar-corner { background: var(--sb-track); }
+::-webkit-scrollbar-button { display: none; }
+/* 深色面板（代码块）中的滚动条：两种模式下都是深色的轨道 */
+pre.code::-webkit-scrollbar-track, pre.code::-webkit-scrollbar-corner { background: #0a0a0a; }
+pre.code::-webkit-scrollbar-thumb { background: #4a4a4a; box-shadow: inset 2px 2px 0 #7a7a7a, inset -2px -2px 0 #2a2a2a; }
+pre.code::-webkit-scrollbar-thumb:hover { background: #5a5a5a; }
+@supports not selector(::-webkit-scrollbar) {
+    * { scrollbar-width: thin; scrollbar-color: var(--sb-thumb) var(--sb-track); }
+    pre.code { scrollbar-color: #4a4a4a #0a0a0a; }
+}
+
+/* 示例中的参数滑块：凹陷的轨道与斜面的滑块 */
+.example .ex-vary input[type="range"] { -webkit-appearance: none; appearance: none; height: 20px; background: transparent; cursor: pointer; }
+.example .ex-vary input[type="range"]:focus { outline: none; }
+.example .ex-vary input[type="range"]::-webkit-slider-runnable-track { height: 8px; background: #2a2a2a; box-shadow: inset 2px 2px 0 #0a0a0a, inset -2px -2px 0 #5a5a5a; }
+.example .ex-vary input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 12px; height: 20px; margin-top: -6px; background: #8b8b8b; border: 2px solid #000; box-shadow: inset 2px 2px 0 #c6c6c6, inset -2px -2px 0 #555; }
+.example .ex-vary input[type="range"]:hover::-webkit-slider-thumb, .example .ex-vary input[type="range"]:focus-visible::-webkit-slider-thumb { background: #a9a9a9; outline: 2px solid #fff; outline-offset: -2px; }
+.example .ex-vary input[type="range"]::-moz-range-track { height: 8px; background: #2a2a2a; border: 0; box-shadow: inset 2px 2px 0 #0a0a0a, inset -2px -2px 0 #5a5a5a; }
+.example .ex-vary input[type="range"]::-moz-range-thumb { width: 12px; height: 20px; border-radius: 0; background: #8b8b8b; border: 2px solid #000; box-shadow: inset 2px 2px 0 #c6c6c6, inset -2px -2px 0 #555; }
+.example .ex-vary input[type="range"]:hover::-moz-range-thumb { background: #a9a9a9; }

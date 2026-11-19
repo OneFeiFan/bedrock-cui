@@ -85,3 +85,16 @@ body.home {
     .h-splash { position: static; display: block; margin-top: 10px; }
     .home h2 { font-size: 24px; }
 }
+
+/* 滚动条：斜面风格（规则同 site.css 的说明：Firefox 只用标准属性，其余浏览器用 ::-webkit-scrollbar） */
+::-webkit-scrollbar { width: 12px; height: 12px; }
+::-webkit-scrollbar-track, ::-webkit-scrollbar-corner { background: #121110; }
+::-webkit-scrollbar-thumb { background: #6f6f6f; border: 2px solid #000; box-shadow: inset 2px 2px 0 #a8a8a8, inset -2px -2px 0 #3c3c3c; }
+::-webkit-scrollbar-thumb:hover { background: #7f7f7f; }
+::-webkit-scrollbar-button { display: none; }
+.h-pre::-webkit-scrollbar-track, .h-pre::-webkit-scrollbar-corner { background: #0a0a0a; }
+.h-pre::-webkit-scrollbar-thumb { background: #4a4a4a; box-shadow: inset 2px 2px 0 #7a7a7a, inset -2px -2px 0 #2a2a2a; }
+@supports not selector(::-webkit-scrollbar) {
+    * { scrollbar-width: thin; scrollbar-color: #6f6f6f #121110; }
+    .h-pre { scrollbar-color: #4a4a4a #0a0a0a; }
+}
