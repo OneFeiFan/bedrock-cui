@@ -93,7 +93,7 @@ system.afterEvents.scriptEventReceive.subscribe((e) => {
     }
 })
 
-// ───── 界面模型：defineScreen 的界面由运行时打开（导入 ./cui.generated.js 时已登记清单） ─────
+// ───── 界面模型：defineUI 的界面由运行时打开（导入 ./cui.generated.js 时已登记清单） ─────
 // 事件总线：界面中 this.emit('hello', 次数) → 播放音效，每满 5 次给一颗绿宝石（和游戏打交道的事留在脚本里）
 propsDemo.on('hello', (player, n) => {
     player.playSound('random.orb')

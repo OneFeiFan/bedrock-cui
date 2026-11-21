@@ -4,8 +4,8 @@
  * 服务端运行期生成的文字（按玩家背包拼的说明、聊天记录……），在发给界面之前按与 Paragraph **同一套规则与字宽**预折行——
  * 游戏只在空格处换行，中英混排会折出很短的行（真机 1.23.0）；预折好的行每行都放得下，游戏不会再折。
  *
- *   import { softWrap } from './cui/runtime/index.js'         // 构建时用 cui/node 的 copyRuntime() 复制进行为包
- *   form.button('txw|' + softWrap(text, 110))                  // 110 = 显示它的文字控件的宽度（像素）
+ *   import { softWrap } from 'bedrock-cui/runtime'
+ *   story.open(player, { text: softWrap(text, 110) })        // 110 = 显示它的文字控件的宽度（像素）
  *
  * softWrap（推荐）：交给游戏折行，只调整汉字与英文 / 数字交界处的间隔，游戏用当前平台的真实字宽逐字排满——PC 与安卓都对（真机 1.28.0）。
  * preWrap：按 PC 字宽排好每一行——只在 PC 上精确（安卓汉字 9、全角标点 9，会超宽、被再折一次）。

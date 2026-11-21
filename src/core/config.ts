@@ -36,7 +36,7 @@ export interface CuiPreviewForm {
 export interface CuiConfig {
     /** 界面文件的命名空间（ui/<namespace>.json） */
     namespace: string
-    /** 界面：defineScreen 定义的界面对象的数组；或「界面 id → 返回根控件的函数」（需要路由方式时写成 { build, routed: true }） */
+    /** 界面：defineUI 定义的界面对象的数组；或「界面 id → 返回根控件的函数」（需要路由方式时写成 { build, routed: true }） */
     screens: Screen[] | Record<string, CuiScreen | Screen>
     /** 存放贴图的资源包目录（相对项目根目录），用于预览与静态检查；缺省 ['res'] */
     textures?: string[]

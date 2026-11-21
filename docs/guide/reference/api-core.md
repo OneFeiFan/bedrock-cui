@@ -69,7 +69,7 @@
 | `PropSpec` | 接口 | props 中一项的声明：{ type, default, of, max }（同 Vue 的 props）。 |
 | `Item` | 类 | props 声明中的类型：文字与图标 { text, icon }。 |
 | `MethodRef` | 接口 | 视图中方法的引用（从视图参数中解构得到），用于 button().onClick(方法, …参数)。 |
-| `Screen` | 类 | defineScreen() 返回的界面对象：id；行为包脚本中的 open(玩家, props)、close(玩家)、isOpen(玩家)、on(事件名, 处理函数) / off()；构建时的 build()、previewForm()。 |
+| `Screen` | 类 | defineUI() 返回的界面对象：id；行为包脚本中的 open(玩家, props)、close(玩家)、isOpen(玩家)、on(事件名, 处理函数) / off()；构建时的 build()、previewForm()。 |
 
 ## 计时显示
 
@@ -130,7 +130,7 @@
 | `CuiConfig` | 接口 | 项目配置。 |
 | `CuiPreviewForm` | 接口 | 预览中某个界面的表单数据：title、text、buttons。 |
 | `CuiScreen` | 类型 | 配置中的一个界面：返回根控件的函数，或 { build, routed }。 |
-| `ScreenOptions` | 接口 | defineScreen() 的选项。 |
+| `ScreenOptions` | 接口 | defineUI() 的选项。 |
 | `AnimType` | 类型 | 动画的类型。 |
 | `AnimEasing` | 类型 | 动画的缓动方式。 |
 | `ScreenManifest` | 接口 | 界面的清单：props 与按钮的名字及其对应的表单按钮序号。 |

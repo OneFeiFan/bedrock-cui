@@ -287,11 +287,11 @@ export function evalExpr(e: ExprLike, env: EvalEnv): Value {
 
 export const asBool = (v: Value) => truthy(v)
 
-// ───────── 界面的 prop（defineScreen 的 props）─────────
+// ───────── 界面的 prop（defineUI 的 props）─────────
 
 /**
  * 界面的一个 prop：由行为包脚本在打开表单时提供的数据，通过第 index 个表单按钮传输（按钮文字 = 标记 + 文字，图标 = 按钮的图标）。
- * 本身是一个表达式（取文字）：new Label(props.greeting)。用在 Image 的贴图上时取图标，用在 setVisible() 上时表示「有值时显示」。
+ * 本身是一个表达式（取文字）：new Label(greeting)。用在 Image 的贴图上时取图标，用在 setVisible() 上时表示「有值时显示」。
  * 读取按钮数据需要在对应的集合项内部：快照时自动给使用它的控件包上容器（使用者看不到序号、标记与容器）。
  */
 export class PropRef extends Expr {

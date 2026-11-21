@@ -5,14 +5,14 @@ import { Screen, compileNamespace, screenOf, setMetricsProfile, signal } from 'b
 import { Pages, ServerPagesPreview } from 'bedrock-cui/internal'
 import { mountPreview, runScreenInBrowser } from 'bedrock-cui/web'
 
-// 界面：defineScreen 定义的界面（数组），或「界面 id → 函数」
+// 界面：defineUI 定义的界面（数组），或「界面 id → 函数」
 const entries = Array.isArray(config.screens)
     ? Object.fromEntries(config.screens.map((s) => [s.id, s]))
     : config.screens
 const ids = Object.keys(entries)
 /** 正在运行的界面逻辑（切换界面时关闭，定时器随之取消） */
 let stopRuntime
-/** 构建界面：defineScreen 的界面返回控件树与预览用的表单内容（props 的默认值） */
+/** 构建界面：defineUI 的界面返回控件树与预览用的表单内容（props 的默认值） */
 const make = (id) => {
     const s = entries[id]
     if (s instanceof Screen) { const { root, manifest } = s.build(); return { root, manifest, screen: s, form: s.previewForm(manifest) } }
@@ -43,7 +43,7 @@ function show(id) {
     nav.querySelectorAll('a').forEach((a) => a.classList.toggle('active', a.dataset.id === id))
     stage.innerHTML = ''
     const built = make(id)
-    // defineScreen 的界面：表单内容取 props 的默认值；其他界面取配置里的 preview.forms
+    // defineUI 的界面：表单内容取 props 的默认值；其他界面取配置里的 preview.forms
     const form = built.form
         ? { buttons: built.form.buttons.map((b, i) => (built.form.icons[i] ? { text: b, icon: built.form.icons[i] } : b)) }
         : config.preview?.forms?.[id] ?? {}
@@ -63,7 +63,7 @@ function show(id) {
     $('f-text').value = form.text ?? ''
     $('f-buttons').value = (form.buttons ?? []).map((b) => (typeof b === 'string' ? b : b.icon ? `${b.text} @ ${b.icon}` : b.text)).join('\n')
     const title = signal($('f-title').value), text = signal($('f-text').value), buttons = signal(texts()), buttonIcons = signal(icons())
-    // defineScreen 的界面：在浏览器中运行它的逻辑（共用 bedrock-cui/web 的 runScreenInBrowser）
+    // defineUI 的界面：在浏览器中运行它的逻辑（共用 bedrock-cui/web 的 runScreenInBrowser）
     stopRuntime?.()
     stopRuntime = undefined
     let runner, previewRef

@@ -27,7 +27,7 @@ window.CUI_PREVIEW = (id, root, { w, h, base, form }) => {
     // 重新运行（修改并运行、参数滑块）：先清理上一次的预览（动画的时钟随之停止）
     el._cuiPreview?.dispose()
     el.innerHTML = ''
-    // defineScreen 定义的界面：构建视图，并在浏览器中运行它的逻辑（点击按钮调用方法、状态变化后重新显示）
+    // defineUI 定义的界面：构建视图，并在浏览器中运行它的逻辑（点击按钮调用方法、状态变化后重新显示）
     let screen, manifest
     if (root instanceof CUI.Screen) {
         screen = root

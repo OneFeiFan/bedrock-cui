@@ -25,7 +25,7 @@ export interface CuiCompiled {
     files: Record<string, object>
     /** 界面 id → 翻页路由表（界面里有服务端翻页箭头才有） */
     paging: Record<string, ServerPaging>
-    /** defineScreen 定义的界面：界面 id → 清单（名字与按钮序号的对应，附翻页路由表） */
+    /** defineUI 定义的界面：界面 id → 清单（名字与按钮序号的对应，附翻页路由表） */
     screens: Record<string, ScreenManifest & { paging?: ServerPaging }>
     /** 计时 HUD 的协议与槽位清单 */
     /** 字形图：[资源包里的路径, PNG] */
@@ -92,7 +92,7 @@ export class CuiApp {
 
     private manifests = new Map<string, ScreenManifest>()
 
-    /** 挂载 defineScreen 定义的界面：构建视图，记下清单 */
+    /** 挂载 defineUI 定义的界面：构建视图，记下清单 */
     addScreen(screen: Screen): this {
         const { root, manifest } = screen.build()
         this.manifests.set(screen.id, manifest)
@@ -105,7 +105,7 @@ export class CuiApp {
         if (Array.isArray(config.screens)) for (const s of config.screens) app.addScreen(s)
         else for (const [panelId, s] of Object.entries(config.screens)) {
             if (s instanceof Screen) {
-                if (s.id !== panelId) throw new Error(`配置中的界面 id「${panelId}」与 defineScreen 的 id「${s.id}」不一致`)
+                if (s.id !== panelId) throw new Error(`配置中的界面 id「${panelId}」与 defineUI 的 id「${s.id}」不一致`)
                 app.addScreen(s)
                 continue
             }
@@ -184,7 +184,7 @@ export class CuiApp {
         return `// 由 bedrock-cui 生成，请勿手改（每次构建覆盖）\n` +
             `/** 界面 id → 翻页路由表（new ServerPagesForm(paging[界面 id])） @type {Record<string, import('${runtimeType}').ServerPaging>} */\n` +
             `export const paging = ${JSON.stringify(paging, null, 2)}\n` +
-            `/** defineScreen 定义的界面：界面 id → 清单（名字与按钮序号的对应） @type {Record<string, import('bedrock-cui').ScreenManifest & { paging?: import('${runtimeType}').ServerPaging }>} */\n` +
+            `/** defineUI 定义的界面：界面 id → 清单（名字与按钮序号的对应） @type {Record<string, import('bedrock-cui').ScreenManifest & { paging?: import('${runtimeType}').ServerPaging }>} */\n` +
             `export const screens = ${JSON.stringify(screens, null, 2)}\n` +
             (Object.keys(screens).length ? `// 登记清单：之后界面的 open() / close() 可用\nimport { registerScreens } from 'bedrock-cui/runtime/screens'\nregisterScreens(screens)\n` : '')
     }

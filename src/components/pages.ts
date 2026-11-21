@@ -88,7 +88,7 @@ export class Pages extends Panel {
         const i = this.nextButton ?? this.buttonBase; this.nextButton = i + 1; return i
     }
     private allocator?: () => number
-    /** @internal 界面（defineScreen）的翻页按钮与 props、按钮共用一个序号分配器 */
+    /** @internal 界面（defineUI）的翻页按钮与 props、按钮共用一个序号分配器 */
     _useAllocator(f: () => number): this { this.allocator = f; return this }
 
     /**

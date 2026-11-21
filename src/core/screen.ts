@@ -1,18 +1,19 @@
 /**
- * 界面（单文件、选项式）：一个文件中写数据（props）、逻辑（state、computed、methods、生命周期）与视图（view）。
+ * 界面（单文件、选项式）：一个文件中写数据（props）、逻辑（state、computed、methods、生命周期）与页面（page）。
  * 设计见 docs/design/screen-api.md。
  *
- *   export default defineScreen({
+ *   export default defineUI({
  *       id: 'cui_ui:shop',
- *       props: { greeting: '欢迎光临', item: { text: '钻石', icon: 'textures/items/diamond' } },
+ *       props: { greeting: { type: String, default: '欢迎光临' } },
  *       state() { return { coins: 10 } },
  *       methods: { buy() { this.coins -= 1 } },
- *       view({ props, button }) {
- *           return new Panel().setSize(200, 120).add(new Label(props.greeting).setSize(180, 10), button('buy').setSize(60, 18))
- *       },
+ *       page: ({ greeting, buy }) => new Page().setSize(200, 120).add(
+ *           new Label(greeting).setSize(180, 10),
+ *           new Button().onClick(buy).setSize(60, 18).add(new Label('购买')),
+ *       ),
  *   })
  *
- * 视图在构建时运行一次：props.x 是占位（编译为读取第 n 个表单按钮的绑定），button(名字) 是可点击的按钮。
+ * 页面在构建时运行一次：数据是占位（编译为读取第 n 个表单按钮的绑定），绑定了方法的 Button 与跳转元素编译为表单按钮。
  * 序号与标记由本模块分配，写进清单（ScreenManifest），脚本端运行时按清单把名字映射回序号。
  */
 import { Panel, Element, Button } from './element.js'
@@ -69,7 +70,7 @@ export class ScreenButton extends Panel {
      * 方法从视图的参数中解构得到；close 为内置的「关闭界面」
      */
     onClick(method: MethodRef, ...args: unknown[]): this {
-        if (!method || typeof (method as MethodRef).__method !== 'string') throw new Error('onClick() 的第一个参数应是从视图参数中解构得到的方法，例如 view({ buy, button }) 中的 buy')
+        if (!method || typeof (method as MethodRef).__method !== 'string') throw new Error('onClick() 的第一个参数应是从页面函数的参数中解构得到的方法，例如 page: ({ buy }) => … 中的 buy')
         // 参数写进清单（JSON）：只允许文字、有限的数字、布尔值、null、数组与普通对象（函数等会被 JSON 悄悄变成 null）
         const jsonable = (v: unknown): boolean => v === null || typeof v === 'string' || typeof v === 'boolean' || (typeof v === 'number' && Number.isFinite(v))
             || (Array.isArray(v) && v.every(jsonable))
@@ -110,8 +111,8 @@ export class ScreenButton extends Panel {
 }
 
 /**
- * 视图函数得到的参数：props、state、computed 中的值（占位，编译为读取表单按钮的绑定）与 methods 中的方法（供 onClick 引用），
- * 以及工具 button、close（与 pages，翻页用）。视图从中解构需要的名字，例如 view({ greeting, buy, button })
+ * 页面函数得到的参数：props、state、computed 中的值（占位，编译为读取表单按钮的绑定）与 methods 中的方法（供 onClick 引用），
+ * 页面函数从中解构需要的名字，例如 ({ greeting, buy })
  */
 /** 界面的选项 */
 export interface ScreenOptions {

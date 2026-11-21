@@ -1,5 +1,5 @@
 /**
- * 界面（defineScreen）的脚本端运行时：用游戏的 ActionFormData 显示表单（bedrock-cui/runtime/screens）。
+ * 界面（defineUI）的脚本端运行时：用游戏的 ActionFormData 显示表单（bedrock-cui/runtime/screens）。
  * 构建生成的 cui.generated.js 导入本模块并登记清单；行为包脚本的入口导入 cui.generated.js 之后，界面的 open() / close() 即可使用。
  */
 import * as mc from '@minecraft/server'

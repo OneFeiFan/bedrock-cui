@@ -1,9 +1,9 @@
 /**
- * 界面（defineScreen）的脚本端运行时：与平台无关的部分。显示表单的操作由 FormPlatform 注入——
+ * 界面（defineUI）的脚本端运行时：与平台无关的部分。显示表单的操作由 FormPlatform 注入——
  * 行为包中用游戏的 ActionFormData（runtime/screens.ts），测试中用模拟的平台。
  *
  * 流程：open(玩家, props) → 每个玩家一个实例（state() 初始化，onOpen）→ 按清单把 props 的值填进按钮、显示表单 →
- * 玩家点击 button(名字) → 调用 methods 中的同名方法 → 以新的 props 重新打开，刚才点击的按钮获得默认焦点（真机 1.36.0）；
+ * 玩家点击绑定了方法的按钮（Button().onClick）→ 调用 methods 中的方法 → 以新的 props 重新打开，刚才点击的按钮获得默认焦点（真机 1.36.0）；
  * 翻页按钮按路由表翻页；玩家关闭表单 → onClose，实例销毁。设计见 docs/design/screen-api.md。
  */
 import { _propDefault, type PropItem, type Screen, type ScreenManifest } from '../core/screen.js'
@@ -441,7 +441,7 @@ export class ScreenRuntime<P extends ScreenPlayer = ScreenPlayer> {
         }
     }
 
-    /** 处理一次点击：翻页按钮翻页；button(名字) 调用同名方法、获得焦点、onUpdate。返回是否需要重新打开 */
+    /** 处理一次点击：跳转元素跳转；绑定了方法的按钮调用方法、获得焦点、onUpdate。返回是否需要重新打开 */
     private async handle(inst: Instance, selection: number): Promise<boolean> {
         if (inst.closed) return false
         const m = inst.manifest
