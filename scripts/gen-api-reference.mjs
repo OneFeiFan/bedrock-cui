@@ -157,6 +157,8 @@ const PAGES = [
             ['文字', [
                 ['softWrap', '软换行：返回交给游戏折行的文字。结果缓存。'],
                 ['preWrap', '按 PC 字宽计算每一行，返回以换行符连接的文字。'],
+            ['paginate', '长文本分页：按每页可用的高度切分，返回各页的文字；默认按安卓字宽折行。'],
+            ['PaginateOptions', 'paginate() 的选项：height（必需）、firstHeight、profile，以及折行的选项。'],
                 ['softWrapText', '同 bedrock-cui 的 softWrapText()，不缓存。'],
                 ['wrapText', '按当前字宽计算每一行。'],
                 ['autoSpace', '在汉字与英文、数字之间加空格。'],

@@ -32,6 +32,8 @@ withMetricsProfile('android', () => measureText(text, 1, 110).lines.length)  // 
 - **`Paragraph` 与 `softWrap()`** 将折行交给游戏，由游戏按当前设备的字宽完成；交界处的间隔按两种档案的模拟结果选择。
 - **`Text` 与 `paginate()`** 的折行由 bedrock-cui 计算，按较宽的安卓档案进行，因此在 PC 上每一行会略短于可用宽度。
 
+这些函数的用法见[文字 · 运行期文字](text.md#运行期文字)。
+
 ## 其他平台
 
 iOS、主机等平台的字宽尚未测试。由游戏完成折行的文字（`Label`、`Paragraph`）在这些平台上同样按其实际字宽折行；由 bedrock-cui 计算折行的 `Text` 与 `paginate()`，若该平台的字宽大于安卓，可能出现超宽。

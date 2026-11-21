@@ -27,9 +27,9 @@ npm run dev          # 即 bedrock-cui dev
 
 以下两点尚待真机确认：使用 `/connect` 是否需要开启作弊；`reload all` 之后，正在显示的界面是否立即采用新的界面文件（可能需要重新打开界面）。
 
-## 预览的数据
+## 预览的数据与设置
 
-界面文件的界面，预览中的数据就是 `props` 的默认值，以及逻辑运行后计算出的值（见[数据（props）](props.md)）。
+预览界面文件时，数据取 `props` 的默认值，以及逻辑运行后计算出的值（见[数据（props）](props.md)）。
 
 模拟的屏幕尺寸在配置的 `preview` 中设置：
 
@@ -60,19 +60,49 @@ export default defineConfig({
 
 ## 在网页中嵌入预览
 
-`mountPreview()`（`bedrock-cui/web`）是预览服务器所使用的底层接口，可以将预览嵌入其他网页，例如本手册的在线示例：
+预览服务器使用的两个函数可以把预览嵌入其他网页，本手册的在线示例即如此。它们在 `bedrock-cui/web` 中：
+
+- `mountPreview(元素, 选项)` 在元素中画出一棵控件树；
+- `runScreenInBrowser(界面, 选项)` 在浏览器中运行界面文件的逻辑。
+
+只显示控件树时，使用 `mountPreview()`：
 
 ```js
+import { Image, Panel, Size } from 'bedrock-cui'
 import { mountPreview } from 'bedrock-cui/web'
-import { buildBook } from './ui/book.mjs'
+
+const card = new Panel().setSize(120, 40).add(new Image('textures/cui_example/panel').setSize(Size.full()))
 
 mountPreview(document.getElementById('app'), {
-    root: buildBook,                       // 根控件，或返回根控件的函数
-    viewport: [320, 200],
-    scale: 3,
+    root: card,                          // 根控件，或返回根控件的函数
+    viewport: [320, 200],                // 模拟的屏幕尺寸（界面像素）
+    scale: 3,                            // 放大倍数
     textures: { 'textures/cui_example/panel': { url: '/res/textures/cui_example/panel.png', size: [16, 16], nineslice: 4 } },
-    fonts: { unifont: '/font/unifont.hex.gz', ascii: '/font/ascii.png' },
+    fonts: { unifont: '/font/unifont.hex.gz' },     // 像素字体的地址；不给时用系统字体
 })
 ```
 
-表单数据通过 `title`、`formText`、`formButtons` 三个信号（`signal()`）提供。界面文件的点击、状态与页面跳转由 `runScreenInBrowser()` 处理，各选项见 [API 参考](reference/api-web.md)。
+预览界面文件时，两个函数一起使用。界面的数据写在表单的标题与按钮文字中（见[工作原理](how-it-works.md)），两个函数通过三个信号共享它们：`runScreenInBrowser()` 每次「打开表单」时写入，`mountPreview()` 据此显示。信号由 `signal(初始值)` 创建，值改变时预览随之重画。预览中的点击，由 `onFormButton` 交回运行时：
+
+```js
+import { signal } from 'bedrock-cui'
+import { mountPreview, runScreenInBrowser } from 'bedrock-cui/web'
+import shop from './ui/shop.screen.mjs'
+
+const { root, manifest } = shop.build()
+// 表单的标题、按钮文字、按钮图标
+const form = { title: signal(''), formButtons: signal([]), formButtonIcons: signal([]) }
+
+let runner
+mountPreview(document.getElementById('app'), {
+    root, viewport: [320, 200], scale: 3, ...form,
+    onFormButton: (i) => runner.click(i),         // 点击了第 i 个表单按钮：交给运行时
+})
+runner = runScreenInBrowser(shop, {
+    manifest, paging: shop.paging(), ...form,
+    log: (message) => console.log(message),       // 点击了什么、调用了哪个方法
+})
+```
+
+各选项见 [API 参考](reference/api-web.md)。
+

@@ -21,7 +21,7 @@ const box = new Panel().setSize(130, 96).add(new Image('textures/ui/dialog_backg
 - 长度不固定的内容，例如运行期文字、数量随数据变化的列表；
 - 使用百分比尺寸的界面中，在小屏幕上可能放不下的内容。
 
-固定长度的长文本，也可以用 `paginate()` 分成多页，放进[页面](pages.md)的 `Router` 中显示。
+固定长度的长文本，也可以用 `paginate()`（见[文字 · 运行期文字](text.md#运行期文字)）分成多页，放进[页面](pages.md)的 `Router` 中显示。
 
 ::: warning
 滚动区域中可以直接显示界面的数据（`props`）：bedrock-cui 在使用数据的控件处读取它。

@@ -14,7 +14,7 @@
  */
 import { softWrapText, wrapText, type SoftWrapOptions, type WrapOptions } from '../font/rich.js'
 
-export { autoSpace, softWrapText, wrapText, type SoftWrapOptions, type WrapOptions } from '../font/rich.js'
+export { autoSpace, paginate, softWrapText, wrapText, type PaginateOptions, type SoftWrapOptions, type WrapOptions } from '../font/rich.js'
 export { measureText, setMetricsProfile, textWidth, withMetricsProfile, type MetricsProfile } from '../font/metrics.js'
 
 /** 最近的结果（翻页时背包没变，文字一样：直接取，不再模拟） */

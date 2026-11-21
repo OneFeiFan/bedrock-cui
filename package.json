@@ -59,7 +59,8 @@
     "docs:check": "node scripts/check-docs.mjs",
     "docs:site": "node scripts/build-site.mjs",
     "test-pack": "node examples/cui_toggle_test/build.mjs",
-    "e2e": "node scripts/e2e-create.mjs"
+    "e2e": "node scripts/e2e-create.mjs",
+    "docs:audit": "node scripts/audit-docs.mjs"
   },
   "devDependencies": {
     "@minecraft/server": "^2.0.0",

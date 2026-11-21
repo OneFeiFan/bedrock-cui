@@ -160,7 +160,11 @@ const storyBook = defineUI({
 })
 ```
 
-运行期文字的内容在构建时未知，`Paragraph` 无法预先处理。脚本在传入文字之前，可以用 `softWrap()` 做与 `Paragraph` 相同的处理（见[脚本端](runtime.md#softwrap)）：
+运行期文字的内容在构建时未知，`Paragraph` 无法预先处理。行为包脚本在传入文字之前，用 `bedrock-cui/runtime` 中的函数处理它。这些函数按用途分为三类，下面依次介绍。
+
+### 交给游戏折行：softWrap
+
+`softWrap(文字, 宽度, 选项)` 对文字做与 [`Paragraph`](#paragraph) 相同的处理，返回交给游戏折行的文字；宽度是显示它的文字控件的宽度（像素）。折行由游戏按当前设备的字宽完成，所以在各平台上都排满一行。一般使用它即可：
 
 ```js
 // 接上例：行为包脚本（player 为玩家，text 为要显示的文字）
@@ -168,6 +172,48 @@ import { softWrap } from 'bedrock-cui/runtime'
 
 storyBook.open(player, { story: softWrap(text, 110) })
 ```
+
+第三个参数是一个对象，各项都可以省略。例如显示文字的控件字号为 2 倍时：
+
+```js
+// 接上例
+const big = softWrap(text, 110, { scale: 2 })
+```
+
+| 选项 | 说明 |
+|---|---|
+| `scale` | 字号倍数，与显示该文字的控件的 `setFontScale()` 一致。默认 1。 |
+| `autoSpace` | 是否在汉字与英文、数字之间留空。默认 `true`。 |
+| `spacing` | 交界处的间隔：`'auto'`（默认，按模拟结果择优）、`'nbsp'`（一律用不换行空格）、`'none'`（一律不留）。 |
+| `effort` | 择优的方式：`'fast'`（默认）只修正出现问题的交界；`'full'` 尝试每一处交界的每一种间隔。 |
+
+`softWrap()` 缓存最近 64 次的结果：同样的文字、宽度与选项，直接返回缓存。
+
+### 由 bedrock-cui 折行与分页：wrapText、preWrap、paginate
+
+下面三个函数由 bedrock-cui 自己计算每一行在哪里断开。需要知道行数、或者要把长文本分成几页时使用：
+
+| 函数 | 返回 | 说明 |
+|---|---|---|
+| `wrapText(文字, 宽度, 选项)` | 每一行组成的数组 | 按当前的[字宽档案](cross-platform.md#字宽档案)折行，行首补上延续的格式码 |
+| `preWrap(文字, 宽度, 选项)` | 以换行符连接的文字 | 按 PC 的字宽折行。只在 PC 上精确，适用于确定只在 PC 上运行的场合 |
+| `paginate(文字, 宽度, { height })` | 每一页的文字组成的数组 | 按每页可用的高度（像素）分页；默认按最宽的安卓字宽折行，两个平台上都放得下 |
+
+```js
+import { paginate } from 'bedrock-cui/runtime'
+
+const longText = '……'                                   // 一段很长的文字
+// 显示它的文字控件宽 110、高 60（每行 10 像素，一页 6 行）
+const pages = paginate(longText, 110, { height: 60 })
+// pages[0]、pages[1]……依次是各页的文字，作为数据传给界面
+```
+
+`wrapText()` 与 `preWrap()` 的选项与 `softWrap()` 的 `scale`、`autoSpace` 相同；`paginate()` 另有 `firstHeight`（第一页可用的高度，例如第一页有标题）。完整的选项见 [API 参考](reference/api-runtime.md)。
+
+### 量宽度与留空
+
+- `autoSpace(文字)` 在汉字与英文、数字之间留一个空格（上面的函数已默认这样处理）。
+- `textWidth(文字, 字号)` 返回文字的宽度（像素）；`measureText(文字, 字号, 最大宽度)` 返回折行后的结果，其中 `lines` 为各行。两者都按当前的字宽档案计算。
 
 ## 不同设备上的字宽
 
