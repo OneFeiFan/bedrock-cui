@@ -298,3 +298,7 @@ pre.code::-webkit-scrollbar-thumb:hover { background: #5a5a5a; }
     .cui-preview { border: 1px solid #ddd7cb; border-top: none; }
     .example .cui-preview { border: 0; }
 }
+
+/* 项目图标（顶栏的品牌名之前）：像素画，不平滑 */
+.topbar .brand { display: inline-flex; align-items: center; gap: 8px; }
+.topbar .brand::before { content: ''; width: 20px; height: 20px; flex: 0 0 auto; background: url('favicon-32.png') center / contain no-repeat; image-rendering: pixelated; }

@@ -115,3 +115,4 @@
 - 首页的数字（真机规则、静态检查、在线示例）在构建网站时统计，不要手写。
 - 首页与手册各页的标题、侧栏、按钮用 GNU Unifont 的子集（`docs/site/fonts/unifont-site.woff2`，SIL OFL 1.1）。改了标题、侧栏或首页的文字后运行 `python3 scripts/subset-site-font.py`（需要 `pip install fonttools brotli`）重新裁剪；构建网站时若有子集中没有的字，会给出提示。
 - 素材都是自己画的；不使用原版贴图（仓库是 MIT 许可，Mojang 的素材无法随之授权）。可以使用游戏截图。
+- 项目图标是自己画的像素画（一块基岩上的游戏界面面板），在 `docs/site/icon/icon.mjs` 中以字符网格写成：`ICON_32` 为主图标，`ICON_16` 为浏览器标签页手工简化的版本。网站的各尺寸在构建时生成；README 使用的 `docs/icon.png` 改了网格后运行 `node scripts/build-icon.mjs` 更新（测试核对两者一致）。

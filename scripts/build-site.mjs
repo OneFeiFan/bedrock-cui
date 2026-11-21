@@ -11,6 +11,8 @@ import { Marked } from 'marked'
 import { Column, Label, Panel, Row } from 'bedrock-cui'
 import { Html, Link, renderHtml } from 'bedrock-cui/dom'
 import { encodePng } from 'bedrock-cui/node'
+import { iconPng } from './build-icon.mjs'
+import { ICON_16, ICON_32 } from '../docs/site/icon/icon.mjs'
 import { build as viteBuild } from 'vite'
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
@@ -211,7 +213,10 @@ for (const file of files) {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${page.title} | ${SITE_TITLE}</title>
-<link rel="stylesheet" href="${prefix}site.css">${page.previews ? `\n<script src="${prefix}assets/cui-preview.js"></script>` : ''}
+<link rel="stylesheet" href="${prefix}site.css">
+<link rel="icon" type="image/png" sizes="32x32" href="${prefix}favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="${prefix}favicon-16.png">
+<link rel="apple-touch-icon" href="${prefix}apple-touch-icon.png">${page.previews ? `\n<script src="${prefix}assets/cui-preview.js"></script>` : ''}
 </head>
 <body>
 ${body}
@@ -233,6 +238,12 @@ document.querySelectorAll('.sidebar a').forEach((a) => a.addEventListener('click
     fs.writeFileSync(to, doc)
 }
 fs.copyFileSync(path.join(root, 'docs', 'site', 'site.css'), path.join(out, 'site.css'))
+
+// 项目图标（docs/site/icon/icon.mjs）：标签页 16 / 32、主屏幕 180（不透明，四周留深色）、首页的大图标 192
+fs.writeFileSync(path.join(out, 'favicon-16.png'), iconPng(ICON_16, 1))
+fs.writeFileSync(path.join(out, 'favicon-32.png'), iconPng(ICON_32, 1))
+fs.writeFileSync(path.join(out, 'apple-touch-icon.png'), iconPng(ICON_32, 5, 10, [28, 27, 26]))
+fs.writeFileSync(path.join(out, 'icon-192.png'), iconPng(ICON_32, 6))
 
 // ───────── 首页（docs/site/home）：游戏风格，商店界面由预览引擎真实运行，数字在构建时统计 ─────────
 {

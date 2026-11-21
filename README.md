@@ -1,3 +1,5 @@
+<img src="https://raw.githubusercontent.com/OneFeiFan/bedrock-cui/master/docs/icon.png" width="128" height="128" alt="bedrock-cui 的图标：基岩上的游戏界面面板">
+
 # bedrock-cui
 
 [![test](https://github.com/OneFeiFan/bedrock-cui/actions/workflows/test.yml/badge.svg)](https://github.com/OneFeiFan/bedrock-cui/actions/workflows/test.yml)
