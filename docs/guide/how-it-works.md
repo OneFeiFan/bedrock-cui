@@ -100,7 +100,7 @@ shop.open(player)
 
 | 部分 | 内容 | 与 bedrock-cui 的关系 |
 |---|---|---|
-| 资源包 | 贴图、界面定义（`ui/*.json`）等，由游戏客户端读取 | bedrock-cui 编译出的界面文件、对 `ui/server_form.json` 的改写 |
+| 资源包 | 贴图、界面定义（`ui/*.json`）等，由游戏客户端读取 | bedrock-cui 编译出的 JSON UI 文件、对 `ui/server_form.json` 的改写 |
 | 行为包 | 游戏逻辑，包括脚本（`scripts/`） | 打开表单的脚本；bedrock-cui 的脚本端运行时（处理点击、跳转与刷新）随脚本打包 |
 | 附加包（`.mcaddon`） | 资源包与行为包打包在一起 | 由 sapdon 构建与打包 |
 

@@ -17,11 +17,11 @@ PC 与安卓使用不同的字体绘制汉字，字宽不同：
 bedrock-cui 用字宽档案描述这一差异：`'pc'`（默认）与 `'android'`。排版、折行模拟与预览均按当前档案计算：
 
 ```js
-import { measureText, withMetricsProfile } from 'bedrock-cui'
+import { withMetricsProfile, wrapText } from 'bedrock-cui'
 
 const text = '背包里一共11种物品，其中钻石有3个。'
-measureText(text, 1, 110).lines.length                                   // PC 下的行数
-withMetricsProfile('android', () => measureText(text, 1, 110).lines.length)  // 安卓下的行数
+wrapText(text, 110).length                                       // PC 下的行数
+withMetricsProfile('android', () => wrapText(text, 110).length)  // 安卓下的行数
 ```
 
 `setMetricsProfile(档案)` 切换全局的字宽档案（`'pc'` 或 `'android'`）；`withMetricsProfile(档案, 函数)` 只在函数运行期间切换，结束后恢复原来的档案。

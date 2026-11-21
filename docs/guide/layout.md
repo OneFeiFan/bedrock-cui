@@ -27,7 +27,7 @@ new Panel().setSize(Size.full())                             // 与父控件同�
 
 ## 锚点与偏移
 
-控件的位置由**锚点**与**偏移**决定。锚点是一个方位，例如「右下角」；`控件.setAnchor(锚点)` 让控件自身的这个方位，对齐到父控件的同一个方位。`控件.setOffset(x, y)` 再从对齐的位置移动若干像素（向右、向下为正）：
+控件的位置由「锚点」与「偏移」决定。锚点是一个方位，例如「右下角」；`控件.setAnchor(锚点)` 让控件自身的这个方位，对齐到父控件的同一个方位。`控件.setOffset(x, y)` 再从对齐的位置移动若干像素（向右、向下为正）：
 
 ```js preview=card 200x80
 import { Anchor, Color, Image, Label, Panel, Size } from 'bedrock-cui'
@@ -41,7 +41,7 @@ const card = new Panel().setSize(180, 60).add(
 
 锚点共九个：`TOP_LEFT`、`TOP_CENTER`、`TOP_RIGHT`、`CENTER_LEFT`、`CENTER`、`CENTER_RIGHT`、`BOTTOM_LEFT`、`BOTTOM_CENTER`、`BOTTOM_RIGHT`。未设置时为 `CENTER`。
 
-有时控件要对齐的不是父控件上的同一个方位。例如提示框要放在父控件的**右侧外面**：提示框的左上角，对齐父控件的右上角。这时用 `控件.setPlacement(父控件上的方位, 自身的方位)` 分别指定两个方位：
+有时控件要对齐的不是父控件上的同一个方位。例如提示框要放在父控件的右侧外面：提示框的左上角，对齐父控件的右上角。这时用 `控件.setPlacement(父控件上的方位, 自身的方位)` 分别指定两个方位：
 
 ```js preview=box 240x80
 import { Anchor, Color, Image, Label, Panel, Size, Texture } from 'bedrock-cui'
@@ -61,7 +61,7 @@ const box = new Panel().setSize(80, 30).add(
 
 ## 弹性布局
 
-`Row` 把子控件横向依次排列，`Column` 纵向依次排列。排列的方向称为**主轴**（`Row` 是横向，`Column` 是纵向），与它垂直的方向称为**交叉轴**。
+`Row` 把子控件横向依次排列，`Column` 纵向依次排列。排列的方向称为「主轴」（`Row` 是横向，`Column` 是纵向），与它垂直的方向称为「交叉轴」。
 
 ```js preview=row 220x40
 import { Align, Color, Image, Justify, Label, Panel, Row, Size } from 'bedrock-cui'

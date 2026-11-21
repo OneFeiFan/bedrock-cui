@@ -74,8 +74,8 @@
 |---|---|---|
 | 抽查到的问题 | preview、runtime、text、cross-platform | ✅ 已修（见下） |
 | 入门 | introduction、how-it-works、quick-start | ✅ 已查 |
-| 搭建界面 | elements、layout、text、images、layering、glyph-icons | 待查 |
-| 界面文件 | screens、props、logic、pages、animation、timers | 待查 |
+| 搭建界面 | elements、layout、text、images、layering、glyph-icons | ✅ 已查 |
+| 界面文件 | screens、props、logic、pages、animation、timers | ✅ 已查 |
 | 界面内的交互 | tabs、scroll、bindings | 待查 |
 | 脚本 | runtime | 待查 |
 | 工具 | preview、lint、packaging、sapdon | 待查 |
@@ -105,4 +105,15 @@
 - 简介：useSapdon() 首次出现加链接；「测试方法与结果」（已不在真机规则页）改为「所依据的游戏行为」；学习路径补上「工具」。
 - 工作原理：开头列的术语与术语表一致（「表单数据」→「页」）；正文去掉加粗；UUID 一段与「构建与打包」重复，改为链接。
 - 快速上手：重复的「见工作原理」删去；「与游戏中一样」（预览模拟不了默认焦点）改为「同样可以操作」；「编译为游戏读取的界面文件」与术语「界面文件」冲突，改为 JSON UI。
+
+### 第 4 步：搭建界面、界面文件（已完成）
+
+- 控件与组件树：删去构造函数的历史说明（「不再接收……」）；「生成的界面文件（JSON UI）」改为「生成的 JSON UI」；删去读者看不懂的「子控件不应去修改它的父控件或兄弟控件」；自定义组件的例子白字配浅灰底，改为深色字并改为可预览。
+- 尺寸与位置：正文的加粗术语改为「」。
+- 文字：「不同设备上的字宽」与「跨平台」重复同一张表，改为一段加链接；删去 measureText（开发者用 wrapText 取行数即可），跨平台的示例随之改用 wrapText。
+- 叠放：删去「测试方法见真机规则」（那一页已没有测试方法）；去掉加粗。字形图标：`new Image(props.item)` 是旧写法，改为带图标的数据（type: Item）；「服务端脚本」改为「行为包脚本」。
+- 界面文件：页面函数的参数说明为一个对象（解构取用）；去掉「你」；「编译为界面文件」改为 JSON UI；另一个界面打开时 `open()` 的效果按时机讲清（在按钮的方法中会换成新界面；其他时候不生效，要先 close()）——原文是实现层面的说法。
+- 数据（props）：列表的例子返回 Panel，改为 Page；`.number` 首次出现处链接到表达式。
+- 动画：「可续播的动画」的三种技巧是实现细节，且与「计时显示 · 原理」重复，改为一句话指向 ProgressBar。
+- 全站扫描：「你」、正文加粗、「界面文件」指 JSON UI、「服务端脚本」——页面一章的三段加粗开头改为列表；工作原理、在 sapdon 中使用两处 JSON UI。
 

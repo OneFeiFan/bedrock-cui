@@ -70,13 +70,13 @@ const card = defineUI({
 页面中用 `列表[序号]` 读取第几项（从 0 开始），列表的长度为 `max`。脚本传入的项数少于 `max` 时，多出的位置没有值：
 
 ```js preview=list 200x80
-import { Anchor, Color, defineUI, Image, Label, Panel, Size } from 'bedrock-cui'
+import { Anchor, Color, defineUI, Image, Label, Page, Size } from 'bedrock-cui'
 
 const list = defineUI({
     id: 'cui_ui:list',
     props: { goods: { type: Array, max: 3, default: ['苹果', '面包', '牛奶'] } },
     page({ goods }) {
-        const box = new Panel().setSize(180, 60)
+        const box = new Page().setSize(180, 60)
         box.add(new Image('textures/ui/dialog_background_opaque').setSize(Size.full()))
         goods.forEach((g, i) => box.add(
             new Label(g).setColor(Color.hex('#3c2814')).setSize(160, 10).setAnchor(Anchor.TOP_LEFT).setOffset(10, 8 + i * 16),
@@ -103,11 +103,11 @@ shop.open(player, { greeting: `你好，${player.name}` })
 
 ## 页面也可以显示 state 与 computed
 
-页面函数的参数中还有 state 与 computed 中的值，用法与 props 相同，例如「界面文件」一节中的 `coinText`。它们的类型由初始值决定：`state()` 返回的初始值，以及 computed 用初始状态计算出的值。列表的长度是初始值的长度。
+页面函数的参数中还有 state 与 computed 中的值，用法与 props 相同，例如[界面文件](screens.md)中的 `coinText`。它们的类型由初始值决定：`state()` 返回的初始值，以及 computed 用初始状态计算出的值。列表的长度是初始值的长度。
 
 ## 限制
 
 - **显示数据的控件需要像素尺寸**（例如 `setSize(120, 10)`）。数据经由服务端表单的按钮传递，读取按钮数据的方式要求像素尺寸。缺少时静态检查报错。
 - **一个控件只能使用一项数据**。需要两项时（例如文字用 `a`，显示条件用 `b`），把控件拆成嵌套的两层，各用一项。
 - **页面中使用了没有定义的名字时，构建报错**，例如把 `greeting` 写成 `greting`。
-- **运算只有整数**。`数据.number` 把文字转为数字，但除法与小数都得到整数（真机）。
+- **运算只有整数**。`数据.number` 把文字转为数字（见[表达式](bindings.md)），但除法与小数都得到整数（真机）。

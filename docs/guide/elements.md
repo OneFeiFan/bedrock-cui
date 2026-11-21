@@ -51,7 +51,7 @@ label.color = Color.WHITE                              // 直接赋值
 label.set({ color: Color.WHITE, layer: 2 })            // 一次设置多项
 ```
 
-`控件.set({ 属性名: 值, … })` 是创建之后一次设置多项属性的方法，值会转换为对应的类型，例如 `size: [100, 20]` 与 `size: Size.of(100, 20)` 等价。它与构造函数无关：构造函数只接收必需的参数（不再接收包含各项属性的对象）。
+`控件.set({ 属性名: 值, … })` 是创建之后一次设置多项属性的方法，值会转换为对应的类型，例如 `size: [100, 20]` 与 `size: Size.of(100, 20)` 等价。构造函数只接收必需的参数，其余属性都在创建之后设置。
 
 ## 组成组件树
 
@@ -82,7 +82,7 @@ const title = new Label('钻石').setName('title')
 
 - 静态检查的输出用名称组成的路径指出控件的位置，例如 `root/panel0/card/intro`；
 - 下文的 `find()` 按名称查找控件；
-- 生成的界面文件（JSON UI）中，控件以名称为键。
+- 生成的 JSON UI 中，控件以名称为键。
 
 同一个容器中的子控件不能重名，否则静态检查报错（`duplicate-name`）。不同容器中的子控件可以同名。
 
@@ -101,7 +101,7 @@ const title = card.find('title')              // 在子控件的子控件中也�
 
 `容器.remove(控件)` 把容器的一个直接子控件移除，参数是控件本身（不是名称）。移除后，这个控件可以加入别的容器。
 
-组件树在构建时一次搭好，通常不需要移除控件：需要「有时显示、有时不显示」时，用显示条件（`setVisible()`，见[数据（props）](props.md)）。`remove()` 主要用于自定义组件在内部重新搭建自己的子控件。子控件不应去修改它的父控件或兄弟控件。
+组件树在构建时一次搭好，通常不需要移除控件：需要「有时显示、有时不显示」时，用显示条件（`setVisible()`，见[数据（props）](props.md)）。`remove()` 主要用于自定义组件在内部重新搭建自己的子控件。
 
 `控件.clone()` 复制控件及其全部子控件，返回的副本没有父控件，可以加入任何容器。副本的名称与原控件相同，所以把它加入同一个容器时，需要另设名称：
 
@@ -116,7 +116,7 @@ const row = new Panel().add(first, first.clone().setName('second'))
 
 可以复用的界面部件，通过继承内置的控件类编写：在构造函数中创建子控件并加入自己：
 
-```js
+```js preview=bar 220x40
 import { Anchor, Color, Image, Label, Length, Panel, Size } from 'bedrock-cui'
 
 /** 带背景的标题栏 */
@@ -126,7 +126,7 @@ class TitleBar extends Panel {
         this.setSize(Size.of(Length.pct(100), 16))
         this.add(
             new Image('textures/ui/dialog_background_opaque').setSize(Size.full()),
-            new Label(text).setColor(Color.WHITE).setAnchor(Anchor.CENTER),
+            new Label(text).setColor(Color.hex('#3c2814')).setAnchor(Anchor.CENTER),
         )
     }
 }
