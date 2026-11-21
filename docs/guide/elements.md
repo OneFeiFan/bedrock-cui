@@ -26,9 +26,9 @@ const list = new Stack('vertical')                        // 让子控件纵向�
 | `Stack` | 子控件沿一个方向依次排列。 |
 | `Row`、`Column` | 弹性布局：间距、对齐、伸展。 |
 | `Grid` | 网格。 |
-| `Scroll` | 内容超出时可滚动的区域。 |
-| `Button`、`Toggle` | 按钮与开关。 |
-| `Page`、`Router`、`Tabs`、`Link`、`Close` 等 | 界面文件中的页面、页面组与跳转（见[界面文件](screens.md#页面函数)）。 |
+| `Scroll` | 内容超出时可滚动的区域（见[滚动](scroll.md)）。 |
+| `Button`、`Toggle` | 按钮（见[逻辑](logic.md#按钮与方法)）与开关（见[选项卡](tabs.md#单个开关toggle)）。 |
+| `Page`、`Router`、`Tabs`、`Link`、`Close` 等 | 界面文件中的页面、页面组与跳转（见[界面文件](screens.md#页面函数)、[页面](pages.md)、[选项卡](tabs.md)，关闭见[逻辑](logic.md#生命周期)）。 |
 | `ProgressBar` | 随计时器前进的进度条（见[计时显示](timers.md)）。 |
 
 ## 设置属性

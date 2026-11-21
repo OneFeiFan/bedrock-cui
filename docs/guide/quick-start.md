@@ -78,12 +78,12 @@ const card = defineUI({
 export default card
 ```
 
-- `defineUI({ … })` 定义一个界面。`id` 是界面 id：脚本打开表单时，表单的标题就是它；
+- `defineUI({ … })` 定义一个界面（见[界面文件](screens.md)）。`id` 是界面 id：脚本打开表单时，表单的标题就是它；
 - `new Page()` 创建一页，`.add(…)` 把括号中的控件加入这一页。每个 `setXxx(…)` 设置一项属性并返回控件本身，因此可以连续调用；
 - `props` 声明脚本传给界面的数据：`greeting` 是文字（`type: String`），默认值为「欢迎」；
-- 页面函数的参数中有声明过的数据，`page({ greeting })` 取出 `greeting`。`new Label(greeting)` 在预览中显示默认值「欢迎」，在游戏中显示脚本传入的值。显示数据的控件需要像素尺寸（这里是 `setSize(120, 10)`）。
+- 页面函数的参数中有声明过的数据，`page({ greeting })` 取出 `greeting`。`new Label(greeting)`（文字，见[文字](text.md#label)）在预览中显示默认值「欢迎」，在游戏中显示脚本传入的值。显示数据的控件需要像素尺寸（这里是 `setSize(120, 10)`）。
 
-这个界面没有逻辑，所以只有数据和页面两块。控件与布局见「搭建界面」一章。
+这个界面没有逻辑，所以只有数据和页面两块。控件与布局见[控件与组件树](elements.md)起的「搭建界面」一章。
 
 ## 登记界面
 

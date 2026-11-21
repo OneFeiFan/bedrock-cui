@@ -64,4 +64,3 @@ for (const e of errors) console.log(e)      // 例：scripts/index.js:3:6 Proper
 ```
 
 不打包、用 `copyRuntime()` 的项目，传入行为包目录（例如 `checkScripts('my_pack_BP')`），检查其中 `scripts/` 下的脚本。
-

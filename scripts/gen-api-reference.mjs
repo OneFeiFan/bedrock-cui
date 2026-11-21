@@ -161,9 +161,9 @@ const PAGES = [
         ]],
         ['类型', [['PreviewOptions', 'mountPreview() 的选项。'], ['PreviewTexture', '预览使用的贴图：地址与贴图信息。'], ['Preview', 'mountPreview() 的返回值：表单数据的信号、resetToggles() 等。']]],
     ]]] },
-    { file: 'api-dom.md', title: 'bedrock-cui/dom', intro: '网页输出：将控件树渲染为 HTML。', modules: [['bedrock-cui/dom', 'src/dom/index.ts', [
+    { file: 'api-dom.md', title: 'bedrock-cui/dom', intro: '网页输出：将组件树渲染为 HTML。', modules: [['bedrock-cui/dom', 'src/dom/index.ts', [
         ['渲染', [
-            ['renderHtml', '将控件树渲染为 HTML 字符串。'],
+            ['renderHtml', '将组件树渲染为 HTML 字符串。'],
         ]],
         ['网页专用的元素', [
             ['Link', '链接。'],

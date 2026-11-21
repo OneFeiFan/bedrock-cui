@@ -64,10 +64,10 @@ export default defineConfig({
 
 预览服务器使用的两个函数可以把预览嵌入其他网页，本手册的在线示例即如此。它们在 `bedrock-cui/web` 中：
 
-- `mountPreview(元素, 选项)` 在元素中画出一棵控件树；
+- `mountPreview(元素, 选项)` 在元素中画出一棵组件树；
 - `runScreenInBrowser(界面, 选项)` 在浏览器中运行界面文件的逻辑。
 
-只显示控件树时，使用 `mountPreview()`：
+只显示组件树时，使用 `mountPreview()`：
 
 ```js
 import { Image, Panel, Size } from 'bedrock-cui'
@@ -107,4 +107,3 @@ runner = runScreenInBrowser(shop, {
 ```
 
 各选项见 [API 参考](reference/api-web.md)。
-

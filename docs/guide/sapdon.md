@@ -44,7 +44,7 @@ useSapdon(config, { GRegistry, UISystemRegistry, addPacketResolver })
 registry.submit()
 ```
 
-`addPacketResolver` 可以省略：传入时，bedrock-cui 编译出的 JSON UI 文件写成紧凑的 JSON；省略时由 sapdon 按缩进写出，内容相同，但文件大得多（嵌套很深的控件树中，缩进约占八成）。
+`addPacketResolver` 可以省略：传入时，bedrock-cui 编译出的 JSON UI 文件写成紧凑的 JSON；省略时由 sapdon 按缩进写出，内容相同，但文件大得多（嵌套很深的组件树中，缩进约占八成）。
 
 行为包脚本的写法与新建的项目相同：
 
