@@ -241,9 +241,9 @@ export function lint(roots: RNode[], options: LintOptions = {}): LintIssue[] {
             const d = decimalIn(v)
             if (isExpr(v)) {
                 const risk = textLogicRisk(v)
-                if (risk) push('text-logic', 'warning', n, `${key} 的表达式中有${risk}：这种组合在游戏中结果错误（真机 1.60.0、1.68.0）。同一数据的「包含其中任一个」会自动写成一次比较；不同数据的判断，请让逻辑算好（computed）再显示`)
+                if (risk) push('text-logic', 'warning', n, `${key} 的表达式中有${risk}：这种组合在游戏中结果错误（真机）。同一数据的「包含其中任一个」会自动写成一次比较；不同数据的判断，请让逻辑算好（computed）再显示`)
             }
-            if (d !== undefined) push('decimal-arith', 'warning', n, `${key} 的表达式中有小数常数 ${d}：绑定中的运算只有整数，小数常数参与运算时结果仍是整数（真机 1.67.0：5 × 0.1 为 0）——改用整数，例如先乘后除，或让脚本直接传入算好的整数`)
+            if (d !== undefined) push('decimal-arith', 'warning', n, `${key} 的表达式中有小数常数 ${d}：绑定中的运算只有整数，小数常数参与运算时结果仍是整数（真机：5 × 0.1 为 0）——改用整数，例如先乘后除，或让脚本直接传入算好的整数`)
         }
         if (n.props.cuiTabsStep) push('tabs-step', 'warning', n, '选项卡（Tabs）中的 Prev / Next 编译为客户端的开关：鼠标不动时连续点击，第二次会落到错误的位置（真机）。需要在同一位置连续翻页时，改用 Router')
         if (n.props.web) push('web-only', 'error', n, `${n.props.web.tag === 'a' ? 'Link' : 'Html'} 是网页专用的元素（bedrock-cui/dom），不能编译成 JSON UI`)

@@ -143,7 +143,7 @@ class Compiler {
             const c = compileExpr(v as Expr, `${key[0]}${dynIndex++}_`)
             Object.assign(vars, c.variables)
             if (c.globals.length && c.controls.length) {
-                this.issues.push({ rule: 'mixed-sources', level: 'warning', path: n.path, message: `${key} 的表达式同时读全局绑定（${c.globals.join('、')}）与开关状态：真机里开关变化不会触发重新计算（1.5.2）。把全局条件放进一个 stateFrom 开关，再按开关名读` })
+                this.issues.push({ rule: 'mixed-sources', level: 'warning', path: n.path, message: `${key} 的表达式同时读全局绑定（${c.globals.join('、')}）与开关状态：真机里开关变化不会触发重新计算。把全局条件放进一个 stateFrom 开关，再按开关名读` })
             }
             for (const g of c.globals) if (!declaredGlobals.has(g)) { declaredGlobals.add(g); bindings.push({ binding_name: g, ...this.cond() }) }
             for (const col of c.collections) {

@@ -9,8 +9,6 @@
 | 名称 | 种类 | 说明 |
 |---|---|---|
 | `renderHtml` | 函数 | 将控件树渲染为 HTML 字符串。 |
-| `cssLength` | 函数 | 将 JSON UI 的尺寸写法转换为 CSS 长度。 |
-| `formatCodesToHtml` | 函数 | 将含 § 格式码的文字转换为 HTML。 |
 
 ## 网页专用的元素
 

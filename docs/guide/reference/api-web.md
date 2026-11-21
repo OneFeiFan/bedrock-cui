@@ -11,8 +11,6 @@
 | `mountPreview` | 函数 | 在网页元素中按游戏的规则绘制界面。 |
 | `runScreenInBrowser` | 函数 | 在浏览器中运行界面文件的逻辑（bedrock-cui dev 与手册网站的预览共用）：点击 → 方法 → 重新显示；游戏 API 为模拟对象。 |
 | `ScreenPreviewOptions` | 接口 | runScreenInBrowser 的选项：清单、路由表、预览的表单数据、日志。 |
-| `mountDevtools` | 函数 | 预览的调试面板：控件边框、表单数据。 |
-| `loadPixelFonts` | 函数 | 加载预览使用的点阵字体。 |
 
 ## 类型
 

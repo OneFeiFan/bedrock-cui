@@ -51,7 +51,7 @@
 | `Justify` | 枚举 | 弹性布局主轴方向的分布方式。 |
 | `Align` | 枚举 | 弹性布局交叉轴方向的对齐方式。 |
 
-## 界面（defineScreen）
+## 界面文件（defineUI）
 
 | 名称 | 种类 | 说明 |
 |---|---|---|
@@ -89,7 +89,6 @@
 | 名称 | 种类 | 说明 |
 |---|---|---|
 | `defineConfig` | 函数 | 定义项目配置（cui.config.mjs）：命名空间、界面、贴图目录、预览数据。bedrock-cui dev 与 useSapdon() 共用。 |
-| `screenOf` | 函数 | 取出配置中一个界面的构建函数与选项。 |
 
 ## 表达式与响应式
 
@@ -99,16 +98,11 @@
 | `Expr` | 类 | 表达式。编译为 JSON UI 的绑定，由游戏在运行时求值。 |
 | `signal` | 常量 | 创建一个信号（可观察的值），用于向浏览器预览提供数据。 |
 | `Signal` | 类 | 信号。 |
-| `computed` | 函数 | 由其他信号计算得出的信号。 |
-| `effect` | 常量 | 信号变化时执行的回调。 |
 
 ## 编译与检查
 
 | 名称 | 种类 | 说明 |
 |---|---|---|
-| `compileNamespace` | 函数 | 将控件树编译为一个 JSON UI 命名空间。 |
-| `lint` | 函数 | 对控件树做静态检查。 |
-| `escapeText` | 函数 | 转义文字中会被游戏特殊处理的开头字符（# 与 $）。 |
 
 ## 文字与字宽
 
@@ -116,22 +110,17 @@
 |---|---|---|
 | `measureText` | 函数 | 模拟游戏的折行，返回各行、宽度与高度。 |
 | `textWidth` | 函数 | 一段文字的宽度（界面像素）。 |
-| `softWrapText` | 函数 | 软换行：返回交给游戏折行的文字。 |
 | `wrapText` | 函数 | 按当前字宽计算每一行（硬换行）。 |
 | `paginate` | 函数 | 长文本分页，默认按安卓字宽计算。 |
 | `autoSpace` | 函数 | 在汉字与英文、数字之间加空格。 |
 | `setMetricsProfile` | 函数 | 切换全局的字宽档案：pc 或 android。 |
 | `withMetricsProfile` | 函数 | 在回调期间使用指定的字宽档案。 |
-| `getMetricsProfile` | 函数 | 当前的字宽档案。 |
-| `NBSP` | 常量 | 不换行空格（U+00A0）。 |
-| `LINE_HEIGHT` | 常量 | 一行文字的高度：10 像素。 |
 
 ## 类型
 
 | 名称 | 种类 | 说明 |
 |---|---|---|
 | `ServerPaging` | 接口 | 一个界面的翻页路由表。 |
-| `ServerArrowRoute` | 接口 | 路由表中的一个翻页箭头。 |
 | `LintIssue` | 接口 | 静态检查的一项结果：rule、level、path、message。 |
 | `TextureInfo` | 接口 | 贴图信息：size、nineslice、baseSize。 |
 | `MetricsProfile` | 类型 | 字宽档案：'pc' 或 'android'。 |
@@ -145,12 +134,9 @@
 | `AnimType` | 类型 | 动画的类型。 |
 | `AnimEasing` | 类型 | 动画的缓动方式。 |
 | `ScreenManifest` | 接口 | 界面的清单：props 与按钮的名字及其对应的表单按钮序号。 |
-| `PropItem` | 类型 | 一个 prop 的值：文字，或 { text, icon }。 |
-| `PropSlot` | 接口 | 一个 prop 占用的表单按钮：序号与标记。 |
 | `TextMetrics` | 接口 | measureText() 的结果：lines、width、height。 |
 | `LengthLike` | 类型 | 数字（像素）或 Length。 |
 | `ExprLike` | 类型 | 表达式，或字符串、数字、布尔等字面值。 |
 | `TextAlign` | 类型 | 文字对齐：'left'、'center'、'right'。 |
 | `InlineIconSize` | 类型 | 行内图标的尺寸：8 或 16。 |
 | `GlyphIconOptions` | 接口 | GlyphSheet.icon() 的选项。 |
-| `LintOptions` | 接口 | 静态检查的选项：贴图信息、屏幕尺寸、字宽档案。 |

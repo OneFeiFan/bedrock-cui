@@ -55,7 +55,7 @@ const PAGES = [
             ['Justify', '弹性布局主轴方向的分布方式。'],
             ['Align', '弹性布局交叉轴方向的对齐方式。'],
         ]],
-        ['界面（defineScreen）', [
+        ['界面文件（defineUI）', [
             ['defineUI', '定义一个界面：id、props、state、computed、methods、生命周期与根页面 page（页面函数）。返回的对象有 open / close / isOpen / on / off。'],
             ['PageFunction', '页面函数：参数是使用者在 props、state、computed、methods 中定义的名字，返回这一页的内容（通常是 Page）。'],
             ['Page', '一页内容；放在页面组中时缺省铺满页面组。'],
@@ -81,37 +81,26 @@ const PAGES = [
         ]],
         ['项目配置', [
             ['defineConfig', '定义项目配置（cui.config.mjs）：命名空间、界面、贴图目录、预览数据。bedrock-cui dev 与 useSapdon() 共用。'],
-            ['screenOf', '取出配置中一个界面的构建函数与选项。'],
         ]],
         ['表达式与响应式', [
             ['toggleState', '某个开关是否选中的表达式。'],
             ['Expr', '表达式。编译为 JSON UI 的绑定，由游戏在运行时求值。'],
             ['signal', '创建一个信号（可观察的值），用于向浏览器预览提供数据。'],
             ['Signal', '信号。'],
-            ['computed', '由其他信号计算得出的信号。'],
-            ['effect', '信号变化时执行的回调。'],
         ]],
         ['编译与检查', [
-            ['compileNamespace', '将控件树编译为一个 JSON UI 命名空间。'],
-            ['lint', '对控件树做静态检查。'],
-            ['escapeText', '转义文字中会被游戏特殊处理的开头字符（# 与 $）。'],
         ]],
         ['文字与字宽', [
             ['measureText', '模拟游戏的折行，返回各行、宽度与高度。'],
             ['textWidth', '一段文字的宽度（界面像素）。'],
-            ['softWrapText', '软换行：返回交给游戏折行的文字。'],
             ['wrapText', '按当前字宽计算每一行（硬换行）。'],
             ['paginate', '长文本分页，默认按安卓字宽计算。'],
             ['autoSpace', '在汉字与英文、数字之间加空格。'],
             ['setMetricsProfile', '切换全局的字宽档案：pc 或 android。'],
             ['withMetricsProfile', '在回调期间使用指定的字宽档案。'],
-            ['getMetricsProfile', '当前的字宽档案。'],
-            ['NBSP', '不换行空格（U+00A0）。'],
-            ['LINE_HEIGHT', '一行文字的高度：10 像素。'],
         ]],
         ['类型', [
             ['ServerPaging', '一个界面的翻页路由表。'],
-            ['ServerArrowRoute', '路由表中的一个翻页箭头。'],
             ['LintIssue', '静态检查的一项结果：rule、level、path、message。'],
             ['TextureInfo', '贴图信息：size、nineslice、baseSize。'],
             ['MetricsProfile', "字宽档案：'pc' 或 'android'。"],
@@ -125,15 +114,12 @@ const PAGES = [
             ['AnimType', '动画的类型。'],
             ['AnimEasing', '动画的缓动方式。'],
             ['ScreenManifest', '界面的清单：props 与按钮的名字及其对应的表单按钮序号。'],
-            ['PropItem', '一个 prop 的值：文字，或 { text, icon }。'],
-            ['PropSlot', '一个 prop 占用的表单按钮：序号与标记。'],
             ['TextMetrics', 'measureText() 的结果：lines、width、height。'],
             ['LengthLike', '数字（像素）或 Length。'],
             ['ExprLike', '表达式，或字符串、数字、布尔等字面值。'],
             ['TextAlign', "文字对齐：'left'、'center'、'right'。"],
             ['InlineIconSize', '行内图标的尺寸：8 或 16。'],
             ['GlyphIconOptions', 'GlyphSheet.icon() 的选项。'],
-            ['LintOptions', '静态检查的选项：贴图信息、屏幕尺寸、字宽档案。'],
         ]],
     ]]] },
     { file: 'api-node.md', title: 'bedrock-cui/node', intro: '构建工具，只在 Node 中使用。', modules: [['bedrock-cui/node', 'src/node/index.ts', [
@@ -143,8 +129,6 @@ const PAGES = [
             ['checkScripts', '对行为包中的脚本做类型检查，返回错误信息。'],
         ]],
         ['资源', [
-            ['textureInfoFrom', '从资源包目录读取贴图的尺寸与九宫格信息。'],
-            ['renderGlyphSheet', '生成字形图，并核对各图标的墨迹。'],
             ['copyRuntime', '将脚本端运行时复制到指定目录。'],
         ]],
         ['类型', [
@@ -159,7 +143,6 @@ const PAGES = [
                 ['preWrap', '按 PC 字宽计算每一行，返回以换行符连接的文字。'],
             ['paginate', '长文本分页：按每页可用的高度切分，返回各页的文字；默认按安卓字宽折行。'],
             ['PaginateOptions', 'paginate() 的选项：height（必需）、firstHeight、profile，以及折行的选项。'],
-                ['softWrapText', '同 bedrock-cui 的 softWrapText()，不缓存。'],
                 ['wrapText', '按当前字宽计算每一行。'],
                 ['autoSpace', '在汉字与英文、数字之间加空格。'],
                 ['measureText', '模拟游戏的折行。'],
@@ -175,16 +158,12 @@ const PAGES = [
             ['mountPreview', '在网页元素中按游戏的规则绘制界面。'],
             ['runScreenInBrowser', '在浏览器中运行界面文件的逻辑（bedrock-cui dev 与手册网站的预览共用）：点击 → 方法 → 重新显示；游戏 API 为模拟对象。'],
             ['ScreenPreviewOptions', 'runScreenInBrowser 的选项：清单、路由表、预览的表单数据、日志。'],
-            ['mountDevtools', '预览的调试面板：控件边框、表单数据。'],
-            ['loadPixelFonts', '加载预览使用的点阵字体。'],
         ]],
         ['类型', [['PreviewOptions', 'mountPreview() 的选项。'], ['PreviewTexture', '预览使用的贴图：地址与贴图信息。'], ['Preview', 'mountPreview() 的返回值：表单数据的信号、resetToggles() 等。']]],
     ]]] },
     { file: 'api-dom.md', title: 'bedrock-cui/dom', intro: '网页输出：将控件树渲染为 HTML。', modules: [['bedrock-cui/dom', 'src/dom/index.ts', [
         ['渲染', [
             ['renderHtml', '将控件树渲染为 HTML 字符串。'],
-            ['cssLength', '将 JSON UI 的尺寸写法转换为 CSS 长度。'],
-            ['formatCodesToHtml', '将含 § 格式码的文字转换为 HTML。'],
         ]],
         ['网页专用的元素', [
             ['Link', '链接。'],
@@ -207,7 +186,9 @@ const INTERNAL = new Set([
     'SizeJson', 'AnchorName', 'Dyn', 'RGB', 'Intrinsic', 'RNode', 'Source', 'Op', 'ExprNode', 'Value', 'CompiledExpr', 'EvalEnv', 'TextureMeta', 'RunStyle', 'Run',
     'Unit', 'Term', 'SizeSpec', 'UnitContext', 'Rect', 'Edges', 'Scope', 'LayoutEnv', 'Box', 'CompileResult', 'ServerFormFiles', 'TextPiece',
     'LayoutOptions',
-    'TextOptions'])
+    'TextOptions',
+    // 开发者用不到的底层（2026-11 手册审计：手册只写开发者用得上的内容）
+    'screenOf', 'compileNamespace', 'lint', 'escapeText', 'computed', 'effect', 'softWrapText', 'NBSP', 'LINE_HEIGHT', 'getMetricsProfile', 'ServerArrowRoute', 'PropItem', 'PropSlot', 'LintOptions', 'textureInfoFrom', 'renderGlyphSheet', 'mountDevtools', 'loadPixelFonts', 'cssLength', 'formatCodesToHtml'])
 
 const files = PAGES.flatMap((p) => p.modules.map(([, f]) => path.join(root, f)))
 const program = ts.createProgram(files, { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext, moduleResolution: ts.ModuleResolutionKind.Bundler, strict: true, skipLibCheck: true })

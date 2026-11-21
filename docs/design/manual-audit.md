@@ -15,6 +15,19 @@
 
 ## 二、方法
 
+### 取舍：手册只写开发者用得上的内容（用户，2026-11-21）
+
+手册服务开发者，不是把框架完整介绍一遍；内容不是越多越好。
+
+| 保留 | 删除或缩减 |
+|---|---|
+| 开发者要做的事（写界面、传数据、打包） | 框架的实现细节（内部模块、数据的编码方式） |
+| 开发者会遇到的行为（游戏中的限制、会出错的写法） | 测量方法、调试过程 |
+| 开发者要做的选择（Router 还是 Tabs） | 用不到的底层函数、常量与类型（正文不写，API 参考也不列） |
+| | 测试包的版本号与实验的行号：写「真机」即可，细节留在设计文档 |
+
+逐页检查时，每一段先问：开发者做事时用得上吗？用不上就删。
+
 ### 自动检查（scripts/audit-docs.mjs，新写）
 
 1. **公开接口的覆盖**：各公开入口（`bedrock-cui`、`/runtime`、`/node`、`/web`、`/dom`）导出的名字，在指南正文中有没有「归属页」（在标题、表格首列或示例的导入中出现）；只在参考中出现的列出来，逐个决定是否需要在指南中介绍。
@@ -60,7 +73,7 @@
 | 部分 | 页 | 状态 |
 |---|---|---|
 | 抽查到的问题 | preview、runtime、text、cross-platform | ✅ 已修（见下） |
-| 入门 | introduction、how-it-works、quick-start | 待查 |
+| 入门 | introduction、how-it-works、quick-start | ✅ 已查 |
 | 搭建界面 | elements、layout、text、images、layering、glyph-icons | 待查 |
 | 界面文件 | screens、props、logic、pages、animation、timers | 待查 |
 | 界面内的交互 | tabs、scroll、bindings | 待查 |
@@ -83,4 +96,13 @@
 
 - 第一版的「归属页」靠推断（标题、表格首列、示例导入），噪音太大；第二版只认标题与组件页的 API 表，并按侧栏顺序判断「读到之前就提到」，仍把组件页（侧栏末尾）与值类型（Color、Size 等，在「尺寸与位置」等章节中介绍但标题中没有名字）算成没有归属。
 - 下一步：改为人工维护的归属表（名字 → 归属页），脚本按表检查；公开接口中 84 个没有归属页，其中多数是排版引擎、表达式、信号的底层函数与常量，需逐个决定：在指南中介绍、只留参考，或移出公开入口（后者是不兼容的改动，须用户同意）。
+
+### 第 3 步：删减与入门（已完成）
+
+- API 参考删去开发者用不到的 20 项（主入口：screenOf、compileNamespace、lint、escapeText、computed、effect、softWrapText、NBSP、LINE_HEIGHT、getMetricsProfile 与 4 个类型；node：textureInfoFrom、renderGlyphSheet；web：mountDevtools、loadPixelFonts；dom：cssLength、formatCodesToHtml），列入生成脚本的「不写进参考」。只改文档，导出不变。分组标题「界面（defineScreen）」改为「界面文件（defineUI）」。
+- 测试包版本号与实验行号（「1.69.0 V–Z」「AA」「N、O」）从手册与开发者可见的提示文字中删去，只写「真机」。
+- 静态检查参考的首句提到已删除的 serverForm()、compileNamespace()：改为 CuiApp.compile()。
+- 简介：useSapdon() 首次出现加链接；「测试方法与结果」（已不在真机规则页）改为「所依据的游戏行为」；学习路径补上「工具」。
+- 工作原理：开头列的术语与术语表一致（「表单数据」→「页」）；正文去掉加粗；UUID 一段与「构建与打包」重复，改为链接。
+- 快速上手：重复的「见工作原理」删去；「与游戏中一样」（预览模拟不了默认焦点）改为「同样可以操作」；「编译为游戏读取的界面文件」与术语「界面文件」冲突，改为 JSON UI。
 

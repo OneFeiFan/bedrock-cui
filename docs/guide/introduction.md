@@ -36,14 +36,14 @@ bedrock-cui 的主要特点：
 
 静态检查在构建时进行，报告文字越出边界、文字互相重叠、文字被同一层的图片遮挡、仅在手机上出现的折行问题等，并给出控件路径和偏差的像素数。
 
-各项规则的测试方法与结果见[真机规则](reference/rules.md)。
+这些检查所依据的游戏行为见[真机规则](reference/rules.md)。
 
 ## 使用方式
 
 bedrock-cui 与 [sapdon](https://github.com/Meteage/sapdon) 配合使用：bedrock-cui 负责界面与预览，sapdon 负责项目结构、清单与打包。
 
 - **新建项目**：`npx bedrock-cui create <名字>` 生成一个已配置好的 sapdon 项目，附带示例界面。
-- **已有的 sapdon 项目**：安装 bedrock-cui，添加配置文件，在构建入口中调用 `useSapdon()`。
+- **已有的 sapdon 项目**：安装 bedrock-cui，添加配置文件，在构建入口中调用 `useSapdon()`（见[在 sapdon 中使用](sapdon.md)）。
 
 两种方式使用同一份配置（`cui.config.mjs`），都用 `bedrock-cui dev` 在浏览器中预览。
 
@@ -57,4 +57,5 @@ bedrock-cui 只用于服务端表单界面，不修改 HUD、物品栏等原版�
 - [快速上手](quick-start.md)：创建项目、在浏览器中预览、构建并在游戏中打开。
 - 搭建界面：从[控件与组件树](elements.md)开始，介绍控件、布局、文字与图片。
 - 界面文件：从[界面文件](screens.md)开始，介绍数据、逻辑、页面、动画与计时显示。
+- 工具：[浏览器预览](preview.md)、[静态检查](lint.md)、[构建与打包](packaging.md)。
 - 参考：[各模块的 API](reference/api-core.md)、[静态检查规则](reference/lint.md)与[真机规则](reference/rules.md)。

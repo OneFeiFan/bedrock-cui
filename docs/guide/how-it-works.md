@@ -1,10 +1,10 @@
 # 工作原理
 
-bedrock-cui 编写的界面，显示在 Minecraft 基岩版的「服务端表单」上。本节介绍原版的服务端表单，以及 bedrock-cui 怎样利用它。后续章节中的「界面」「界面 id」「表单数据」都以本节为基础。
+bedrock-cui 编写的界面，显示在 Minecraft 基岩版的「服务端表单」上。本节介绍原版的服务端表单，以及 bedrock-cui 怎样利用它。后续章节中的「界面」「界面 id」「页」都以本节的定义为准。
 
 ## 原版的服务端表单
 
-基岩版的附加包可以包含**行为包脚本**：用 JavaScript 编写、在游戏中运行的程序。脚本通过游戏提供的模块 `@minecraft/server-ui` 向玩家显示表单。这种表单由脚本发起，称为服务端表单。
+基岩版的附加包可以包含行为包脚本：用 JavaScript 编写、在游戏中运行的程序。脚本通过游戏提供的模块 `@minecraft/server-ui` 向玩家显示表单。这种表单由脚本发起，称为服务端表单。
 
 `ActionFormData` 是其中一种服务端表单，由标题、正文和一列按钮组成。下面是一段行为包脚本，`ActionFormData` 与 `player.sendMessage()` 都属于游戏的脚本 API，不属于 bedrock-cui：
 
@@ -104,4 +104,4 @@ shop.open(player)
 | 行为包 | 游戏逻辑，包括脚本（`scripts/`） | 打开表单的脚本；bedrock-cui 的脚本端运行时（处理点击、跳转与刷新）随脚本打包 |
 | 附加包（`.mcaddon`） | 资源包与行为包打包在一起 | 由 sapdon 构建与打包 |
 
-每个包都有一个清单（`manifest.json`），用 UUID 标识自己，由 sapdon 生成；UUID 保存在项目的 `mod.info` 中，不应修改，否则游戏会把它当作另一个附加包。
+每个包的清单（`manifest.json`）与 UUID 由 sapdon 生成，见[构建与打包](packaging.md)。
