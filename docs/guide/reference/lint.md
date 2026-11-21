@@ -9,7 +9,7 @@
 | 规则 | 说明 |
 |---|---|
 | `bad-size` | 尺寸表达式无法解析。 |
-| `collection-index` | 使用了不存在的 `collection_index` 属性（bedrock-cui 内部的读取方式出错，使用 props 与按钮时不会出现）。 |
+| `collection-index` | `setRaw()` 写入了 `collection_index`：它不是合法的 JSON UI 属性，游戏会报错。 |
 | `collection-ref-outside` | 表单按钮的数据在读取它的容器之外使用（使用 props 时由 bedrock-cui 处理，不会出现）。 |
 | `collection-through-toggle` | 开关内部读取开关之外的表单按钮数据（使用 props 时由 bedrock-cui 在控件处读取，不会出现）。 |
 | `duplicate-name` | 同一父控件中存在同名的子控件。 |
@@ -37,7 +37,7 @@
 | `obfuscated-unifont` | `§k` 与汉字在同一个文字控件中，游戏只显示为一串点。 |
 | `out-of-bounds` | 控件越出了 `setContain()` 声明的边界；说明中给出方向与像素数。 |
 | `runtime-text-unbounded` | 运行期文字的高度未知，可能越出边界。应放进固定高度并调用 `setClip()` 的容器，或 `Scroll`。 |
-| `scroll-in-collection` | `Scroll` 放在集合项中，其内容读取不到集合项的数据。应将集合项放进 `Scroll`。 |
+| `scroll-in-collection` | 使用了数据的控件中放了 `Scroll`（例如按数据显示的容器里有一个滚动区域）：滚动区域中的内容读不到这项数据。把使用数据的控件放进 `Scroll` 里面。 |
 | `stack-cross-c` | `Stack` 交叉方向的尺寸使用了子控件之和（`Length.children()`）；要贴合最大的子控件，应使用 `Length.largestChild()`。 |
 | `text-covered` | 文字被图片遮挡：图片层级更高，或位于同一层而该贴图的批次晚于文字出现。见[叠放](../layering.md)。 |
 | `text-overflow` | 文字折行后的高度超出文字控件的高度。 |

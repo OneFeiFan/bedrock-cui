@@ -1,5 +1,7 @@
 # 在 sapdon 中使用
 
+bedrock-cui 通过 [sapdon](https://github.com/Meteage/sapdon) 构建附加包。本节介绍在已有的 sapdon 项目中接入 bedrock-cui 的步骤，以及接入之后构建时发生的事。
+
 ## 两种方式
 
 - **新建项目**：`npx bedrock-cui create <名字>` 生成的就是一个 sapdon 项目，已经配置好，见[快速上手](quick-start.md)。
@@ -19,12 +21,12 @@ npm install bedrock-cui
 
 ```js
 import { defineConfig } from 'bedrock-cui'
-import { buildBook } from './ui/book.mjs'
+import book from './ui/book.screen.mjs'
 
 export default defineConfig({
     namespace: 'book',
-    screens: { 'cui_ui:book': () => buildBook() },
-    textures: ['res'],
+    screens: [book],          // 项目中的界面（界面文件的写法见「界面文件」一章）
+    textures: ['res'],        // 存放资源包文件的目录
 })
 ```
 
@@ -60,7 +62,7 @@ book.open(player)
 `useSapdon()` 在 sapdon 注册表的提交前钩子中执行：
 
 - 编译界面，输出静态检查结果，存在错误时构建失败；
-- 将界面文件登记到注册表，`_ui_defs.json` 交由 `UISystemRegistry`（`@sapdon/ui`）与 sapdon 的其他界面合并；
+- 将编译出的 JSON UI 文件登记到注册表，与 sapdon 的其他界面合并；
 - 将 `cui.generated.js` 与其类型声明写入配置的 `scripts` 目录（默认为 `scripts/`）；
 - 将字形图写入 `res/`。
 
@@ -69,6 +71,5 @@ book.open(player)
 ## 注意事项
 
 - 不应同时使用 `@sapdon/ui` 中的服务端表单界面（`ServerFormUI`、`SapdonFormUI`、`SapdonGuideBook`）。它们与 bedrock-cui 都改写 `ui/server_form.json`，构建时报错。
-- sapdon 3 中 `GRegistry` 与 `UISystemRegistry` 都在 `@sapdon/core`，写作 `import * as sapdon from '@sapdon/core'` 与 `useSapdon(config, sapdon)`。
 
-完整的示例见仓库的 `examples/sapdon-project`。bedrock-cui 依赖 sapdon 4；sapdon 3 的写法为早期版本测试所用，当前版本未再测试。
+bedrock-cui 依赖 sapdon 4。完整的示例见仓库的 `examples/sapdon-project`。

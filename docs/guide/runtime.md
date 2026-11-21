@@ -1,6 +1,6 @@
 # 脚本端
 
-行为包脚本是在游戏中运行的 JavaScript。使用 bedrock-cui 时，脚本负责两件事：决定什么时候打开界面，以及处理界面发出的事件（见[界面文件](screens.md)与[逻辑](logic.md#通知行为包脚本)）。本节介绍脚本中用到的文件与模块。
+行为包脚本是在游戏中运行的 JavaScript。使用 bedrock-cui 时，脚本负责两件事：决定什么时候打开界面，以及处理界面发出的事件（见[界面文件](screens.md)与[逻辑](logic.md#通知行为包脚本)）。本节介绍脚本必须导入的生成文件、脚本的大小，以及不使用 sapdon 时的做法。
 
 ## 构建生成的文件
 
@@ -13,15 +13,6 @@ import shop from '../ui/shop.screen.mjs'
 ```
 
 导入之后，界面的 `open()`、`close()` 等方法即可使用。这个文件由构建覆盖，不要手动修改。
-
-## 运行时模块
-
-| 模块 | 内容 | 依赖 |
-|---|---|---|
-| `bedrock-cui/runtime/screens` | 界面的运行时（打开、点击、刷新、事件）；由 `cui.generated.js` 自动导入 | `@minecraft/server`、`@minecraft/server-ui` |
-| `bedrock-cui/runtime` | `softWrap()` 等文字处理函数 | 无 |
-
-`bedrock-cui/runtime` 不依赖游戏的脚本接口，也可以在 Node 和浏览器中使用。
 
 ## 脚本的大小
 
@@ -53,4 +44,4 @@ import { softWrap } from './cui/runtime/index.js'
 
 ## 运行期文字
 
-`softWrap()`、`paginate()` 等处理运行期文字的函数，见[文字 · 运行期文字](text.md#运行期文字)。
+`softWrap()`、`paginate()` 等处理运行期文字的函数在 `bedrock-cui/runtime` 中，见[文字 · 运行期文字](text.md#运行期文字)。它们不依赖游戏的脚本接口，也可以在 Node 与浏览器中使用。

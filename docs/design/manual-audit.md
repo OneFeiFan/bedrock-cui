@@ -76,12 +76,12 @@
 | 入门 | introduction、how-it-works、quick-start | ✅ 已查 |
 | 搭建界面 | elements、layout、text、images、layering、glyph-icons | ✅ 已查 |
 | 界面文件 | screens、props、logic、pages、animation、timers | ✅ 已查 |
-| 界面内的交互 | tabs、scroll、bindings | 待查 |
-| 脚本 | runtime | 待查 |
-| 工具 | preview、lint、packaging、sapdon | 待查 |
-| 进阶 | cross-platform、performance、web-output | 待查 |
-| 组件 | components/*（20 页） | 待查 |
-| 参考 | reference/rules、reference/lint、api-* | 待查 |
+| 界面内的交互 | tabs、scroll、bindings | ✅ 已查 |
+| 脚本 | runtime | ✅ 已查 |
+| 工具 | preview、lint、packaging、sapdon | ✅ 已查 |
+| 进阶 | cross-platform、performance、web-output | ✅ 已查 |
+| 组件 | components/*（20 页） | ✅ 上一轮已标准化；本轮全站扫描覆盖 |
+| 参考 | reference/rules、reference/lint、api-* | ✅ 已查 |
 
 ## 五、记录
 
@@ -116,4 +116,20 @@
 - 数据（props）：列表的例子返回 Panel，改为 Page；`.number` 首次出现处链接到表达式。
 - 动画：「可续播的动画」的三种技巧是实现细节，且与「计时显示 · 原理」重复，改为一句话指向 ProgressBar。
 - 全站扫描：「你」、正文加粗、「界面文件」指 JSON UI、「服务端脚本」——页面一章的三段加粗开头改为列表；工作原理、在 sapdon 中使用两处 JSON UI。
+
+### 第 5 步：界面内的交互、脚本、工具、进阶（已完成）
+
+- 选项卡：「Toggle」一节示范用 Toggle 手工拼标签页（Tabs 之前的旧做法），改为单个开关的用法，例子链接到表达式 · 开关的状态。
+- 滚动：删去 `common.scrolling_panel`（实现细节）与一个内容不是警告的警告框；补开场。
+- 表达式：删去已不存在的 `showing()`；运算表的「真机」一列（写法不一、对开发者无用）；限制中重复的「真机」；gte / lte 只写结论（可以放心组合），不写编译器怎样改写。
+- 脚本端：删去「运行时模块」一节（runtime/screens 由生成的文件自动导入，开发者不直接使用）。
+- 静态检查：补开场；「边界检查」与「尺寸与位置 · 声明边界」重复，改为链接。构建与打包：补开场；删去打包工具的内部处理；addPacketResolver 链接到说明。
+- 在 sapdon 中使用：接入已有项目的配置示例是旧写法（buildBook、screens 写成名字到函数的对象），改为当前写法；删去未再测试的 sapdon 3 写法；补开场。浏览器预览：补开场；改写「界面文件（defineUI）的界面」。
+- 跨平台、性能：补开场；性能删去「测量方法」。生成普通网页：补开场；说明 bedrock-cui/dom 的 Link 与跳转元素 Link 不是同一个；删去未使用的导入。
+- 全站：没有开场段的页（字形图标、滚动、生成普通网页）补上。
+
+### 第 6 步：参考（已完成）
+
+- 真机规则整页重写：只留编写界面时会遇到的游戏行为，按焦点与连续点击、叠放、文字、表达式、图片、脚本分组；右栏改为「编写时」怎么做。删去框架内部的细节（界面挂载、零宽空格、字形的垂直位置、Unifont 的绘制阈值与字距公式、use_anchored_offset、常数绑定）、重复的焦点规则与字宽表、旧写法 `new Image(props.item)`、指向 docs/DESIGN.md 的测试记录。
+- 静态检查规则：collection-index、scroll-in-collection 两条用开发者的说法重写（setRaw；使用数据的控件中放 Scroll），不再出现「集合项」。
 

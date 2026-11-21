@@ -1,15 +1,17 @@
 # 生成普通网页
 
+`bedrock-cui/dom` 把控件树渲染为普通网页的 HTML，同一套控件既可以编译为游戏的 JSON UI，也可以输出为网页；本手册网站的页面外框就是这样生成的。本节介绍渲染的方法、控件与 HTML 的对应关系和限制。
+
 ::: tip
 本节介绍的不是游戏界面的预览。按游戏的字形与折行查看界面，使用[浏览器预览](preview.md)。
 :::
 
 ## renderHtml
 
-`bedrock-cui/dom` 将控件树渲染为普通网页的 HTML。同一套控件既可以编译为游戏的 JSON UI，也可以输出为网页；本手册网站的页面外框即由 bedrock-cui 的控件搭建，经 `renderHtml()` 输出。
+`renderHtml(控件)` 返回 HTML 字符串：
 
 ```js
-import { Column, Label, Row, Panel } from 'bedrock-cui'
+import { Column, Panel, Row } from 'bedrock-cui'
 import { Html, Link, renderHtml } from 'bedrock-cui/dom'
 
 const nav = new Row().setGap(16).setClassName('topbar').add(
@@ -42,7 +44,7 @@ const html = renderHtml(new Column().add(nav, new Html('<p>正文</p>', 'article
 
 | 元素 | 说明 |
 |---|---|
-| `Link(地址, 文字)` | 链接。不传文字时，内容由子控件组成。 |
+| `Link(地址, 文字)` | 链接。不传文字时，内容由子控件组成。它从 `bedrock-cui/dom` 导入，与界面文件中跳转用的 `Link`（`bedrock-cui`）不是同一个。 |
 | `Html(片段, 标签)` | 原样插入的 HTML，标签默认为 `div`。 |
 
 这两种元素无法编译为 JSON UI，在游戏界面中使用时，静态检查报告 `web-only` 错误。`setClassName()` 只影响网页输出，编译 JSON UI 时忽略。

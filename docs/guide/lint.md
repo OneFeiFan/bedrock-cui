@@ -1,5 +1,7 @@
 # 静态检查
 
+静态检查在编译界面时，找出界面在游戏中会出问题的地方：文字越出边界、文字互相重叠、文字被同一层的图片遮挡、只在手机上出现的折行问题等。本节介绍检查的时机、控件路径与检查的范围；各条规则的说明见[静态检查规则](reference/lint.md)。
+
 ## 检查时机
 
 静态检查在编译界面时进行。`bedrock-cui dev` 将结果显示在预览下方；构建时，`useSapdon()` 将结果输出到终端：
@@ -26,15 +28,7 @@ for (const i of issues) console.log(i.level, i.rule, i.path, i.message)
 
 ## 边界检查
 
-越界检查只针对声明了边界的容器。`setContain()` 声明子控件不得越出该容器（含内边距）：
-
-```js
-import { Insets, Panel } from 'bedrock-cui'
-
-new Panel().setSize(116, 160).setPadding(Insets.of(3, 0, 3, 9)).setContain()
-```
-
-本来就位于容器之外的控件（提示框、弹出层），调用 `setOverflow()` 后不参与检查。
+越界检查只针对用 `setContain()` 声明了边界的容器，用法见[尺寸与位置 · 声明边界](layout.md#声明边界)。
 
 ## 多种屏幕与字宽
 

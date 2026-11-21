@@ -1,6 +1,6 @@
 # Toggle
 
-`Toggle` 是可以选中的开关。同一组（`group`）的开关互斥，序号（`index`）标识组内的每个开关。外观由 `unchecked`、`checked`、`uncheckedHover`、`checkedHover` 四个状态面板组成。用法见[选项卡](../tabs.md#toggle)。
+`Toggle` 是可以选中的开关。同一组（`group`）的开关互斥，序号（`index`）标识组内的每个开关。外观由 `unchecked`、`checked`、`uncheckedHover`、`checkedHover` 四个状态面板组成。用法见[选项卡](../tabs.md#单个开关toggle)。
 
 ```js preview=card 200x60
 import { Color, Image, Label, Panel, Row, Size, Texture, Toggle } from 'bedrock-cui'

@@ -55,21 +55,13 @@ const detail = new Tabs({
 // 打开它的入口：new Link('sword')
 ```
 
-## Toggle
+## 单个开关：Toggle
 
-`new Toggle(组名, 序号)` 创建一个开关。同一组中的开关互斥，同一时间只有一个被选中；序号区分组内的各个开关，必须是不重复的非负整数：
+只需要一个开关时（例如勾选「显示详情」时显示一行说明），使用 `Toggle`。`new Toggle(组名, 序号).setRadio(false)` 创建一个独立的开关；它的外观由四个状态面板组成：`unchecked`（未选中）、`checked`（选中）、`uncheckedHover`、`checkedHover`（鼠标悬停时），`开关.unchecked.add(控件…)` 把控件加入某个状态。`开关.setDefaultState(true)` 让它一开始就是选中的。
 
-```js
-import { Image, Label, Size, Texture, Toggle } from 'bedrock-cui'
+其他控件用 `toggleState(开关的名称)` 读取它是否选中，例子见[表达式 · 开关的状态](bindings.md#开关的状态)。
 
-const tab = new Toggle('tabs', 0).setName('tab_items').setSize(40, 16)
-tab.unchecked.add(new Label('物品'))
-tab.checked.add(new Image(Texture.SOLID).setSize(Size.full()), new Label('§l物品'))
-```
-
-开关的外观由四个状态面板组成：`unchecked`（未选中）、`checked`（选中）、`uncheckedHover`、`checkedHover`（鼠标悬停时）。`开关.unchecked.add(控件…)` 把控件加入某个状态。
-
-`开关.setRadio(false)` 使开关脱离互斥，成为独立的复选框；`开关.setDefaultState(true)` 设置复选框一开始就是选中的。
+不调用 `setRadio(false)` 时，组名相同的开关互斥，同一时间只有一个被选中，`Tabs` 就是这样实现的；几块内容之间的切换直接使用 `Tabs`。
 
 ## 限制
 
